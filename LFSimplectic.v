@@ -96,10 +96,7 @@ replace (snd (snd (jacobian x v h F leapfrog_step))) with (1 - 0.5 * h^2 * PI^2)
 replace (fst (fst (jacobian x v h F leapfrog_step))) with (1 - 0.5 * h^2 * PI^2).
 replace (snd (fst (jacobian x v h F leapfrog_step))) with h.
 nra.
-simpl; unfold F; symmetry; field_simplify; apply is_derive_unique; auto_derive; auto; nra.
-simpl; unfold F; symmetry; field_simplify; apply is_derive_unique; auto_derive; auto; nra.
-simpl; unfold F; symmetry; field_simplify; apply is_derive_unique; auto_derive; auto; nra.
-simpl; unfold F; symmetry; field_simplify; apply is_derive_unique; auto_derive; auto; nra.
+all: simpl; unfold F; symmetry; field_simplify; apply is_derive_unique; auto_derive; auto; nra. 
 Qed.
 
 
