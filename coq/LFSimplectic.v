@@ -25,8 +25,8 @@ Fixpoint leapfrog (x v : R) (n : nat) : R * R :=
   match n with
   | 0 => (x, v)
   | S n' =>
-    let xv' := leapfrog_step x v in
-    leapfrog (fst xv') (snd xv') n'
+    let (x', v') := leapfrog_step x v in
+    leapfrog x' v' n'
   end.
 
 Definition leapfrog_iter (x v : R) (n : nat) : R * R :=
@@ -39,8 +39,10 @@ Proof.
   induction n.
   - reflexivity.
   - intros; simpl.
+    destruct (leapfrog_step x v) eqn:Heq.
     rewrite <- IHn.
     unfold leapfrog_iter.
+    rewrite <- Heq.
     constructor.
 Qed.
 
