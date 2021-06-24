@@ -1,7 +1,7 @@
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Arith.Arith.
 From Coquelicot Require Import Coquelicot.
-Require Import Leapfrog.Iterate.
+From Leapfrog Require Import Iterate.
 
 Open Scope R_scope.
 
@@ -12,35 +12,36 @@ Section LeapfrogDefs.
 Variable h : R.
 Variable F : R -> R.
 
-Definition leapfrog_step (xv : R * R) : R * R :=
-  let (x,v) := xv in
+Definition leapfrog_step (x v : R) : R * R :=
   let x' := x + h * v + 0.5 * h^2 * F x in
   let v' := v + 0.5 * h * (F x + F x') in
   (x', v').
 
-(* This will prevent tactics like simpl from expanding leapfrog_step *)
+(* This will prevent tactics like simpl from expanding leapfrog_step. If you
+want to switch back use Transparent *)
 Opaque leapfrog_step.
 
-Fixpoint leapfrog (xv : R * R) (n : nat) : R * R :=
+Fixpoint leapfrog (x v : R) (n : nat) : R * R :=
   match n with
-  | 0 => xv
+  | 0 => (x, v)
   | S n' =>
-    let xv' := leapfrog_step xv in
-    leapfrog xv' n'
+    let xv' := leapfrog_step x v in
+    leapfrog (fst xv') (snd xv') n'
   end.
 
-Definition leapfrog_iter (xv : R * R) (n : nat) : R * R :=
-  iterate _ leapfrog_step xv n.
+Definition leapfrog_iter (x v : R) (n : nat) : R * R :=
+  iterate _ (uncurry leapfrog_step) (x, v) n.
 
 Lemma leapfrog__leapfrog_iter:
-  forall n xv,
-    leapfrog_iter xv n = leapfrog xv n.
+  forall n x v,
+    leapfrog_iter x v n = leapfrog x v n.
 Proof.
   induction n.
   - reflexivity.
   - intros; simpl.
-    rewrite IHn.
-    reflexivity.
+    rewrite <- IHn.
+    unfold leapfrog_iter.
+    constructor.
 Qed.
 
 End LeapfrogDefs.
