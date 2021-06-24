@@ -68,7 +68,7 @@ Definition is_symplectic_1D (J: (R*R)*(R*R)) :=
   let S4 := snd (snd J) in
   S1*S4 - S2*S3 = 1.
 
-Definition F (x:R) : R := -PI^2 * x.
+Definition F x := -PI^2 * x.
 
 Lemma is_symplectic_LF :
   forall x v h,
@@ -90,7 +90,7 @@ all:
 Qed.
 
 
-Definition div_F (x:R) := Derive F x.
+Definition div_F := Derive F.
 
 Definition dlfx (x v h: R) (F: R -> R) :=
   let dlfxdx := Derive (fun x => (fst (leapfrog_step h F x v)) ) x in
