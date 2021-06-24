@@ -1,29 +1,55 @@
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Arith.Arith.
 From Coquelicot Require Import Coquelicot.
+Require Import Leapfrog.Iterate.
 
 Open Scope R_scope.
 
 Section LeapfrogDefs.
 
+(* You can factor out common parameters like this within a Section. *)
+
 Variable h : R.
 Variable F : R -> R.
 
-Definition leapfrog_step (xn vn : R) : R * R :=
-  let x1  := xn + h*vn + 0.5*h^2*(F xn) in
-  let v1  := vn + 0.5*h*(F xn + F x1) in
-  (x1, v1).
+Definition leapfrog_step (xv : R * R) : R * R :=
+  let (x,v) := xv in
+  let x' := x + h * v + 0.5 * h^2 * F x in
+  let v' := v + 0.5 * h * (F x + F x') in
+  (x', v').
 
-Fixpoint leapfrog (x0 v0 : R) (n : nat) : R * R :=
+(* This will prevent tactics like simpl from expanding leapfrog_step *)
+Opaque leapfrog_step.
+
+Fixpoint leapfrog (xv : R * R) (n : nat) : R * R :=
   match n with
-  | 0 => pair x0 v0
+  | 0 => xv
   | S n' =>
-      let xn := fst (leapfrog_step x0 v0) in
-      let vn := snd (leapfrog_step x0 v0) in
-      leapfrog xn vn (n')
+    let xv' := leapfrog_step xv in
+    leapfrog xv' n'
   end.
 
+Definition leapfrog_iter (xv : R * R) (n : nat) : R * R :=
+  iterate _ leapfrog_step xv n.
+
+Lemma leapfrog__leapfrog_iter:
+  forall n xv,
+    leapfrog_iter xv n = leapfrog xv n.
+Proof.
+  induction n.
+  - reflexivity.
+  - intros; simpl.
+    rewrite IHn.
+    reflexivity.
+Qed.
+
 End LeapfrogDefs.
+
+(* After the Section is closed, the definitions will be expanded (somewhat
+intelligently) to take those parameters. *)
+
+Check leapfrog.
+(* leapfrog : R -> (R -> R) -> R -> R -> nat -> R * R *)
 
 Definition jacobian (x v: R) (S: R -> R -> R * R) : (R * R) * (R * R) :=
   let dSx_dx := Derive (fun x => fst (S x v)) x in
@@ -60,8 +86,6 @@ all:
   apply is_derive_unique; auto_derive; auto; nra.
 Qed.
 
-
-Section DivF.
 
 Definition div_F (x:R) := Derive F x.
 
@@ -112,5 +136,3 @@ Proof.
 intros. unfold div_F, F. apply is_derive_unique.
 auto_derive. auto. nra.
 Qed.
-
-End DivF.
