@@ -37,8 +37,6 @@ Definition fcoe (n : nat) (x : R) : R := -(fcoe_fix n x) .
 
 End EulerDefs. 
 
-Print fcoe. 
-
 Definition F y:=  y^2.
 
 Lemma fcoe1 (h y : R) :
@@ -52,8 +50,9 @@ Lemma fcoe2 (h y : R) :
 Proof.
 unfold fcoe, fcoe_fix, F; simpl. field_simplify. 
 replace (Derive (fun x : R => x) y) with 1. 
-replace (Derive (fun x : R => Derive (fun x0 : R => x0) x * (1 * (x * (x * 1)))) y) with (2*y). nra.
-symmetry. apply is_derive_unique. 
+replace (fun x : R => Derive (fun x0 : R => x0) x * (1 * (x * (x * 1)))) with (fun x : R => Derive (fun x0 : R => x0) x * x^2).
+replace (Derive (fun x : R => Derive (fun x0 : R => x0) x * x^2) y) with (2*y). nra.
+
 
  
 
