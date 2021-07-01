@@ -7,22 +7,40 @@ Open Scope R_scope.
 Section EulerDefs.
 
 Variable h : R.
-Variable F : R -> R.
-Variable y : R. 
+Variable y : R.
 
-Definition fcoe (f: nat -> R -> R) (n: nat) : R :=
+Definition F := (fun y => y^2).
+
+Definition mod_eq (f: nat -> R -> R) (n: nat) (x : R) : R :=
   match n with
-  | 0 => F y 
-  | S n' => 
-    let ytilde := sum_f_R0 (fun k => (h^k * (f k y) / INR (fact k))) in 
-    (ytilde n') - y - h*(F y)
+  | 0 => 0 
+  | 1 => 0
+  | S (S n)  => h^n * (f n x) 
   end.
 
-Fixpoint diff_y (n: nat) (x: R): R :=
-  let f2 := fcoe diff_y in
-  match n with 
+Fixpoint diff_y (n: nat) (t: R) (x: R) : R :=
+  match n with  
   | 0 => x
-  | S n' => 
-    let mod_eq := sum_f_R0 (fun j => h^j * (f2 j)) in
-    (Derive (diff_y n') x) * (mod_eq n)
-  end. 
+  | S n => (Derive (diff_y n t) x) * t
+  end.
+
+Fixpoint fcoe (n:nat) (x: R) : R := 
+  let t  := mod_eq fcoe n x in 
+  match n with
+  | 0 => F x
+  | (S n as m) => 
+    let ytilde := sum_f_R0 (fun k => (h^k * (diff_y k t x) / INR (fact k))) in 
+    (ytilde m) - x - h*(F x)
+  end.
+
+Lemma foce2 :
+  fcoe 2 y = h^2 * y^3.
+Proof.
+unfold fcoe, F; simpl. field_simplify. 
+replace (Derive (fun x : R => Derive (fun x0 : R => x0) x * (1 * (y * (y * 1)))) y) with (2*y). 
+replace (Derive (fun x : R => x) y) with 1. nra. 
+symmetry; field_simplify;
+apply is_derive_unique; auto_derive; auto; nra.
+symmetry; field_simplify. 
+ 
+
