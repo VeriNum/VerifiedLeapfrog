@@ -17,14 +17,15 @@ Definition mod_eq (f: nat -> R -> R) (n: nat) (x : R) : R :=
   | S (S n)  => h^n * (f n x) 
   end.
 
-Fixpoint diff_y (n: nat) (t: R) (x: R) : R :=
+Fixpoint diff_y (n: nat) (t: R -> R) (x : R) : R :=
+  let t' := t x in 
   match n with  
   | 0 => x
-  | S n => (Derive (diff_y n t) x) * t
+  | S n => (Derive (diff_y n t) x) * t'
   end.
 
 Fixpoint fcoe_fix (n:nat) (x: R) : R := 
-  let t  := mod_eq fcoe_fix n x in 
+  let t  := mod_eq fcoe_fix n in 
   match n with
   | 0 => F x
   | (S n as m) => 
@@ -32,9 +33,11 @@ Fixpoint fcoe_fix (n:nat) (x: R) : R :=
     (ytilde m) - x - h * (F x)
   end.
 
-Definition fcoe (n : nat) ( x : R) : R := -(fcoe_fix n x) .
+Definition fcoe (n : nat) (x : R) : R := -(fcoe_fix n x) .
 
 End EulerDefs. 
+
+Print fcoe. 
 
 Definition F y:=  y^2.
 
@@ -48,11 +51,9 @@ Lemma fcoe2 (h y : R) :
   fcoe h F 2 y = -h^2 * y^3.
 Proof.
 unfold fcoe, fcoe_fix, F; simpl. field_simplify. 
-replace (Derive (fun x : R => Derive (fun x0 : R => x0) x * (1 * (y * (y * 1)))) y) with (2*y). 
-replace (Derive (fun x : R => x) y) with 1. nra. 
-symmetry; field_simplify;
-apply is_derive_unique; auto_derive; auto; nra.
-symmetry; field_simplify. 
+replace (Derive (fun x : R => x) y) with 1. 
+replace (Derive (fun x : R => Derive (fun x0 : R => x0) x * (1 * (x * (x * 1)))) y) with (2*y). nra.
+symmetry. apply is_derive_unique. 
 
  
 
