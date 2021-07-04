@@ -36,6 +36,8 @@ Fixpoint fcoe_fix (n:nat) (x: R) : R :=
 
 Definition fcoe (n : nat) (x : R) : R := -(fcoe_fix n x) .
 
+Definition ModEq (n: nat) (x : R) : R := sum_f_R0 (fun j => (h^(j-1) * (fcoe j x))) n.
+
 End EulerDefs. 
 
 Definition F y:=  y^2.
@@ -45,12 +47,6 @@ Lemma fcoe1 (h y : R) :
 Proof.
 intros. unfold fcoe, fcoe_fix, F; simpl. field_simplify. nra. 
 Qed. 
-
-Lemma lem1 (x: R) :
- Derive (fun x0 : R => x0) x  = 1.
-Proof. 
-apply is_derive_unique; auto_derive; nra. 
-Qed.
 
 Lemma fcoe2 (h y : R) :
   fcoe h F 2 y = -h^2 * y^3.
