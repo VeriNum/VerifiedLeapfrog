@@ -1,5 +1,6 @@
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Arith.Arith.
+From Coq Require Import Logic.FunctionalExtensionality. 
 From Coquelicot Require Import Coquelicot.
 
 Open Scope R_scope.
@@ -45,14 +46,33 @@ Proof.
 intros. unfold fcoe, fcoe_fix, F; simpl. field_simplify. nra. 
 Qed. 
 
+Lemma lem1 (x: R) :
+ Derive (fun x0 : R => x0) x  = 1.
+Proof. 
+apply is_derive_unique; auto_derive; nra. 
+Qed.
+
 Lemma fcoe2 (h y : R) :
   fcoe h F 2 y = -h^2 * y^3.
 Proof.
 unfold fcoe, fcoe_fix, F; simpl. field_simplify. 
-replace (Derive (fun x : R => x) y) with 1. 
-replace (fun x : R => Derive (fun x0 : R => x0) x * (1 * (x * (x * 1)))) with (fun x : R => Derive (fun x0 : R => x0) x * x^2).
-replace (Derive (fun x : R => Derive (fun x0 : R => x0) x * x^2) y) with (2*y). nra.
+-replace (Derive (fun x : R => x) y) 
+  with 1 
+  by (symmetry; apply is_derive_unique; auto_derive; auto).
+-replace (fun x : R => Derive (fun x0 : R => x0) x * (1 * (x * (x * 1)))) 
+  with (fun x : R => Derive (fun x0 : R => x0) x * x^2)
+  by (apply functional_extensionality; intros;
+     replace ((1 * (x * (x * 1)))) with (x^2) by (nra);
+     auto).
+-replace (Derive (fun x : R => Derive (fun x0 : R => x0) x * x^2) y) 
+  with (Derive (fun x : R => x^2) y).
+-replace (Derive (fun x : R => x^2) y) 
+  with (2*y) 
+  by (symmetry; apply is_derive_unique; auto_derive; nra);
+  field_simplify; auto; nra. 
+apply Derive_ext; symmetry. 
+replace (Derive (fun x0 : R => x0) t) with 1. nra. 
+symmetry; apply is_derive_unique; auto_derive; auto.
+Qed. 
 
-
- 
 
