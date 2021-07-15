@@ -1,8 +1,7 @@
 From Flocq Require Core Binary.
-Import Defs Raux FLT Generic_fmt Binary Ulp.
-Require Import Psatz.
-Require Import Recdef.
+Import Defs Raux Binary.
 
+Require Import Recdef.
 Require compcert.lib.Floats.
 
 Section LeapfrogDefs.
@@ -12,6 +11,7 @@ Definition float := Floats.float32.
 Definition binop_nan : forall x y : float, {x: float | is_nan _ _ x = true}
     := Floats.Float32.binop_nan.
 
+(*Start Defs. attributed to Appel, Bertot https://github.com/cverified/cbench-vst/blob/master/sqrt/float_lemmas.v*)
 Definition ms :=  (* mantissa bits *)
      ltac:(let t := eval compute in float in 
             match t with binary_float ?m ?e => let x := constr:(m) in apply x end).
@@ -21,12 +21,14 @@ Definition es :=  (* maximum exponent *)
 
 Definition float_of_Z : Z -> float := 
      IEEE754_extra.BofZ ms es eq_refl eq_refl.
+(*End Defs. attributed to Appel, Bertot*)
 
 Definition zero:= float_of_Z 0.
 
 Variable F : float -> float.
 Variable h : float.
 
+(*Start Defs. attributed to Appel, Bertot https://github.com/cverified/cbench-vst/blob/master/sqrt/float_lemmas.v*)
 Definition float_plus: float -> float -> float :=
    Bplus ms es eq_refl eq_refl binop_nan mode_NE.
 
@@ -35,6 +37,7 @@ Definition float_mult: float -> float -> float :=
 
 Definition float_div: float -> float -> float :=
    Bdiv ms es eq_refl eq_refl binop_nan mode_NE.
+(*End Defs. attributed to Appel, Bertot*)
 
 Fixpoint float_pow (r:float) (n:nat) : float :=
   match n with
@@ -59,12 +62,6 @@ Fixpoint leapfrog ( ic : float * float) (n : nat) : float * float:=
     leapfrog ic' n'
   end.
 
-Lemma leapfrog_correct_step1  (ic : float * float) :
-  leapfrog ic 1 = leapfrog_step ic.
-Proof.
-auto.
-Qed.
-
 Lemma lfstep_lf_comp:
   forall n ic ,
   leapfrog_step (leapfrog ic n) = leapfrog (leapfrog_step ic) n.
@@ -85,32 +82,6 @@ replace (leapfrog_step (leapfrog ic n)) with (leapfrog (leapfrog_step ic) n). de
 all: symmetry; apply lfstep_lf_comp. 
 Qed.
 
-Lemma leapfrog_zero_ic :
-  forall n ic ,
-  ic = (zero,zero) ->
-  leapfrog ic n = (zero, zero).
-Proof.
-intros. 
-induction n.
-- auto.
-- assert (H1: leapfrog ic 0 = (zero, zero)) by (auto). 
-assert (H2: leapfrog ic (S n) = leapfrog_step (leapfrog ic n)) by (apply lfn_eq_lfstep). 
-assert (leapfrog ic (S n) = leapfrog ic n). auto. 
-rewrite -> H1. rewrite -> IHn. unfold leapfrog_step, zero fst, snd. lia. 
-
 End LeapfrogDefs.
 
-Opaque leapfrog_step.
-
-
-Lemma leapfrog_zero_IC (F: float -> float) (h x v: float) (n : nat) :
-  x = zero  -> v = zero ->
-  leapfrog F h x v n = (zero, zero).
-Proof.
-intros. 
-induction n as [| n' IHn'].
-- simple subst. auto.
-- assert (H1: leapfrog F h x v (S n') = leapfrog_step F h (fst (leapfrog F h x v n')) (snd (leapfrog F h x v n'))).
-unfold leapfrog. simpl. auto.
-Qed.
 
