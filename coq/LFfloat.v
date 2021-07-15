@@ -39,10 +39,10 @@ Definition float_div: float -> float -> float :=
    Bdiv ms es eq_refl eq_refl binop_nan mode_NE.
 (*End Defs. attributed to Appel, Bertot*)
 
-Fixpoint float_pow (r:float) (n:nat) : float :=
+Fixpoint float_pow (f : float) (n : nat) : float :=
   match n with
     | O => float_of_Z 1
-    | S n => float_mult r (float_pow r n)
+    | S n => float_mult f (float_pow f n)
   end.
 
 Definition leapfrog_step ( ic : float * float) : float * float :=
