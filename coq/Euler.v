@@ -34,7 +34,7 @@ Fixpoint fcoe_fix (n:nat) (x: R) : R :=
     (ytilde m) - x - h * (F x)
   end.
 
-Definition fcoe (n : nat) (x : R) : R := -(fcoe_fix n x) .
+Definition fcoe (n : nat) (x : R) : R := -(fcoe_fix n x) * / h .
 
 Definition ModEq (n: nat) (x : R) : R := sum_f_R0 (fun j => (h^(j-1) * (fcoe j x))) n.
 
@@ -42,10 +42,16 @@ End EulerDefs.
 
 Definition F y:=  y^2.
 
-Lemma fcoe1 (h y : R) :
-  fcoe h F 1 y = h * y^2.
+Lemma lem1 (h : R) :
+  h <> 0 -> h/h=1.
 Proof.
-intros. unfold fcoe, fcoe_fix, F; simpl. field_simplify. nra. 
+intros; auto. Hint Resolve Rinv_r: real. auto.
+
+Lemma fcoe1 (h y : R) :
+  h > 0 -> fcoe h F 1 y = y^2.
+Proof.
+intros. unfold fcoe, fcoe_fix, F; simpl. field_simplify. auto with real.
+replace (h / h) with (1). nra. auto with real.
 Qed. 
 
 Lemma fcoe2 (h y : R) :
