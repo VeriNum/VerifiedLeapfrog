@@ -1,4 +1,3 @@
 -R . Leapfrog
 Iterate.v
 LFSimplectic.v
-Euler.v
