@@ -35,7 +35,7 @@ void integrate(float *x, float *v) {
 
     /* integration parameters */
     max_step = 100;				/* number of integration steps */
-    h = 1.0 / 32.0;				/* timestep */
+    h = 1.0f / 32.0f;				/* timestep */
 
     /* integration loop */
     for (n = 0; n < max_step; n++)

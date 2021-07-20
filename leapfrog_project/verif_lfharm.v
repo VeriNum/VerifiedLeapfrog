@@ -27,25 +27,29 @@ Definition lfstep_spec :=
     SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_step (x,v)))) xp; 
           data_at Tsh tfloat (Vsingle (snd(leapfrog_step (x,v)))) vp ).
 
+Definition initial_x := float_of_Z 1.
+Definition initial_v := Float32.zero.
+Definition initial_t := Float32.zero.
+
 Definition integrate_spec := 
   DECLARE _integrate
-  WITH xp: val, x: float, vp: val, v: float
+  WITH xp: val, vp: val
   PRE [ tptr tfloat , tptr tfloat ]
-    PROP(Binary.is_finite_strict 24 128 x = true)
+    PROP()
     PARAMS (xp; vp)
-    SEP(data_at Tsh tfloat (Vsingle x) xp; data_at Tsh tfloat (Vsingle v) vp )
+    SEP(data_at_ Tsh tfloat xp; data_at_ Tsh tfloat vp )
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog (x,v) 100))) xp; 
-          data_at Tsh tfloat (Vsingle (snd(leapfrog (x,v) 100))) vp ).
+    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog (initial_x,initial_v) 100))) xp; 
+          data_at Tsh tfloat (Vsingle (snd(leapfrog (initial_x,initial_v) 100))) vp ).
 
 Definition main_spec :=
  DECLARE _main
   WITH gv: globals
   PRE  [] main_pre prog tt gv
   POST [ tint ]
-       PROP() RETURN (Vint (Int.repr 1)) SEP(TT).
+       PROP() RETURN (Vint (Int.repr 0)) SEP(TT).
 
 Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec; main_spec].
 
@@ -211,4 +215,94 @@ rewrite leapfrog_step_x by auto.
 rewrite leapfrog_step_v by auto.
 cancel.
 Qed.
- 
+
+Lemma leapfrog_step_is_finite_strict:
+  forall n, 0 <= n < 100 ->
+          Binary.is_finite_strict 24 128 (fst (Z.iter n leapfrog_step (initial_x, initial_v))) = true.
+Admitted.
+
+Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
+Proof.
+start_function.
+forward.
+forward.
+forward.
+forward.
+forward.
+replace (Vsingle (Float32.of_bits (Int.repr 1065353216))) with (Vsingle initial_x).
+ 2:{ unfold initial_x. rewrite float_of_Z_one.
+   unfold Float32.of_bits. rewrite Int.unsigned_repr by computable.
+   cbv [Bits.b32_of_bits Bits.binary_float_of_bits Binary.Bone]. simpl.
+   f_equal. f_equal. apply proof_irr.
+ }
+ change (data_at Tsh tfloat (Vsingle (Float32.of_bits (Int.repr 0))) vp)
+      with (data_at Tsh tfloat (Vsingle initial_v) vp).
+ change (Float32.of_bits (Int.repr 0)) with Float32.zero.
+ replace (Float32.of_bits (Int.repr 1065353216)) with (float_of_Z 1).
+2:{ rewrite float_of_Z_one.
+   unfold Float32.of_bits. rewrite Int.unsigned_repr by computable.
+   cbv [Bits.b32_of_bits Bits.binary_float_of_bits Binary.Bone]. simpl.
+   f_equal. f_equal. apply proof_irr.
+  }
+ replace (Float32.div _ _) with h.
+2:{ unfold h, float_of_Z.
+   rewrite float_div_eq. f_equal. 
+   unfold Float32.of_bits. rewrite Int.unsigned_repr by computable.
+   cbv [Bits.b32_of_bits Bits.binary_float_of_bits Binary.Bone ms es]. simpl.
+   f_equal. apply proof_irr.
+  }
+pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
+ forward_for_simple_bound 100 (EX n:Z,
+       PROP() 
+       LOCAL (temp _h (Vsingle h);
+                   temp _max_step (Vint (Int.repr 100));
+                   temp _t (Vsingle (Z.iter n (Float32.add h) Float32.zero)); 
+                   temp _x xp; temp _v vp)
+   SEP (data_at Tsh tfloat (Vsingle (fst (step n))) xp;
+          data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.
+- 
+  entailer!.
+- forward_call.
+   apply leapfrog_step_is_finite_strict; auto.
+   forward.
+   entailer!.
+   fold (Z.succ i); rewrite Zbits.Ziter_succ.
+   f_equal. apply Float32.add_commut. left; reflexivity.
+   lia.
+   fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ.
+   cancel. lia.
+-
+   forward.
+Qed.
+
+Lemma body_main: semax_body Vprog Gprog f_main main_spec.
+Proof.
+start_function.
+forward_call.
+forget (leapfrog (initial_x, initial_v) 100) as final_xv.
+forward.
+cancel.
+Qed.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
