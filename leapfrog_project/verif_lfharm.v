@@ -18,7 +18,7 @@ Definition lfstep_spec :=
   DECLARE _lfstep
   WITH xp: val, x: float, vp: val, v: float
   PRE [ tptr tfloat , tptr tfloat , tfloat ]
-    PROP(Binary.is_finite_strict 24 128 x = true)
+    PROP(Binary.is_finite 24 128 x = true)
     PARAMS (xp; vp; Vsingle h)
     SEP(data_at Tsh tfloat (Vsingle x) xp; data_at Tsh tfloat (Vsingle v) vp )
   POST [ tvoid ]
@@ -109,14 +109,14 @@ apply proof_irr.
 Qed.
 
 Lemma mul_one: forall x : float32, 
-  Binary.is_finite_strict 24 128 x = true ->
+  Binary.is_finite 24 128 x = true ->
   Float32.mul x (float_of_Z 1) = x.
 Proof.
 Admitted.
 
-Lemma is_finite_strict_negate:
-  forall x, Binary.is_finite_strict 24 128 x = true ->
-   Binary.is_finite_strict 24 128 (Float32.mul (float_of_Z (- (1))) x)  = true .
+Lemma is_finite_negate:
+  forall x, Binary.is_finite 24 128 x = true ->
+   Binary.is_finite 24 128 (Float32.mul (float_of_Z (- (1))) x)  = true .
 Admitted.
 
 Lemma body_force: semax_body Vprog Gprog f_force force_spec.
@@ -142,7 +142,7 @@ Lemma float_mult_eq: float_mult = Float32.mul.
 Proof. reflexivity. Qed.  (* Do it this way because "change" is expensive! *)
 
 Lemma leapfrog_step_x:
- forall x v, Binary.is_finite_strict 24 128 x = true ->
+ forall x v, Binary.is_finite 24 128 x = true ->
   fst (leapfrog_step (x,v)) = 
   Float32.add (Float32.add x (Float32.mul h v))
         (Float32.mul (Float32.of_bits (Int.repr 1056964608))
@@ -161,7 +161,7 @@ rewrite ?float_plus_eq, ?float_div_eq, ?float_mult_eq.
 Qed.
 
 Lemma leapfrog_step_v:
- forall x v, Binary.is_finite_strict 24 128 x = true ->
+ forall x v, Binary.is_finite 24 128 x = true ->
   snd (leapfrog_step (x,v)) = 
   Float32.add v
         (Float32.mul (Float32.of_bits (Int.repr 1056964608))
@@ -193,9 +193,9 @@ rewrite ?float_plus_eq, ?float_div_eq, ?float_mult_eq.
   f_equal. f_equal. f_equal.
   apply Float32.mul_commut; right; reflexivity.
   left.
-  apply is_finite_strict_negate in H.
+  apply is_finite_negate in H.
   fold minusx in H.
-  clearbody minusx. destruct minusx; try discriminate. reflexivity.
+  clearbody minusx. destruct minusx; try discriminate; reflexivity.
 Qed.
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
@@ -216,9 +216,9 @@ rewrite leapfrog_step_v by auto.
 cancel.
 Qed.
 
-Lemma leapfrog_step_is_finite_strict:
+Lemma leapfrog_step_is_finite:
   forall n, 0 <= n < 100 ->
-          Binary.is_finite_strict 24 128 (fst (Z.iter n leapfrog_step (initial_x, initial_v))) = true.
+          Binary.is_finite 24 128 (fst (Z.iter n leapfrog_step (initial_x, initial_v))) = true.
 Admitted.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
@@ -263,7 +263,7 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
 - 
   entailer!.
 - forward_call.
-   apply leapfrog_step_is_finite_strict; auto.
+   apply leapfrog_step_is_finite; auto.
    forward.
    entailer!.
    fold (Z.succ i); rewrite Zbits.Ziter_succ.
@@ -283,20 +283,6 @@ forget (leapfrog (initial_x, initial_v) 100) as final_xv.
 forward.
 cancel.
 Qed.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
