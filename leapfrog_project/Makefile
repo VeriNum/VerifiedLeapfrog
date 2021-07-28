@@ -1,7 +1,7 @@
 VST_LOC=../../vst64
 CC_LOC=../../CompCert64
 
-COQFLAGS= `cat $(VST_LOC)/_CoqProject-export`
+COQFLAGS != cat $(VST_LOC)/_CoqProject-export
 
 all: _CoqProject verif_lfharm.vo
 

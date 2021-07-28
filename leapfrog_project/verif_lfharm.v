@@ -7,16 +7,17 @@ Open Scope logic.
 
 Require Import lf_harm_float.
 
+
 Definition force_spec :=
  DECLARE _force
- WITH xp: val, x : float
+ WITH xp: val, x : float32
  PRE [ tptr tfloat ] PROP() PARAMS(xp) SEP(data_at Tsh tfloat (Vsingle x) xp)
  POST [ tfloat ] PROP() RETURN (Vsingle (F x)) 
                         SEP(data_at Tsh tfloat (Vsingle x) xp).
 
 Definition lfstep_spec := 
   DECLARE _lfstep
-  WITH xp: val, x: float, vp: val, v: float
+  WITH xp: val, x: float32, vp: val, v: float32
   PRE [ tptr tfloat , tptr tfloat , tfloat ]
     PROP(Binary.is_finite 24 128 x = true)
     PARAMS (xp; vp; Vsingle h)
@@ -27,7 +28,7 @@ Definition lfstep_spec :=
     SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_step (x,v)))) xp; 
           data_at Tsh tfloat (Vsingle (snd(leapfrog_step (x,v)))) vp ).
 
-Definition initial_x := float_of_Z 1.
+Definition initial_x := float32_of_Z 1.
 Definition initial_v := Float32.zero.
 Definition initial_t := Float32.zero.
 
@@ -53,43 +54,28 @@ Definition main_spec :=
 
 Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec; main_spec].
 
-Lemma float_of_Z_one:
-  float_of_Z 1 = Binary.Bone ms es (eq_refl _) (eq_refl _).
-Proof.
- reflexivity.
-Qed.
-
-Definition half := Float32.div (float_of_Z 1) (float_of_Z 2).
+Definition half := Float32.div (float32_of_Z 1) (float32_of_Z 2).
 
 Lemma half_repr : Float32.of_bits (Int.repr 1056964608) =  half.
 Proof.
  Transparent Float32.of_bits.
  Transparent Float32.div.
  unfold Float32.of_bits, Float32.div.
- unfold float_of_Z.
+ unfold float32_of_Z, half.
  rewrite Int.unsigned_repr by computable.
- unfold IEEE754_extra.BofZ.
- unfold ms, es. simpl.
- unfold Bits.b32_of_bits.
-unfold Bits.binary_float_of_bits.
- unfold Binary.FF2B.
+ unfold Bits.b32_of_bits, Bits.binary_float_of_bits, Binary.FF2B.
  simpl.
- change (Z.pow_pos 2 7) with 128.
- change (2147483648 <=? 1056964608) with false.
- unfold FLT.FLT_exp.
- simpl Z.max.
-apply Binary.B2R_inj.
-reflexivity. reflexivity. reflexivity.
+ f_equal. apply proof_irr.
 Qed.
 
 Lemma neg1_repr: 
   Float32.neg (Float32.of_bits (Int.repr 1065353216)) =
-   float_of_Z (- (1)).
+   float32_of_Z (- (1)).
 Proof.
 Transparent Float32.neg.
 Transparent Float32.of_bits.
 unfold Float32.neg, Float32.of_bits.
-unfold float_of_Z.
+unfold float32_of_Z.
 apply Binary.B2R_inj.
 reflexivity.
 reflexivity.
@@ -100,7 +86,7 @@ rewrite <- Operations.F2R_opp.
 simpl. reflexivity.
 Qed.
 
-Lemma exact_inverse_two: Float32.exact_inverse (float_of_Z 2) = Some half.
+Lemma exact_inverse_two: Float32.exact_inverse (float32_of_Z 2) = Some half.
 Proof.
 unfold Float32.exact_inverse, half.
 simpl.
@@ -110,14 +96,21 @@ Qed.
 
 Lemma mul_one: forall x : float32, 
   Binary.is_finite 24 128 x = true ->
-  Float32.mul x (float_of_Z 1) = x.
+  Float32.mul x (float32_of_Z 1) = x.
 Proof.
+intros.
 Admitted.
 
 Lemma is_finite_negate:
   forall x, Binary.is_finite 24 128 x = true ->
-   Binary.is_finite 24 128 (Float32.mul (float_of_Z (- (1))) x)  = true .
-Admitted.
+   Binary.is_finite 24 128 (Float32.neg x)  = true .
+Proof.
+intros.
+unfold Float32.neg.
+rewrite Binary.is_finite_Bopp; auto.
+Qed.
+
+Import IEEE754_extra.
 
 Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
@@ -127,19 +120,11 @@ forward.
 entailer!.
 f_equal.
 unfold F.
-change float_mult with Float32.mul.
 f_equal.
-apply neg1_repr.
+unfold Float32.neg.
+simpl.
+f_equal. apply proof_irr.
 Qed.
-
-Lemma float_plus_eq: float_plus = Float32.add.
-Proof. reflexivity. Qed.  (* Do it this way because "change" is expensive! *)
-
-Lemma float_div_eq: float_div = Float32.div.
-Proof. reflexivity. Qed.  (* Do it this way because "change" is expensive! *)
-
-Lemma float_mult_eq: float_mult = Float32.mul.
-Proof. reflexivity. Qed.  (* Do it this way because "change" is expensive! *)
 
 Lemma leapfrog_step_x:
  forall x v, Binary.is_finite 24 128 x = true ->
@@ -149,16 +134,20 @@ Lemma leapfrog_step_x:
            (Float32.mul (Float32.mul h h) (F x))).
 Proof.
  intros.
- cbv [leapfrog_step F float_pow fst snd].
-rewrite ?float_plus_eq, ?float_div_eq, ?float_mult_eq.
+ cbv [leapfrog_step F fst snd].
   rewrite half_repr.
-   forget (Float32.mul (float_of_Z (- (1))) x) as minusx.
-   rewrite mul_one by reflexivity.
+   forget (Float32.mul (Float32.neg (float32_of_Z 1)) x) as minusx.
    rewrite (Float32.div_mul_inverse _ _ half)
      by apply exact_inverse_two.
   f_equal.
   apply Float32.mul_commut; right; reflexivity.
 Qed.
+
+Lemma mul_minusone_negate:
+ forall x, 
+    Binary.is_finite 24 128 x = true ->
+   Float32.mul (Float32.neg (float32_of_Z 1)) x = Float32.neg x.
+Admitted.
 
 Lemma leapfrog_step_v:
  forall x v, Binary.is_finite 24 128 x = true ->
@@ -176,26 +165,20 @@ Lemma leapfrog_step_v:
                  (F x)))).
 Proof.
  intros.
- cbv [leapfrog_step F float_pow fst snd].
-rewrite ?float_plus_eq, ?float_div_eq, ?float_mult_eq.
+ cbv [leapfrog_step F fst snd].
  rewrite half_repr.
  f_equal.
- rewrite mul_one by reflexivity.
+ rewrite !mul_minusone_negate by auto.
  set (h2 := Float32.mul h h).
- set (minusx := Float32.mul (float_of_Z (-(1))) x).
-   rewrite (Float32.div_mul_inverse _ _ half)
+   rewrite !(Float32.div_mul_inverse _ _ half)
      by apply exact_inverse_two.
-   rewrite (Float32.div_mul_inverse _ _ half)
-     by apply exact_inverse_two.
-  rewrite (Float32.mul_commut half) by (left; reflexivity).
-  f_equal. f_equal.
-  rewrite (Float32.add_commut).
-  f_equal. f_equal. f_equal.
-  apply Float32.mul_commut; right; reflexivity.
-  left.
-  apply is_finite_negate in H.
-  fold minusx in H.
-  clearbody minusx. destruct minusx; try discriminate; reflexivity.
+ rewrite Float32.mul_commut by (right; reflexivity).
+ f_equal. f_equal.
+ rewrite (Float32.add_commut) 
+   by (left; apply is_finite_not_is_nan; apply is_finite_negate; auto).
+ f_equal. f_equal. f_equal.
+ rewrite Float32.mul_commut by (right; reflexivity).
+ f_equal.
 Qed.
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
@@ -230,7 +213,7 @@ forward.
 forward.
 forward.
 replace (Vsingle (Float32.of_bits (Int.repr 1065353216))) with (Vsingle initial_x).
- 2:{ unfold initial_x. rewrite float_of_Z_one.
+ 2:{ unfold initial_x.
    unfold Float32.of_bits. rewrite Int.unsigned_repr by computable.
    cbv [Bits.b32_of_bits Bits.binary_float_of_bits Binary.Bone]. simpl.
    f_equal. f_equal. apply proof_irr.
@@ -238,17 +221,16 @@ replace (Vsingle (Float32.of_bits (Int.repr 1065353216))) with (Vsingle initial_
  change (data_at Tsh tfloat (Vsingle (Float32.of_bits (Int.repr 0))) vp)
       with (data_at Tsh tfloat (Vsingle initial_v) vp).
  change (Float32.of_bits (Int.repr 0)) with Float32.zero.
- replace (Float32.of_bits (Int.repr 1065353216)) with (float_of_Z 1).
-2:{ rewrite float_of_Z_one.
+ replace (Float32.of_bits (Int.repr 1065353216)) with (float32_of_Z 1).
+2:{
    unfold Float32.of_bits. rewrite Int.unsigned_repr by computable.
    cbv [Bits.b32_of_bits Bits.binary_float_of_bits Binary.Bone]. simpl.
-   f_equal. f_equal. apply proof_irr.
+   f_equal. apply proof_irr.
   }
  replace (Float32.div _ _) with h.
-2:{ unfold h, float_of_Z.
-   rewrite float_div_eq. f_equal. 
+2:{ unfold h, float32_of_Z. f_equal.
    unfold Float32.of_bits. rewrite Int.unsigned_repr by computable.
-   cbv [Bits.b32_of_bits Bits.binary_float_of_bits Binary.Bone ms es]. simpl.
+   cbv [Bits.b32_of_bits Bits.binary_float_of_bits Binary.Bone]. simpl.
    f_equal. apply proof_irr.
   }
 pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
