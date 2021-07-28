@@ -7,16 +7,16 @@ Section LeapfrogDefs.
 Definition F (x : float32) : float32 := Float32.neg x.
 
 (* Time step*)
-Definition h := Float32.div (Float32.of_int (Int.repr 1%Z)) (Float32.of_int (Int.repr 32%Z)).
+Definition h := Float32.div (Float32.of_int (Int.repr 1)) (Float32.of_int (Int.repr 32)).
 
 (* Single step of the integrator*)
 Definition leapfrog_step ( ic : float32 * float32) : float32 * float32 :=
   let x  := fst ic in let v:= snd ic in 
   let x1 := Float32.add x (Float32.mul h v) in 
-  let x2 := Float32.div (Float32.mul (Float32.mul h h) (F x)) (Float32.of_int (Int.repr 2%Z))  in
+  let x2 := Float32.div (Float32.mul (Float32.mul h h) (F x)) (Float32.of_int (Int.repr 2))  in
   let x' := Float32.add x1 x2 in
   let v1 := Float32.add (F x) (F x') in
-  let v' := Float32.add v (Float32.mul (Float32.mul h v1) (Float32.of_int (Int.repr 2%Z))) in 
+  let v' := Float32.add v (Float32.mul (Float32.mul h v1) (Float32.of_int (Int.repr 2))) in 
   (x', v').
 
 (* Main *)
