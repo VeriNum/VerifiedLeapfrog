@@ -1,6 +1,15 @@
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
 
+Require vcfloat.Test.
+
+Local Transparent Float32.of_bits.
+Local Transparent Float32.div.
+Local Transparent Float32.neg.
+Local Transparent Float32.mul.
+Local Transparent Float32.add.
+Local Transparent Float32.sub.
+
 Definition float32_of_Z : Z -> float32 := BofZ 24 128 eq_refl eq_refl.
 Definition float_of_Z : Z -> float := BofZ 53 1024 eq_refl eq_refl.
 
@@ -48,10 +57,32 @@ Ltac prove_float_constants_equal :=
   | _ => fail "prove_float_constants_equal is meant to be used on equality goals at type (binary_float _ _)"
   end.
 
+Require Import Lra Lia.
+
 Lemma mul_one: forall x : float32, 
   Binary.is_finite 24 128 x = true ->
-  Float32.mul x 1 = x.
+  Float32.mul x 1%Z = x.
 Proof.
+intros.
+destruct x; try solve [simpl; rewrite ?xorb_false_r; try discriminate; try reflexivity].
+clear H.
+apply B2FF_inj.
+simpl.
+rewrite B2FF_FF2B.
+rewrite xorb_false_r.
+rewrite Pos2Z.inj_mul.
+change 8388608%Z with (radix_val radix2 ^ 23).
+unfold Binary.bounded in e0.
+rewrite andb_true_iff in e0.
+destruct e0.
+apply Z.leb_le in H0.
+unfold canonical_mantissa in H.
+apply Zeq_bool_eq in H.
+unfold FLT_exp in H.
+rewrite Digits.Zpos_digits2_pos in H.
+set (d := Digits.Zdigits radix2 _) in *.
+Search Digits.Zdigits.
+(* should be provable from here . . ., but what a pain! *)
 Admitted.
 
 Lemma is_finite_negate:
