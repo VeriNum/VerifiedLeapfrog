@@ -30,12 +30,8 @@ Lemma leapfrog_step_is_finite:
           Binary.is_finite 24 128 (fst (Z.iter n leapfrog_step (initial_x, initial_v))) = true.
 Admitted.
 
+Definition leapfrog_stepx x v := fst (leapfrog_step (x,v)).
 
-Definition leapfrog_stepx x v :=
-(  let x' := (x + h * v) + (h * h * F x) / 2%Z in
-  let v' :=  v + (h*(F x + F x')/2%Z) in x' )%F32.
-
-   
 Import ListNotations.
 Definition _x : AST.ident := 5%positive.
 Definition _v : AST.ident := 7%positive.
@@ -54,7 +50,6 @@ intros.
 unfold_reflect e1.
 reflexivity.
 Qed.
-
 
 
 
