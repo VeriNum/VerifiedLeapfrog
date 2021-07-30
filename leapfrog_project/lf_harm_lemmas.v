@@ -31,6 +31,29 @@ Lemma leapfrog_step_is_finite:
 Admitted.
 
 
+Definition leapfrog_stepx x v :=
+(  let x' := (x + h * v) + (h * h * F x) / 2%Z in
+  let v' :=  v + (h*(F x + F x')/2%Z) in x' )%F32.
+
+   
+Import ListNotations.
+Definition _x : AST.ident := 5%positive.
+Definition _v : AST.ident := 7%positive.
+
+Definition e := ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
+Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
+Print e1.
+
+Import FPLang.
+
+Lemma reify_correct_leapfrog_stepx:
+  forall x v : float32,
+  fval (list_to_env [(_x, Values.Vsingle x);(_v, Values.Vsingle v)]) e1 = leapfrog_stepx x v.
+Proof.
+intros.
+unfold_reflect e1.
+reflexivity.
+Qed.
 
 
 
