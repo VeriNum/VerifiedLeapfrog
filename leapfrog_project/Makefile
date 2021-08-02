@@ -28,4 +28,4 @@ lf_harm_lemmas.vo: lf_harm_lemmas.v lf_harm_float.vo
 	coqc $(COQFLAGS) -I . $<
 
 clean:
-	rm -f *.{vo,vok,vos,glob} lfharm.v _CoqProject
+	rm -f *.vo *.vok *.vos *.glob lfharm.v _CoqProject
