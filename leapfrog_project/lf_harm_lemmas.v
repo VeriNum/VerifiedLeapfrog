@@ -1,6 +1,15 @@
+(* The purpose of this file, to the extent it's needed at all, is to
+   PROVIDE LEMMAS ABOUT THE FUNCTIONAL MODEL, NEEDED IN
+   Functional-model-to-C REFINEMENT PROOF  in verif_lfharm.v. 
+   Because we do NOT want to import the entire
+  VCFloat system into C program verifications, this file SHOULD NOT
+  Require vcfloat.anything, even indirectly.
+*)
+
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
 Require Import float_lib lf_harm_float.
+Require compcert.common.AST.
 
 Local Transparent Float32.of_bits.
 Local Transparent Float32.div.
@@ -15,23 +24,14 @@ Definition initial_t : float32 := 0.
 
 Definition half := Float32.div 1 2.
 
-Lemma half_repr : Float32.of_bits (Int.repr 1056964608) =  half.
-Proof. prove_float_constants_equal. Qed.
-
-Lemma neg1_repr: 
-  Float32.neg (Float32.of_bits (Int.repr 1065353216)) = - (1).
-Proof.  prove_float_constants_equal. Qed.
-
-Lemma exact_inverse_two: Float32.exact_inverse 2 = Some half.
-Proof.  prove_float_constants_equal. Qed.
-
 Lemma leapfrog_step_is_finite:
   forall n, 0 <= n < 100 ->
           Binary.is_finite 24 128 (fst (Z.iter n leapfrog_step (initial_x, initial_v))) = true.
-Admitted.
+Abort.  (* true, but no longer needed *)
 
 Definition leapfrog_stepx x v := fst (leapfrog_step (x,v)).
 
+(*
 Import ListNotations.
 Definition _x : AST.ident := 5%positive.
 Definition _v : AST.ident := 7%positive.
@@ -50,6 +50,7 @@ intros.
 unfold_reflect e1.
 reflexivity.
 Qed.
+*)
 
 
 

@@ -23,7 +23,7 @@ void lfstep(float *x, float *v, float h)
 
   a = force(x);
   *x = *x + h * *v + 0.5f * ((h * h) * force(x));		/* position step */
-  *v = *v + 0.5f * (h * (force(x) + a));		/* velocity step */
+  *v = *v + 0.5f * (h * (a + force(x)));		/* velocity step */
 }
 
 void integrate(float *x, float *v) {

@@ -1,3 +1,13 @@
+(* The purpose of this file, is to define a functional model for the C
+   program.  Then we will prove:
+   (1) The C program refines this functional model
+   (2) This functional model computes a good approximation to the real number we want.
+
+  Because we do NOT want to import the entire VCFloat system into 
+  C program verifications, this file SHOULD NOT Require vcfloat.anything,
+  even indirectly.
+*)
+
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
 

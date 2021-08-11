@@ -5,8 +5,14 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
 Open Scope logic.
 
-Require Import float_lib lf_harm_float lf_harm_lemmas.
+Require Import float_lib lf_harm_float.
 Import IEEE754_extra.
+
+Definition initial_x : float32 := 1.
+Definition initial_v : float32 := 0.
+Definition initial_t : float32 := 0.
+
+Definition half := Float32.div 1 2.
 
 Definition force_spec :=
  DECLARE _force
@@ -19,7 +25,7 @@ Definition lfstep_spec :=
   DECLARE _lfstep
   WITH xp: val, x: float32, vp: val, v: float32
   PRE [ tptr tfloat , tptr tfloat , tfloat ]
-    PROP(Binary.is_finite 24 128 x = true)
+    PROP()
     PARAMS (xp; vp; Vsingle h)
     SEP(data_at Tsh tfloat (Vsingle x) xp; data_at Tsh tfloat (Vsingle v) vp )
   POST [ tvoid ]
@@ -63,34 +69,30 @@ prove_float_constants_equal.
 Qed.
 
 Lemma leapfrog_step_x:
- forall x v, Binary.is_finite 24 128 x = true ->
+ forall x v, 
   fst (leapfrog_step (x,v)) = (x + h*v +half*((h*h)*(F x)))%F32.
 Proof.
  intros.
  cbv [leapfrog_step F fst snd].
   f_equal.
    rewrite (Float32.div_mul_inverse _ _ half)
-     by apply exact_inverse_two.
+     by prove_float_constants_equal.
   rewrite (Float32.mul_commut half) by (left; reflexivity).
   auto.
 Qed.
 
 Lemma leapfrog_step_v:
- forall x v, Binary.is_finite 24 128 x = true ->
+ forall x v,
   snd (leapfrog_step (x,v)) = 
-  (v + half * (h * (F (x+h*v+half*((h*h)*(F x))) + F x)))%F32.
+  (v + half * (h * (F x + F (x+h*v+half*((h*h)*(F x))))))%F32.
 Proof.
  intros.
  cbv [leapfrog_step F fst snd].
  f_equal.
- rewrite !mul_minusone_negate by auto.
  rewrite !(Float32.div_mul_inverse _ _ half)
-     by apply exact_inverse_two.
+     by prove_float_constants_equal.
  rewrite Float32.mul_commut by (right; reflexivity).
- f_equal. f_equal.
- rewrite (Float32.add_commut) 
-   by (left; apply is_finite_not_is_nan; apply is_finite_negate; auto).
- f_equal. f_equal. f_equal.
+ f_equal. f_equal. f_equal. f_equal. f_equal.
  rewrite Float32.mul_commut by (right; reflexivity).
  f_equal.
 Qed.
@@ -107,8 +109,8 @@ forward_call.
 forward.
 forward.
 entailer!.
-clear - H.
-rewrite half_repr.
+replace (Float32.of_bits (Int.repr 1056964608)) with half
+     by prove_float_constants_equal.
 rewrite leapfrog_step_x by auto.
 rewrite leapfrog_step_v by auto.
 cancel.
@@ -143,7 +145,6 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
 - 
   entailer!.
 - forward_call.
-   apply leapfrog_step_is_finite; auto.
    forward.
    entailer!.
    fold (Z.succ i); rewrite Zbits.Ziter_succ.

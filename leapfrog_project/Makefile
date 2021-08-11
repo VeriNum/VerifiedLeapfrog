@@ -1,4 +1,4 @@
-# VST_LOC=../../vst64
+-include CONFIGURE
 CC_LOC=../../CompCert64
 VCFLOAT_LOC=../../vcfloat/vcfloat
 
@@ -14,7 +14,7 @@ _CoqProject: Makefile
 	echo $(COQFLAGS) >_CoqProject
 
 float_lib.vo: float_lib.v
-
+vcfloat.vo: vcfloat.v float_lib.vo
 lf_harm_float.vo: lf_harm_float.v float_lib.vo
 
 lfharm.v: lfharm.c
