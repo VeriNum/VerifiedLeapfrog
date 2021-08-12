@@ -7,6 +7,7 @@ Open Scope logic.
 
 Require Import float_lib lf_harm_float.
 Import IEEE754_extra.
+Import FloatLiteralNotation.
 
 Definition initial_x : float32 := 1.
 Definition initial_v : float32 := 0.
@@ -56,45 +57,19 @@ Definition main_spec :=
 
 Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec; main_spec].
 
+Hint Rewrite float_const_rewrite "0.5f" : float_const.
+Hint Rewrite float_const_rewrite "1f" : float_const.
+Hint Rewrite float_const_rewrite "0f" : float_const.
+Hint Rewrite float_const_rewrite "32f" : float_const.
+
 Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
 start_function.
 forward.
 forward.
 entailer!.
-f_equal.
-unfold F.
-f_equal.
-prove_float_constants_equal.
-Qed.
-
-Lemma leapfrog_step_x:
- forall x v, 
-  fst (leapfrog_step (x,v)) = (x + h*v +half*((h*h)*(F x)))%F32.
-Proof.
- intros.
- cbv [leapfrog_step F fst snd].
-  f_equal.
-   rewrite (Float32.div_mul_inverse _ _ half)
-     by prove_float_constants_equal.
-  rewrite (Float32.mul_commut half) by (left; reflexivity).
-  auto.
-Qed.
-
-Lemma leapfrog_step_v:
- forall x v,
-  snd (leapfrog_step (x,v)) = 
-  (v + half * (h * (F x + F (x+h*v+half*((h*h)*(F x))))))%F32.
-Proof.
- intros.
- cbv [leapfrog_step F fst snd].
- f_equal.
- rewrite !(Float32.div_mul_inverse _ _ half)
-     by prove_float_constants_equal.
- rewrite Float32.mul_commut by (right; reflexivity).
- f_equal. f_equal. f_equal. f_equal. f_equal.
- rewrite Float32.mul_commut by (right; reflexivity).
- f_equal.
+autorewrite with float_const.
+reflexivity.
 Qed.
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
@@ -109,11 +84,27 @@ forward_call.
 forward.
 forward.
 entailer!.
-replace (Float32.of_bits (Int.repr 1056964608)) with half
+clear.
+autorewrite with float_const.
+replace (f_lit "0.5f") with half by prove_float_constants_equal.
+apply derives_refl'.
+f_equal; f_equal; f_equal.
+- (* x component *)
+ cbv [leapfrog_step F fst snd].
+  f_equal.
+  rewrite (Float32.div_mul_inverse _ _ half)
      by prove_float_constants_equal.
-rewrite leapfrog_step_x by auto.
-rewrite leapfrog_step_v by auto.
-cancel.
+  rewrite (Float32.mul_commut half) by (left; reflexivity).
+  auto.
+- (* v component *)
+ cbv [leapfrog_step F fst snd].
+ f_equal.
+ rewrite !(Float32.div_mul_inverse _ _ half)
+     by prove_float_constants_equal.
+ rewrite (Float32.mul_commut half) by (left; reflexivity).
+ f_equal. f_equal. f_equal. f_equal. f_equal.
+ rewrite Float32.mul_commut by (left; reflexivity).
+ f_equal.
 Qed.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
@@ -124,15 +115,11 @@ forward.
 forward.
 forward.
 forward.
-replace (Vsingle (Float32.of_bits (Int.repr 1065353216))) with (Vsingle initial_x)
-  by (f_equal; prove_float_constants_equal).
- change (data_at Tsh tfloat (Vsingle (Float32.of_bits (Int.repr 0))) vp)
+autorewrite with float_const.
+change (Vsingle (f_lit "1f")) with (Vsingle initial_x).
+change (data_at Tsh tfloat (Vsingle (f_lit "0f")) vp)
       with (data_at Tsh tfloat (Vsingle initial_v) vp).
- change (Float32.of_bits (Int.repr 0)) with Float32.zero.
- replace (Float32.of_bits (Int.repr 1065353216)) with (1:float32)
-  by (prove_float_constants_equal).
- replace (Float32.div _ _) with h
-  by (prove_float_constants_equal).
+change (f_lit "1f" / f_lit "32f")%F32 with h.
 pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
  forward_for_simple_bound 100 (EX n:Z,
        PROP() 
@@ -147,11 +134,10 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
 - forward_call.
    forward.
    entailer!.
-   fold (Z.succ i); rewrite Zbits.Ziter_succ.
+   fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
    f_equal. apply Float32.add_commut. left; reflexivity.
-   lia.
-   fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ.
-   cancel. lia.
+   fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ by lia.
+   cancel.
 -
    forward.
 Qed.
@@ -164,11 +150,6 @@ forget (leapfrog (initial_x, initial_v) 100) as final_xv.
 forward.
 cancel.
 Qed.
-
-
-
-
-
 
 
 
