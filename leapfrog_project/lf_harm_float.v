@@ -48,13 +48,4 @@ replace (leapfrog_step (leapfrog ic n)) with (leapfrog (leapfrog_step ic) n). de
 all: symmetry; apply lfstep_lfn. 
 Qed.
 
-Definition leapfrog_stepx x v := fst (leapfrog_step (x,v)).
-
-Import ListNotations.
-Definition _x : AST.ident := 5%positive.
-Definition _v : AST.ident := 7%positive.
-Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
-
-
-
 
