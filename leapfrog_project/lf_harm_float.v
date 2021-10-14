@@ -1,19 +1,22 @@
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
-
 Require Import float_lib.
+
+Definition half := Float32.div 1 2.
 
 (* Linear forcing function *)
 Definition F (x : float32) : float32 := (- 1%F32 * x)%F32.
 
 (* Time step*)
-Definition h := (1 / 32)%F32.
+Definition h := Float32.div 1 32.
+
+Opaque F h half.
 
 (* Single step of the integrator*)
 Definition leapfrog_step ( ic : float32 * float32) : float32 * float32 :=
   (let x  := fst ic in let v:= snd ic in 
-  let x' := (x + h * v) + (h * h * F x) / 2 in
-  let v' :=  v + (h*(F x + F x')/2) in 
+  let x' := (x + h * v) + (h * h * F x)*half in
+  let v' :=  v + (half*h*(F x + F x')) in 
   (x', v'))%F32.
 
 (* Main *)
@@ -25,7 +28,7 @@ Fixpoint leapfrog ( ic : float32 * float32) (n : nat) : float32 * float32:=
     leapfrog ic' n'
   end.
 
-Lemma lfstep_lf_comp:
+Lemma lfstep_lfn:
   forall n ic ,
   leapfrog_step (leapfrog ic n) = leapfrog (leapfrog_step ic) n.
 Proof.
@@ -42,11 +45,15 @@ induction n.
 - auto.
 - intros. rewrite -> IHn. simpl. 
 replace (leapfrog_step (leapfrog ic n)) with (leapfrog (leapfrog_step ic) n). destruct (leapfrog_step ic). 
-all: symmetry; apply lfstep_lf_comp. 
+all: symmetry; apply lfstep_lfn. 
 Qed.
 
+Definition leapfrog_stepx x v := fst (leapfrog_step (x,v)).
 
-
+Import ListNotations.
+Definition _x : AST.ident := 5%positive.
+Definition _v : AST.ident := 7%positive.
+Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
 
 
 
