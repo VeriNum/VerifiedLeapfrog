@@ -45,7 +45,7 @@ replace (leapfrog_stepR (leapfrogR ic n)) with (leapfrogR (leapfrog_stepR ic) n)
 all: symmetry; apply lfstepR_lfn. 
 Qed.
 
-Lemma one_stepR:
+Lemma one_stepR_x:
   forall n: nat,
   forall ic : R * R,
   (fst (leapfrogR ic (S n))) - (fst (leapfrogR ic n)) = 
@@ -56,6 +56,15 @@ intros; induction n.
 -replace (leapfrogR ic (S(S n))) with (leapfrog_stepR (leapfrogR ic (S n))) by
 (pose proof lfn_eq_lfstepR (S n) ic; auto).
 unfold leapfrog_stepR. unfold fst at 1. field_simplify; nra.
+Qed.
+
+Lemma one_stepR_x_alt:
+  forall ic : R * R,
+  (fst (leapfrog_stepR ic) - (fst ic)) = 
+  (- fst ic * h ^ 2 + 2 * h * snd ic) / 2.
+Proof.
+intros. destruct ic as [x v].
+unfold leapfrogR, leapfrog_stepR, F, fst, snd; field_simplify; nra.
 Qed.
 
 Close Scope R_scope. 

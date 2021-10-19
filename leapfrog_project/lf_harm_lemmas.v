@@ -43,8 +43,7 @@ incorrectly associated with the division and multiplication in these terms in th
 tactic get_eps_delts*)
 Definition e := ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
-Definition two_step (x v : float32) := leapfrog_stepx (leapfrog_stepx x v) (leapfrog_stepx x v).
-Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) two_step in exact e').
+
 
 Import FPLang.
 
@@ -216,23 +215,6 @@ solve_all_eval_cond2;
 solve_one_eval_cond2.
 Qed.
 
-Lemma two_step_cond2_holds:
-   forall vmap : valmap,
-      boundsmap_denote leapfrog_bmap vmap -> 
-   forall r si2 s p, 
-      rndval_with_cond 0 (mempty (Tsingle, Normal)) e2 =
-         (r, (si2, s), p) ->
-      list_forall (eval_cond2 (mk_env leapfrog_bmap vmap) s) p . 
-Proof.
-intros. 
-set (bmap:= leapfrog_bmap) in *.
-apply boundsmap_denote_e in H.
-rewrite list_forall_Forall in H.
-rewrite list_forall_Forall. 
-prepare_assumptions_about_free_variables.
-solve_all_eval_cond2;
-solve_one_eval_cond2.
-Qed.
 
 (*TODO: the following lemmas and the above two lemmas should be generalized
 into tactics*)
@@ -252,21 +234,6 @@ set (env:= env_ vmap) in *.
 apply list_forall_spec. apply (list_forall_ext (eval_cond2 env s)). apply eval_cond2_correct. auto.
 Qed.
 
-Lemma two_step_cond1_holds:
-   forall vmap : valmap,
-      boundsmap_denote leapfrog_bmap vmap -> 
-   forall r si2 s p, 
-      rndval_with_cond 0 (mempty (Tsingle, Normal)) e2 =
-         (r, (si2, s), p) ->
-    forall i : cond, List.In i p -> eval_cond1 (env_ vmap) s i.
-Proof.
-intros ? ? ? ? ? ? ?. 
-pose proof (two_step_cond2_holds vmap H r si2 s p H0).
-set (bmap:= leapfrog_bmap) in *;
-replace (mk_env bmap vmap) with (env_ vmap) in H1 by (apply env_mk_env; auto). 
-set (env:= env_ vmap) in *.
-apply list_forall_spec. apply (list_forall_ext (eval_cond2 env s)). apply eval_cond2_correct. auto.
-Qed.
 
 (*TODO: this tactic uses lemmas specific for e = e1; needs to be generalized*)
 Ltac get_rndval_with_cond_correct_e1:=
@@ -288,31 +255,6 @@ replace (mk_env bmap vmap) with (env_ vmap) in lc2 by (apply env_mk_env; auto);
 let listconds:= fresh in (
 assert (forall i : cond, List.In i p -> eval_cond1 (env_ vmap) s i) as listconds by
 (apply (leapfrog_cond1_holds vmap H r si2 s p rndval))
-);
-(destruct (rndval_with_cond_correct
-                          _ HFIN _ HVALID _ _ _ _ rndval lc2 _ (eq_refl _)) as [] eqn:correct); 
-clear correct HFIN HVALID listconds 
-end.
-
-Ltac get_rndval_with_cond_correct_e2:=
-match goal with
-    H: boundsmap_denote ?bmap ?vmap |- _ => 
-let HFIN:= fresh in (
-assert (forall ty i, is_finite (fprec ty) (femax ty) ((env_ vmap) ty i) = true) as HFIN by
- (apply (finite_env bmap vmap H))
-);
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) e2) as [[r [si2 s]] p] eqn:rndval);
-let lc2:= fresh in (
-assert (list_forall (eval_cond2 (mk_env bmap vmap) s) p ) as lc2 by
-(apply (two_step_cond2_holds vmap H r si2 s p rndval))
-);
-let HVALID:= fresh in ( 
-assert (expr_valid e2 = true) as HVALID by reflexivity
-);
-replace (mk_env bmap vmap) with (env_ vmap) in lc2 by (apply env_mk_env; auto);
-let listconds:= fresh in (
-assert (forall i : cond, List.In i p -> eval_cond1 (env_ vmap) s i) as listconds by
-(apply (two_step_cond1_holds vmap H r si2 s p rndval))
 );
 (destruct (rndval_with_cond_correct
                           _ HFIN _ HVALID _ _ _ _ rndval lc2 _ (eq_refl _)) as [] eqn:correct); 
@@ -569,110 +511,60 @@ Qed.
 Definition iternf  (n:nat) (x v :float32) :=  leapfrog (x%F32, v%F32) n.
 Definition iternfR (n:nat) (x v :R) :=  leapfrogR (x,v) n .
 
-(*TODO: compute two ways, using (1) standard Lipschitz decomp of terms and 
-(2) using difference between consecutive FP and R steps*)
-
-(* bound on real valued difference in floating point solutions between one and two steps *) 
-Lemma one_stepFx:
-  forall x v : float32,
-    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-    Rle (Rabs (Rminus (B2R _ _ (fval (leapfrog_env x v) e2)) (B2R _ _ (fval (leapfrog_env x v) e1)))) 
-         (/ powerRZ 2 12)%R.
-Proof.
-intros.
-set (bmap:= leapfrog_bmap) in *.
-set (vmap:= leapfrog_vmap) in *.
-hnf in bmap. simpl in bmap.
-get_rndval_with_cond_correct_e2.
-(* Populate hyps with some bounds on x and v*)
-fv_prepare_assumptions.
-(* turn rndval rexp to flt with eps delt *)
-get_rexp_with_eps_delt e2.
-Admitted.
-
-(*TODO: relate difference of n and n+1 iterations to difference between e1 and e2*)
-Lemma one_stepFx:
-  forall x v : float32,
-   forall n: nat,
-    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-    Req (Rminus (B2R _ _ (fval (leapfrog_env x v) e2)) (B2R _ _ (fval (leapfrog_env x v) e1))) 
-         (Rminus (B2R _ _ (fst(leapfrog_step (iternf (S n) x%F32 v%F32)))) (B2R _ _ (fst(leapfrog_step (iternf n x%F32 v%F32))))).
-Proof.
-Admitted.
 
 Lemma global_error2:
   (forall x v : float32, 
+  forall x1 v1 : R,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  x1 = B2R _ _ x ->
+  v1 = B2R _ _ v -> 
   forall n: nat,
 (
-  Rle (Rabs (Rminus (fst(leapfrog_stepR (iternfR n x1%R v1%R))) (B2R _ _ (fst(leapfrog_step (iternf n x%F32 v%F32)))))) 
-((Rabs (Rminus (fst(leapfrog_stepR (x1%R,v1%R))) (B2R _ _ (fst(leapfrog_step (x%F32,v%F32)))))) * ((INR n)%R + 1))
+  Rle (Rabs (Rminus (fst(iternfR n x1%R v1%R)) (B2R _ _ (fst(iternf n x%F32 v%F32))))) 
+((/ powerRZ 2 12)%R * (INR n)%R)
 )
 ).
 Proof.
 intros.
 induction n.
--unfold iternf ,iternfR ,INR, leapfrog, leapfrogR in *; nra.
--unfold iternfR, iternf in *. 
-set (s1:= fst (leapfrog_stepR (leapfrogR (x1, v1) n))) in *.
-set (s2:= B2R 24 128 (fst (leapfrog_step (leapfrog (x, v) n)))) in *.
-replace (fst (leapfrog_stepR (leapfrogR (x1, v1) (S n))) -
-   B2R 24 128 (fst (leapfrog_step (leapfrog (x, v) (S n))))) with
-(fst (leapfrog_stepR (leapfrogR (x1, v1) (S n))) - s1 -
-   B2R 24 128 (fst (leapfrog_step (leapfrog (x, v) (S n)))) + s2 +(s1-s2) ) by nra.
-unfold s1, s2 in *; clear s1 s2. 
-rewrite ?lfstepR_lfn; rewrite ?lfstep_lfn. 
-set (s:=(leapfrog_stepR (x1, v1))) in *;
-pose proof (one_stepR n s). 
+-unfold iternf ,iternfR ,INR, leapfrog, leapfrogR, leapfrog_stepx in *.
+replace (/ powerRZ 2 12 *0) with  (0) by nra; auto; subst; unfold fst; 
+replace (B2R 24 128 x - B2R 24 128 x) with 0; try interval; nra. 
+-unfold iternfR, iternf in *; rewrite lfn_eq_lfstep. 
+set (LFfn:= (leapfrog (x, v) n)) in *.
+set (xnf:= fst LFfn) in *. 
+set (vnf:=snd LFfn) in *. 
+set (xnr:= B2R _ _ xnf ) in *. 
+set (vnr:= B2R _ _ vnf) in *. 
+assert (xnr = B2R 24 128 xnf) by auto.
+assert (vnr = B2R 24 128 vnf) by auto.
+assert (boundsmap_denote leapfrog_bmap (leapfrog_vmap xnf vnf)) by admit.
+pose proof (local_errorx xnf vnf xnr vnr H4 H2 H3).
+unfold leapfrog_stepx in *. 
+assert ((xnf, vnf) = LFfn) by ((unfold LFfn in *); destruct leapfrog as [g h]; auto). 
+replace (leapfrog_step (xnf, vnf)) with (leapfrog_step LFfn) in * by auto. 
+set (xn1r:=(fst (leapfrog_stepR (xnr, vnr)))) in *.
+set (xn1f:=(fst (leapfrog_step LFfn))) in *. 
+assert (Rabs (B2R 24 128 xn1f - xn1r) <= / powerRZ 2 12) by
+((assert ((Rabs (B2R 24 128 xn1f - xn1r)) = (Rabs (xn1r - B2R 24 128 xn1f))) by
+(pose proof (Rabs_minus_sym xn1r (B2R _ _ xn1f)); symmetry; auto)); nra).
+assert (Rabs (B2R 24 128 xn1f) - Rabs xn1r <= / powerRZ 2 12) by
+(pose proof (Rabs_triang_inv (B2R _ _ xn1f) xn1r) ;nra). 
 
+assert ((Rabs (fst (leapfrogR (x1, v1) (S n)))) - 
+Rabs (B2R 24 128 xn1f) <=
+(/ powerRZ 2 12 * INR (S n))).
 
-pose proof one_stepR
+assert (Rabs (B2R 24 128 xn1f) <= / powerRZ 2 12 + Rabs xn1r) by nra; clear H8 H7.
 
-assert (Rabs (fst (leapfrog_stepR r r0) - B2R 24 128 (leapfrog_stepx f f0)) <=
-      Rabs (fst (leapfrog_stepR x1 v1) - B2R 24 128 (leapfrog_stepx x v)) *
-      (INR n + 1)) by (specialize (IHn f f0 r r0); apply IHn ; auto). clear IHn.
-replace (leapfrog_stepR r r0) with (x1', v1') in *. unfold leapfrog_stepx in H1.
-replace (leapfrog_step (f, f0)) with (x', v') in *. clear H H0.
-replace (Rabs (fst (x1', v1') - B2R 24 128 (fst (x', v')))) with (Rabs x1' - B2R 24 128 x') in *.
-replace ((fst (leapfrog_stepR x1' v1') - B2R 24 128 (leapfrog_stepx x' v'))) 
-with ((fst (leapfrog_stepR x1' v1') - B2R 24 128 (leapfrog_stepx x' v') - (x1' - B2R 24 128 x') + (x1' - B2R 24 128 x') )) by nra.
+assert ((Rabs (fst (leapfrogR (x1, v1) (S n))) - (/ powerRZ 2 12 + Rabs xn1r)) <=
+/ powerRZ 2 12 * INR (S n)). 
 
+replace (Rabs (fst (leapfrogR (x1, v1) (S n)))) with 
+(Rabs (fst (leapfrogR (x1, v1) (S n)) - (fst (leapfrogR (x1, v1) n)) + 
+(fst (leapfrogR (x1, v1) n)))).
 
+set (B1:=(fst (leapfrogR (x1, v1) (S n)) - fst (leapfrogR (x1, v1) n))) in *.
 
-assert ( (x',v') = (leapfrog_stepx (fst (iternf n x%F32 v%F32))%F32 (snd (iternf n x%F32 v%F32)%F32)) ).
-
-unfold leapfrog_stepR, leapfrog_stepx, leapfrog_step, 
-lf_harm_real.F,lf_harm_real.h, lf_harm_float.F,lf_harm_float.h, fst,snd. 
-unfold leapfrogR, leapfrog, fst; subst. replace (B2R 24 128 x - B2R 24 128 x) with 0. 
- (* 
-((Rabs (Rminus (fst(leapfrog_stepR x1%R v1%R)) (B2R _ _ (leapfrog_stepx x%F32 v%F32)))) * (INR n)%R)
-Rle (Rabs (Rminus (iternfR n%Z x1%R v1%R) (B2R _ _ (iternf n%Z x%F32 v%F32) ) ) ) ((/ powerRZ 2 12)%R * (IZR n)%R)%R.
- Rle (Rabs (Rminus (iternfR n x1%R v1%R) (B2R _ _ (iternf n x%F32 v%F32) ) ) ) ((/ powerRZ 2 12)%R * (INR n)%R)%R.*)
-Proof.
-intros.
-unfold iternf, iternfR. (*
-get_rndval_with_cond_correct e1.
-
-(* Populate hyps with some bounds on x and v*)
-fv_prepare_assumptions.
-(* turn rndval rexp to flt with eps delt *)
-get_rexp_with_eps_delt e1.
-clear H3 rndval H7. *)
-
-induction n.
-unfold leapfrogR, leapfrog, fst; subst. replace (B2R 24 128 x - B2R 24 128 x) with 0. 
-try interval. assert (B2R 24 128 x = B2R 24 128 x) by auto; nra.
-
-replace (leapfrogR x1 v1 (S n)) with (leapfrog_stepR (fst (leapfrogR x1 v1 n)) (snd (leapfrogR x1 v1 n))).
-replace (leapfrog (x,v) (S n)) with (leapfrog_step (fst(leapfrog (x,v) n),snd(leapfrog (x,v) n))) .
-destruct (leapfrogR x1 v1 n), (leapfrog (x, v) n), (leapfrog (x, v) (S n)), (leapfrogR x1 v1 n). 
-set (s:=(fst (r, r0))) in *. 
-unfold fst in s; subst s. 
-set (s:=(snd (r, r0))) in *. 
-unfold snd in s; subst s. 
-set (s:=(fst (f, f0))) in *. 
-unfold fst in s; subst s. 
-set (s:=(snd (f, f0))) in *. 
-unfold snd in s; subst s. 
-unfold leapfrog_stepR, fst, snd, lf_harm_real.h, lf_harm_real.F in *. 
-Admitted.
+replace (Rabs xn1r) with (Rabs (xn1r - xnr + xnr)) .
 
