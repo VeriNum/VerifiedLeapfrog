@@ -527,6 +527,36 @@ Proof.
 intros; pose proof Rabs_mult a b. rewrite -> H0. pose proof Rabs_pos_eq a H; auto; nra.  
 Qed. 
 
+
+Lemma lt_lem: 
+ forall n:nat,
+powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 1 / 2 * (1 / 32) ^ 2 * powerRZ 2 (- (12)) * IZR (Z.of_nat n)-
+1 / 32 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - powerRZ 2 (- (12)) <=
+powerRZ 2 (- (12)) * (IZR (Z.of_nat n) + 1).
+Proof.
+intros. 
+induction n. 
+-unfold Z.of_nat. field_simplify. try interval.
+-replace (IZR (Z.of_nat (S n)) + 1) with (IZR (Z.of_nat n) + 2). 
+replace (IZR (Z.of_nat (S n))) with (IZR (Z.of_nat n) + 1). 
+field_simplify. 
+field_simplify in IHn.
+replace ((63456 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 2080 * powerRZ 2 (- (12))) / 65536 <=
+powerRZ 2 (- (12)) * IZR (Z.of_nat n) + 2 * powerRZ 2 (- (12))) with 
+((63456 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 2080 * powerRZ 2 (- (12))) / 65536 - powerRZ 2 (- (12)) <=
+powerRZ 2 (- (12)) * IZR (Z.of_nat n) + powerRZ 2 (- (12))). field_simplify. 
+assert ( 65536 * powerRZ 2 (- (12)) /65536 <= (67616 * powerRZ 2 (- (12))) / 65536). try interval.  
+assert (forall a b c d e: R, 0 <e -> (a-b)/e <= c/e -> b < d -> (a -d)/e <= c/e).
+intros. 
+Search Rdiv. 
+pose proof (Rdiv_lt_left_elim e0 (a-b) (c / e0) H0).
+Search Rdiv. 
+Admitted. 
+
+Definition x_step_diff: R := (1 - (powerRZ (lf_harm_real.h) (2))/2).
+Definition v_step_diff: R := lf_harm_real.h.
+Definition step_acc_err (n :nat) : R :=(powerRZ ((/ powerRZ 2 12)%R + 1)%R (Z.of_nat n)%Z).
+
 Lemma global_error2:
   (forall x v : float32, 
   forall x1 v1 : R,
@@ -536,15 +566,21 @@ Lemma global_error2:
   forall n: nat,
 (
   Rle (Rabs (Rminus (fst(iternfR n x1%R v1%R)) (B2R _ _ (fst(iternf n x%F32 v%F32))))) 
-((/ powerRZ 2 12)%R * (INR n)%R)
+ ((step_acc_err n) * x_step_diff) /\
+  Rle (Rabs (Rminus (snd(iternfR n x1%R v1%R)) (B2R _ _ (snd(iternf n x%F32 v%F32))))) 
+ ((step_acc_err n) * v_step_diff)
 )
 ).
 Proof.
 intros.
 induction n.
--unfold iternf ,iternfR ,INR, leapfrog, leapfrogR, leapfrog_stepx in *.
-replace (/ powerRZ 2 12 *0) with  (0) by nra; auto; subst; unfold fst; 
-replace (B2R 24 128 x - B2R 24 128 x) with 0; try interval; nra. 
+-unfold iternf ,iternfR ,INR, leapfrog, leapfrogR, 
+leapfrog_stepx, step_acc_err, x_step_diff, v_step_diff,lf_harm_real.h in *;
+replace (powerRZ (/ powerRZ 2 12 + 1) (Z.of_nat 0)) with 1 by auto; 
+replace (/ powerRZ 2 12 *0) with  (0) by nra; auto; subst; unfold fst; unfold snd;
+replace (B2R 24 128 x - B2R 24 128 x) with 0 by nra;
+replace (B2R 24 128 v - B2R 24 128 v) with 0 by nra;
+split. all: try interval.
 -unfold iternfR, iternf in *; rewrite lfn_eq_lfstep. 
 set (LFfn:= (leapfrog (x, v) n)) in *.
 set (xnf:= fst LFfn) in *. 
@@ -600,6 +636,50 @@ assert ((B1 + xnr_f - xn1r + xnr - xnr) =
 xnr_f - xnr - 0.5 * lf_harm_real.h ^ 2 * (xnr_f - xnr) + lf_harm_real.h* (vnr_f-vnr)) by nra;
 rewrite ->H10. 
 
+assert (Rabs (xnr_f - xnr - 0.5 * lf_harm_real.h ^ 2 * (xnr_f - xnr)) + Rabs(lf_harm_real.h * (vnr_f - vnr)) -
+/ powerRZ 2 12 <= / powerRZ 2 12 * INR (S n)).
+
+replace (Rabs (xnr_f - xnr - 0.5 * lf_harm_real.h ^ 2 * (xnr_f - xnr))) with 
+(Rabs ((1 - 0.5 * lf_harm_real.h ^ 2)* (xnr_f - xnr))).  
+
+rewrite ?abs_mul. 
+
+assert (Rabs (vnr - vnr_f) <= / powerRZ 2 12 * INR n) by admit.
+
+assert (
+(1 - 0.5 * lf_harm_real.h ^ 2) * Rabs (xnr_f - xnr) + lf_harm_real.h * Rabs (vnr_f - vnr) -
+/ powerRZ 2 12
+<=
+(1 - 0.5 * lf_harm_real.h ^ 2) * / powerRZ 2 12 * INR n + lf_harm_real.h * / powerRZ 2 12 * INR n -
+/ powerRZ 2 12
+) by admit. 
+
+assert (
+(1 - 0.5 * lf_harm_real.h ^ 2) * / powerRZ 2 12 * INR n + lf_harm_real.h * / powerRZ 2 12 * INR n -
+/ powerRZ 2 12 <= / powerRZ 2 12 * INR (S n)
+).
+
+replace (INR (S n)) with (INR n + 1) by (rewrite ?S_INR; auto).
+
+unfold lf_harm_real.h in *. 
+
+rewrite ?INR_IZR_INZ in *.
+replace (0.5) with ((1/2)) in * by nra.
+replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto. 
+
+assert (0< IZR (Z.of_nat n) < 100) by admit.
+
+assert (1/32 -powerRZ 2 (- (12)) / (powerRZ 2 (- (12))) )
+
+interval_intro ((1 - 1 / 2 * (1 / 32) ^ 2) * powerRZ 2 (- (12)) * IZR (Z.of_nat n) +
+1 / 32 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - powerRZ 2 (- (12))).
+
+interval_intro (powerRZ 2 (- (12)) * (IZR (Z.of_nat n) + 1)). 
+
+try interval. 
+
+(*
+
 replace (lf_harm_real.h * (vnr_f - vnr)) with (-lf_harm_real.h * (vnr - vnr_f)) in * by nra. 
 
 assert (
@@ -647,19 +727,53 @@ assert ((Rabs (xnr_f - xnr) - 0.5 * lf_harm_real.h ^ 2 * Rabs (xnr_f - xnr) -
 
 assert (Rabs (vnr - vnr_f) <= / powerRZ 2 12 * INR n) by admit.
 
-replace (INR (S n)) with (INR n + 1).
+replace (INR (S n)) with (INR n + 1) by (rewrite ?S_INR; auto).
 
 unfold lf_harm_real.h in *. 
 
-clear H11 H10 H8 H7 H9 B1.
-
 rewrite ?INR_IZR_INZ in *.
 
-replace (0.5) with ((1/2)) in * by nra. 
+replace (0.5) with ((1/2)) in * by nra.
+replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto. 
 
-assert (Rabs (xnr_f - xnr) <= / powerRZ 2 12 * (IZR (Z.of_nat n) ) ).
-try interval. 
+assert ((Rabs (xnr_f - xnr) - 1 / 2 * (1 / 32) ^ 2 * Rabs (xnr_f - xnr) -
+1 / 32 * Rabs (vnr - vnr_f) - powerRZ 2 (- (12))) <= 
+powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 1 / 2 * (1 / 32) ^ 2 * powerRZ 2 (- (12)) * IZR (Z.of_nat n)-
+1 / 32 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - powerRZ 2 (- (12))) by admit. 
+
+assert (
+powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 1 / 2 * (1 / 32) ^ 2 * powerRZ 2 (- (12)) * IZR (Z.of_nat n)-
+1 / 32 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - powerRZ 2 (- (12)) <=
+powerRZ 2 (- (12)) * (IZR (Z.of_nat n) + 1)
+).
+
+apply lt_lem. 
+pose proof (Rle_trans 
+(Rabs (xnr_f - xnr) - 1 / 2 * (1 / 32) ^ 2 * Rabs (xnr_f - xnr) -
+     1 / 32 * Rabs (vnr - vnr_f) - powerRZ 2 (- (12))) 
+(powerRZ 2 (- (12)) * IZR (Z.of_nat n) -
+     1 / 2 * (1 / 32) ^ 2 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) -
+     1 / 32 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - powerRZ 2 (- (12))) 
+(powerRZ 2 (- (12)) * (IZR (Z.of_nat n) + 1))
+H13
+H14); auto.
 
 
+pose proof (Rle_trans 
+(Rabs (xnr_f - xnr) - 1 / 2 * (1 / 32) ^ 2 * Rabs (xnr_f - xnr) -
+     1 / 32 * Rabs (vnr - vnr_f) - powerRZ 2 (- (12))) 
+(powerRZ 2 (- (12)) * IZR (Z.of_nat n) -
+     1 / 2 * (1 / 32) ^ 2 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) -
+     1 / 32 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - powerRZ 2 (- (12))) 
+(powerRZ 2 (- (12)) * (IZR (Z.of_nat n) + 1))
+H13
+H14); auto.
+
+
+try interval with (i_bisect x1). 
+
+try interval with  (i_bisect n).
+
+*)
 
 
