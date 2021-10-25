@@ -31,6 +31,7 @@ Lemma leapfrog_step_is_finite:
 Admitted.
 
 Definition leapfrog_stepx x v := fst (leapfrog_step (x,v)).
+Definition leapfrog_stepv x v := snd (leapfrog_step (x,v)).
 
 Import ListNotations.
 Definition _x : AST.ident := 5%positive.
@@ -43,6 +44,7 @@ incorrectly associated with the division and multiplication in these terms in th
 tactic get_eps_delts*)
 Definition e := ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
+Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
 
 
 Import FPLang.
@@ -236,7 +238,7 @@ Qed.
 
 
 (*TODO: this tactic uses lemmas specific for e = e1; needs to be generalized*)
-Ltac get_rndval_with_cond_correct_e1:=
+Ltac get_rndval_with_cond_correct e:=
 match goal with
     H: boundsmap_denote ?bmap ?vmap |- _ => 
 let HFIN:= fresh in (
@@ -508,6 +510,22 @@ pose proof env_fval_reify_correct_leapfrog_stepx x v; auto.
 pose proof env_rval_reify_correct_leapfrog_stepx x v x1 v1; auto.
 Qed.
 
+Lemma local_errorv:
+  forall x v : float32,
+  forall x1 v1 : R,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  x1 = B2R _ _ x ->
+  v1 = B2R _ _ v -> 
+    Rle (Rabs (Rminus (snd(leapfrog_stepR (x1,v1))) (B2R _ _ (leapfrog_stepv x v)))) (/ powerRZ 2 12)%R.
+Proof.
+intros.
+replace (snd (leapfrog_stepR (x1,v1))) with (rval (leapfrog_env x v) e1).
+replace (leapfrog_stepx x v) with ((fval (leapfrog_env x v) e1)).
+pose proof one_step_errorx x v H; auto. 
+pose proof env_fval_reify_correct_leapfrog_stepx x v; auto.
+pose proof env_rval_reify_correct_leapfrog_stepx x v x1 v1; auto.
+Admitted.
+
 Definition iternf  (n:nat) (x v :float32) :=  leapfrog (x%F32, v%F32) n.
 Definition iternfR (n:nat) (x v :R) :=  leapfrogR (x,v) n .
 
@@ -553,20 +571,7 @@ pose proof (Rdiv_lt_left_elim e0 (a-b) (c / e0) H0).
 Search Rdiv. 
 Admitted. 
 
-Definition le_x : R :=(/ powerRZ 2 12)%R.
-Definition le_v : R :=(/ powerRZ 2 12)%R.
-Definition alpha: R := (1 - (pow (lf_harm_real.h) 2)/2). 
-Definition beta : R := (1 - (pow (lf_harm_real.h) 3)/4). 
-Definition ge_x (n : nat): R := 
-  match n with 
-  | 0%nat => 0 
-  | S n' => (pow alpha (n'%nat)) * le_x  + (lf_harm_real.h) * le_v * (INR (n'%nat)) * (pow alpha (n'%nat)) 
-  end.
-Definition ge_v (n : nat): R := 
-  match n with 
-  | 0%nat => 0 
-  | S n' => (pow alpha (n'%nat)) * le_v  + le_x * (INR (n'%nat)) * (pow alpha (n'%nat)) * beta
-  end.
+Definition local_err: R :=(/ powerRZ 2 12)%R.
 
 Lemma global_error2:
  (forall x v : float32, 
@@ -575,14 +580,14 @@ Lemma global_error2:
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
   forall n: nat,
-( Rle (Rabs (Rminus (fst(iternfR n x1%R v1%R)) (B2R _ _ (fst(iternf n x%F32 v%F32))))) (ge_x n)%R /\
-  Rle (Rabs (Rminus (snd(iternfR n x1%R v1%R)) (B2R _ _ (snd(iternf n x%F32 v%F32))))) (ge_v n)%R )
+( Rle (Rabs (Rminus (fst(iternfR n x1%R v1%R)) (B2R _ _ (fst(iternf n x%F32 v%F32))))) (2 *lf_harm_real.h* (INR n))%R /\
+  Rle (Rabs (Rminus (snd(iternfR n x1%R v1%R)) (B2R _ _ (snd(iternf n x%F32 v%F32))))) (2 *lf_harm_real.h* (INR n))%R )
 ).
 Proof.
 intros.
 induction n.
 -unfold iternf ,iternfR ,INR, leapfrog, leapfrogR, 
-leapfrog_stepx, x_step_diff, v_step_diff,lf_harm_real.h in *;
+leapfrog_stepx,lf_harm_real.h in *;
 replace (powerRZ (/ powerRZ 2 12 + 1) (Z.of_nat 0)) with 1 by auto; 
 replace (/ powerRZ 2 12 *0) with  (0) by nra; auto; subst; unfold fst; unfold snd;
 replace (B2R 24 128 x - B2R 24 128 x) with 0 by nra;
@@ -590,8 +595,6 @@ replace (B2R 24 128 v - B2R 24 128 v) with 0 by nra;
 split. all: try interval.
 -unfold iternfR, iternf in *; rewrite lfn_eq_lfstep. 
 
-split.
-(*x case*)
 set (LFfn:= (leapfrog (x, v) n)) in *.
 set (xnf:= fst LFfn) in *. 
 set (vnf:=snd LFfn) in *. 
@@ -601,17 +604,56 @@ assert (xnr = B2R 24 128 xnf) by auto.
 assert (vnr = B2R 24 128 vnf) by auto.
 assert (boundsmap_denote leapfrog_bmap (leapfrog_vmap xnf vnf)) by admit.
 pose proof (local_errorx xnf vnf xnr vnr H4 H2 H3).
+pose proof (local_errorv xnf vnf xnr vnr H4 H2 H3).
 unfold leapfrog_stepx in *. 
 assert ((xnf, vnf) = LFfn) by ((unfold LFfn in *); destruct leapfrog as [g h]; auto). 
 (* take real step over float input*)
 replace (leapfrog_step (xnf, vnf)) with (leapfrog_step LFfn) in * by auto. 
 set (xn1r:=(fst (leapfrog_stepR (xnr, vnr)))) in *.
 set (xn1f:=(fst (leapfrog_step LFfn))) in *. 
-assert (Rabs (B2R 24 128 xn1f - xn1r) <= / powerRZ 2 12) by
-((assert ((Rabs (B2R 24 128 xn1f - xn1r)) = (Rabs (xn1r - B2R 24 128 xn1f))) by
-(pose proof (Rabs_minus_sym xn1r (B2R _ _ xn1f)); symmetry; auto)); nra).
-assert (Rabs (B2R 24 128 xn1f) - Rabs xn1r <= / powerRZ 2 12) by
-(pose proof (Rabs_triang_inv (B2R _ _ xn1f) xn1r) ;nra). 
+set (vn1r:=(snd (leapfrog_stepR (xnr, vnr)))) in *.
+set (vn1f:=(snd (leapfrog_step LFfn))) in *. 
+
+(* x case *)
+assert (
+(Rabs (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f)) <=
+
+        ((1 - (pow lf_harm_real.h 2)/ 2) *
+         Rabs (fst (leapfrogR (x1, v1) n) - xnr) +
+         lf_harm_real.h * Rabs (snd (leapfrogR (x1, v1) n) - vnr)) + 
+      / powerRZ 2 12
+) by admit. 
+
+(* v case *)
+assert (
+(Rabs (snd (leapfrogR (x1, v1) (S n)) - B2R 24 128 vn1f)) <=
+
+        ((1 - (pow lf_harm_real.h 2)/ 2) *
+         Rabs (snd (leapfrogR (x1, v1) n) - vnr) -
+         (lf_harm_real.h - (pow lf_harm_real.h 3)/4) * Rabs (fst (leapfrogR (x1, v1) n) - vnr)) + 
+      / powerRZ 2 12 
+) by admit.
+
+replace (INR (S n)) with (INR n + 1) by (rewrite ?S_INR; auto).
+
+destruct IHn; split.
+
+assert 
+(((1 - (pow lf_harm_real.h 2)/ 2) *
+         Rabs (fst (leapfrogR (x1, v1) n) - xnr) +
+         lf_harm_real.h * Rabs (snd (leapfrogR (x1, v1) n) - vnr)) + 
+      / powerRZ 2 12 <= 2 * lf_harm_real.h * (INR n + 1) ).
+
+assert ( 0 < INR n <10) by admit.
+
+replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto. 
+unfold lf_harm_real.h in *.
+field_simplify. 
+try interval.  
+
+
+
+
 
 replace (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f) with
 (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f + xn1r - xn1r) by nra. 
