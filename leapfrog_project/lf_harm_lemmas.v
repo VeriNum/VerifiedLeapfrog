@@ -579,13 +579,13 @@ Lemma global_error2:
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
-  forall n: nat,
+  forall n: nat, 
+  INR n <= 1/lf_harm_real.h -> 
 ( Rle (Rabs (Rminus (fst(iternfR n x1%R v1%R)) (B2R _ _ (fst(iternf n x%F32 v%F32))))) (2 *lf_harm_real.h* (INR n))%R /\
   Rle (Rabs (Rminus (snd(iternfR n x1%R v1%R)) (B2R _ _ (snd(iternf n x%F32 v%F32))))) (2 *lf_harm_real.h* (INR n))%R )
 ).
 Proof.
-intros.
-induction n.
+intros. induction n. 
 -unfold iternf ,iternfR ,INR, leapfrog, leapfrogR, 
 leapfrog_stepx,lf_harm_real.h in *;
 replace (powerRZ (/ powerRZ 2 12 + 1) (Z.of_nat 0)) with 1 by auto; 
@@ -593,8 +593,9 @@ replace (/ powerRZ 2 12 *0) with  (0) by nra; auto; subst; unfold fst; unfold sn
 replace (B2R 24 128 x - B2R 24 128 x) with 0 by nra;
 replace (B2R 24 128 v - B2R 24 128 v) with 0 by nra;
 split. all: try interval.
--unfold iternfR, iternf in *; rewrite lfn_eq_lfstep. 
-
+- replace (INR (S n)) with (INR n + 1) in H2 by (rewrite ?S_INR; auto);
+assert (INR n <= 1 / lf_harm_real.h) by nra. pose proof IHn H3; clear H3 IHn.
+unfold iternfR, iternf in *; rewrite lfn_eq_lfstep. 
 set (LFfn:= (leapfrog (x, v) n)) in *.
 set (xnf:= fst LFfn) in *. 
 set (vnf:=snd LFfn) in *. 
@@ -603,8 +604,8 @@ set (vnr:= B2R _ _ vnf) in *.
 assert (xnr = B2R 24 128 xnf) by auto.
 assert (vnr = B2R 24 128 vnf) by auto.
 assert (boundsmap_denote leapfrog_bmap (leapfrog_vmap xnf vnf)) by admit.
-pose proof (local_errorx xnf vnf xnr vnr H4 H2 H3).
-pose proof (local_errorv xnf vnf xnr vnr H4 H2 H3).
+pose proof (local_errorx xnf vnf xnr vnr H6 H3 H5).
+pose proof (local_errorv xnf vnf xnr vnr H6 H3 H5).
 unfold leapfrog_stepx in *. 
 assert ((xnf, vnf) = LFfn) by ((unfold LFfn in *); destruct leapfrog as [g h]; auto). 
 (* take real step over float input*)
@@ -617,17 +618,14 @@ set (vn1f:=(snd (leapfrog_step LFfn))) in *.
 (* x case *)
 assert (
 (Rabs (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f)) <=
-
         ((1 - (pow lf_harm_real.h 2)/ 2) *
          Rabs (fst (leapfrogR (x1, v1) n) - xnr) +
          lf_harm_real.h * Rabs (snd (leapfrogR (x1, v1) n) - vnr)) + 
       / powerRZ 2 12
 ) by admit. 
-
 (* v case *)
 assert (
 (Rabs (snd (leapfrogR (x1, v1) (S n)) - B2R 24 128 vn1f)) <=
-
         ((1 - (pow lf_harm_real.h 2)/ 2) *
          Rabs (snd (leapfrogR (x1, v1) n) - vnr) -
          (lf_harm_real.h - (pow lf_harm_real.h 3)/4) * Rabs (fst (leapfrogR (x1, v1) n) - vnr)) + 
@@ -635,26 +633,71 @@ assert (
 ) by admit.
 
 replace (INR (S n)) with (INR n + 1) by (rewrite ?S_INR; auto).
-
-destruct IHn; split.
-
+destruct H4; split.
+(* x case *)
+replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto.
 assert 
 (((1 - (pow lf_harm_real.h 2)/ 2) *
          Rabs (fst (leapfrogR (x1, v1) n) - xnr) +
          lf_harm_real.h * Rabs (snd (leapfrogR (x1, v1) n) - vnr)) + 
-      / powerRZ 2 12 <= 2 * lf_harm_real.h * (INR n + 1) ).
+      / powerRZ 2 12 <= ((1 - (pow lf_harm_real.h 2)/ 2) *
+         2 * lf_harm_real.h * INR n +
+         lf_harm_real.h * 2 * lf_harm_real.h * INR n) + 
+      / powerRZ 2 12 ) by (unfold lf_harm_real.h in *; nra). 
 
-assert ( 0 < INR n <10) by admit.
+assert (INR n <= 1 / lf_harm_real.h) by nra.  
 
-replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto. 
-unfold lf_harm_real.h in *.
-field_simplify. 
-try interval.  
+assert (      (1 - lf_harm_real.h ^ 2 / 2) * 2 * lf_harm_real.h * INR n +
+      lf_harm_real.h * 2 * lf_harm_real.h * INR n + 
+      / powerRZ 2 12 <= 2 * lf_harm_real.h * (INR n + 1)) by ( 
+assert (((1 - (pow lf_harm_real.h 2)/ 2) *
+         2 * lf_harm_real.h * INR n +
+         lf_harm_real.h * 2 * lf_harm_real.h * INR n) + 
+      / powerRZ 2 12 -  2 * lf_harm_real.h * (INR n + 1) <= 0) by (
+unfold lf_harm_real.h in *; 
+replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto;
+rewrite ?INR_IZR_INZ in *; field_simplify; interval); 
+(pose proof (Rminus_le ((1 - lf_harm_real.h ^ 2 / 2) * 2 * lf_harm_real.h * INR n +
+      lf_harm_real.h * 2 * lf_harm_real.h * INR n + 
+      / powerRZ 2 12) (2 * lf_harm_real.h * (INR n + 1)))); auto).   
 
+replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto.
 
+pose proof (Rle_trans 
+(Rabs (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f))
+((1 - lf_harm_real.h ^ 2 / 2) *
+     Rabs (fst (leapfrogR (x1, v1) n) - xnr) +
+     lf_harm_real.h * Rabs (snd (leapfrogR (x1, v1) n) - vnr) +
+     powerRZ 2 (- (12)))
+((1 - lf_harm_real.h ^ 2 / 2) * 2 * lf_harm_real.h * INR n +
+      lf_harm_real.h * 2 * lf_harm_real.h * INR n +
+      powerRZ 2 (- (12)))
+H10 H13
+); auto. 
 
+pose proof (Rle_trans 
+(Rabs (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f))
+((1 - lf_harm_real.h ^ 2 / 2) * 2 * lf_harm_real.h * INR n +
+      lf_harm_real.h * 2 * lf_harm_real.h * INR n +
+      powerRZ 2 (- (12)))
+(2 * lf_harm_real.h * (INR n + 1))
+H16 H15
+); auto. 
 
-
+(* v case *)
+replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto.
+assert 
+(      (1 - lf_harm_real.h ^ 2 / 2) *
+      Rabs (snd (leapfrogR (x1, v1) n) - vnr) -
+      (lf_harm_real.h - lf_harm_real.h ^ 3 / 4) *
+      Rabs (fst (leapfrogR (x1, v1) n) - vnr) + 
+      / powerRZ 2 12 <=       (1 - lf_harm_real.h ^ 2 / 2) *
+      2 * lf_harm_real.h * INR n -
+      (lf_harm_real.h - lf_harm_real.h ^ 3 / 4) *
+     2 * lf_harm_real.h * INR n + 
+      / powerRZ 2 12). 
+ 
+(* for triangle inequality admissions above
 replace (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f) with
 (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f + xn1r - xn1r) by nra. 
 
