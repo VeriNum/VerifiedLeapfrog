@@ -545,6 +545,12 @@ Proof.
 intros; pose proof Rabs_mult a b. rewrite -> H0. pose proof Rabs_pos_eq a H; auto; nra.  
 Qed. 
 
+Lemma rabs_mul_t:
+forall u a b c d: R ,
+u <= a * Rabs(b) + c -> Rabs(b) <= d -> 0 <a -> u <= a * d + c.
+Proof.
+intros. nra.
+Qed.
 
 Lemma lt_lem: 
  forall n:nat,
@@ -685,18 +691,76 @@ H16 H15
 ); auto. 
 
 (* v case *)
+
 replace (/ powerRZ 2 12) with (powerRZ 2 (-(12))) in * by auto.
+assert (0 <=
+      (lf_harm_real.h - lf_harm_real.h ^ 3 / 4) *
+      Rabs (fst (leapfrogR (x1, v1) n) - vnr))  by (
+assert (0 <=
+      (lf_harm_real.h - lf_harm_real.h ^ 3 / 4)) by (unfold lf_harm_real.h;nra); 
+assert (0 <= Rabs (fst (leapfrogR (x1, v1) n) - vnr)) by 
+(try apply Rabs_pos; auto);
+nra).
 assert 
-(      (1 - lf_harm_real.h ^ 2 / 2) *
+((1 - lf_harm_real.h ^ 2 / 2) *
       Rabs (snd (leapfrogR (x1, v1) n) - vnr) -
       (lf_harm_real.h - lf_harm_real.h ^ 3 / 4) *
       Rabs (fst (leapfrogR (x1, v1) n) - vnr) + 
-      / powerRZ 2 12 <=       (1 - lf_harm_real.h ^ 2 / 2) *
-      2 * lf_harm_real.h * INR n -
+      / powerRZ 2 12 <= (1 - lf_harm_real.h ^ 2 / 2) *
+      Rabs (snd (leapfrogR (x1, v1) n) - vnr) + 
+      / powerRZ 2 12) by nra. 
+assert (Rabs ((snd (leapfrogR (x1, v1) (S n))) - (B2R 24 128 vn1f))
+<= (1 - lf_harm_real.h ^ 2 / 2) *
+      Rabs (snd (leapfrogR (x1, v1) n) - vnr) + 
+      / powerRZ 2 12) by 
+(pose proof (Rle_trans
+(Rabs ((snd (leapfrogR (x1, v1) (S n))) - (B2R 24 128 vn1f)))
+((1 - lf_harm_real.h ^ 2 / 2) *
+      Rabs (snd (leapfrogR (x1, v1) n) - vnr) -
       (lf_harm_real.h - lf_harm_real.h ^ 3 / 4) *
-     2 * lf_harm_real.h * INR n + 
-      / powerRZ 2 12). 
- 
+      Rabs (fst (leapfrogR (x1, v1) n) - vnr) + 
+      / powerRZ 2 12)
+((1 - lf_harm_real.h ^ 2 / 2) *
+      Rabs (snd (leapfrogR (x1, v1) n) - vnr) + 
+      / powerRZ 2 12)
+H11 H14); auto). 
+assert (
+(Rabs ((snd (leapfrogR (x1, v1) (S n))) - (B2R 24 128 vn1f))) <=
+      (((1 - ((lf_harm_real.h ^ 2) / 2)) *
+       ((2 * lf_harm_real.h) * (INR n))) +
+       (/ (powerRZ 2 12)))) by (assert (0 < (1 - ((lf_harm_real.h ^ 2) / 2)))
+ by (unfold lf_harm_real.h;nra); nra).
+assert ((((1 - ((lf_harm_real.h ^ 2) / 2)) *
+        ((2 * lf_harm_real.h) * (INR n))) + (/ (powerRZ 2 12))) 
+<= ((2 * lf_harm_real.h) * ((INR n) + 1))).
+
+
+assert (0<= INR n /\ INR n <= 31). split. 
+-apply pos_INR. 
+-unfold lf_harm_real.h in *; field_simplify; nra. 
+assert ((powerRZ 2 12) <> 0) by 
+((assert (0 < (powerRZ 2 12)) by interval); interval).
+assert ((((1 - ((lf_harm_real.h ^ 2) / 2)) *
+        ((2 * lf_harm_real.h) * (INR n))) + (/ (powerRZ 2 12))) 
+         - ((2 * lf_harm_real.h) * ((INR n) + 1)) <= 0); 
+unfold lf_harm_real.h; field_simplify. interval. 
+all: try auto.   
+
+(pose proof (Rminus_le (((1 - ((lf_harm_real.h ^ 2) / 2)) *
+         ((2 * lf_harm_real.h) * (INR n))) + (/ (powerRZ 2 12)))
+(2 * lf_harm_real.h * (INR n + 1)) H19)); auto; clear H19.
+
+unfold lf_harm_real.h in H20; field_simplify in H20; auto.
+pose proof (Rle_trans
+(Rabs ((snd (leapfrogR (x1, v1) (S n))) - (B2R 24 128 vn1f)))
+(((1 - ((lf_harm_real.h ^ 2) / 2)) * ((2 * lf_harm_real.h) * (INR n))) +
+       (/ (powerRZ 2 12)))
+((2 * lf_harm_real.h) * ((INR n) + 1))
+H16 H17
+); auto.
+
+
+
 (* for triangle inequality admissions above
 replace (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f) with
 (fst (leapfrogR (x1, v1) (S n)) - B2R 24 128 xn1f + xn1r - xn1r) by nra. 
