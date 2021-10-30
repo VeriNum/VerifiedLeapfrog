@@ -438,7 +438,7 @@ rewrite ?Zpower_pos_powerRZ. unfold powerRZ.
 rewrite ?powerRZ_O .
 (* BLOCK 2*)
 pattern (B2R (fprec (type_of_expr e1)) (femax (type_of_expr e1))
-     (fval (leapfrog_env x v) e1));  try rewrite <- e2.
+     (fval (leapfrog_env x v) e1));  try rewrite <- e3.
 (* BLOCK 3*)
 unfold FT2R in *.
 replace (leapfrog_env x v Tsingle lf_harm_lemmas._x) with val_x in * by 
@@ -449,19 +449,26 @@ replace (leapfrog_env x v Tsingle lf_harm_lemmas._v) with val_v in * by
 (cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
 replace (env_ (leapfrog_vmap x v) Tsingle lf_harm_lemmas._v) with val_v in * by 
 (cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-clear e2.
+clear e3.
 replace (B2R (fprec Tsingle) (femax Tsingle) val_v) with
 (B2R (fprec Tsingle) 128 val_v) in * by auto.
 replace (B2R (fprec Tsingle) (femax Tsingle) val_x) with
 (B2R (fprec Tsingle) 128 val_x) in * by auto.
 (* clear var_x occurence*)
+(*
 set (r1:= ((((powerRZ 2 (- (5)) * (1 + del5) + eps5) *
         (powerRZ 2 (- (5)) * (1 + del4) + eps4) * 
         (1 + del3) + eps3) *
        (- (1) * B2R (fprec Tsingle) 128 val_x * (1 + del2) + eps2) *
        (1 + del1) + eps1) / powerRZ 2 1 * (1 + del0)) ) in *.
 set (r2:= ((powerRZ 2 (- (5)) * (1 + del8) + eps8) * B2R (fprec Tsingle) 128 val_v *
-       (1 + del7) + eps7)) in *. 
+       (1 + del7) + eps7)) in *. *)
+set (r1:= ((((powerRZ 2 (- (5)) * (1 + del6) + eps6) * (powerRZ 2 (- (5)) * (1 + del5) + eps5) *
+        (1 + del4) + eps4) * (- (1) * B2R (fprec Tsingle) 128 val_x * (1 + del3) + eps3) *
+       (1 + del2) + eps2) * (powerRZ 2 (- (1)) * (1 + del1) + eps1) * 
+      (1 + del0) + eps0)) in *.
+set (r2:=((powerRZ 2 (- (5)) * (1 + del9) + eps9) * B2R (fprec Tsingle) 128 val_v * (1 + del8) +
+       eps8)) in *. 
 try (
  repeat(
     match goal with |- context [?a * (?b + ?c)] =>
@@ -475,23 +482,24 @@ repeat (
      rewrite ?Rminus_dist 
 end) 
       ).
-replace   (B2R (fprec Tsingle) 128 val_x + powerRZ 2 (- (5)) * B2R (fprec Tsingle) 128 val_v +
-   powerRZ 2 (- (5)) * powerRZ 2 (- (5)) * (- (1) * B2R (fprec Tsingle) 128 val_x) / powerRZ 2 1 -
-   B2R (fprec Tsingle) 128 val_x - r2 - B2R (fprec Tsingle) 128 val_x * del6 - 
-   r2 * del6 - eps6 - r1 - eps0 - B2R (fprec Tsingle) 128 val_x * del - 
-   r2 * del - B2R (fprec Tsingle) 128 val_x * del6 * del - r2 * del6 * del - 
-   eps6 * del - r1 * del - eps0 * del - eps) with  
-(powerRZ 2 (- (5)) * B2R (fprec Tsingle) 128 val_v +
-   powerRZ 2 (- (5)) * powerRZ 2 (- (5)) * (- (1) * B2R (fprec Tsingle) 128 val_x) / powerRZ 2 1 
-   - r2 - B2R (fprec Tsingle) 128 val_x * del6 - 
-   r2 * del6 - eps6 - r1 - eps0 - B2R (fprec Tsingle) 128 val_x * del - 
-   r2 * del - B2R (fprec Tsingle) 128 val_x * del6 * del - r2 * del6 * del - 
-   eps6 * del - r1 * del - eps0 * del - eps).
+replace     (B2R (fprec Tsingle) 128 val_x + powerRZ 2 (- (5)) * B2R (fprec Tsingle) 128 val_v +
+   powerRZ 2 (- (5)) * powerRZ 2 (- (5)) * (- (1) * B2R (fprec Tsingle) 128 val_x) *
+   powerRZ 2 (- (1)) - B2R (fprec Tsingle) 128 val_x - r2 -
+   B2R (fprec Tsingle) 128 val_x * del7 - r2 * del7 - eps7 - r1 -
+   B2R (fprec Tsingle) 128 val_x * del - r2 * del -
+   B2R (fprec Tsingle) 128 val_x * del7 * del - r2 * del7 * del - 
+   eps7 * del - r1 * del - eps) with  
+  (powerRZ 2 (- (5)) * B2R (fprec Tsingle) 128 val_v +
+   powerRZ 2 (- (5)) * powerRZ 2 (- (5)) * (- (1) * B2R (fprec Tsingle) 128 val_x) *
+   powerRZ 2 (- (1)) - r2 -
+   B2R (fprec Tsingle) 128 val_x * del7 - r2 * del7 - eps7 - r1 -
+   B2R (fprec Tsingle) 128 val_x * del - r2 * del -
+   B2R (fprec Tsingle) 128 val_x * del7 * del - r2 * del7 * del - 
+   eps7 * del - r1 * del - eps) by nra.
 unfold r1, r2 in *; clear r2 r1.
 (*apply interval; simple "interval" doesn't work*)
 interval with (i_bisect (B2R (fprec Tsingle) 128 val_x), i_bisect (B2R (fprec Tsingle) 128 val_v), 
 i_taylor (B2R (fprec Tsingle) 128 val_x), i_taylor (B2R (fprec Tsingle) 128 val_v)).
-nra. 
 Qed.
 
 Lemma local_errorx:
