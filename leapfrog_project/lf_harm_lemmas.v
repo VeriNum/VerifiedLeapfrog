@@ -37,15 +37,9 @@ Import ListNotations.
 Definition _x : AST.ident := 5%positive.
 Definition _v : AST.ident := 7%positive.
 
-Print leapfrog_stepx.
-
-(* TODO: the reification of these expressions breaks up h and F, and errors are then
-incorrectly associated with the division and multiplication in these terms in the 
-tactic get_eps_delts*)
 Definition e := ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
-
 
 Import FPLang.
 
@@ -79,7 +73,7 @@ match goal with |- context [fval (list_to_bound_env ?L1 ?L2) E] =>
  hnf in m1; simpl in m1;
  set (m2 := (Maps.PTree_Properties.of_list L2)) in m;
  hnf in m2; simpl in m2;
- let e' := eval hnf in e1 in change e1 with e';
+ let e' := eval hnf in E in change E with e';
  cbv [fval type_of_expr type_of_unop Datatypes.id];
  repeat change (type_lub _ _) with Tsingle;
  repeat change (type_lub _ _) with Tdouble;
@@ -115,6 +109,16 @@ Proof.
 intros.
 unfold leapfrog_env.
 unfold_reflect' e1.
+reflexivity.
+Qed.
+
+Lemma env_fval_reify_correct_leapfrog_stepv:
+  forall x v : float32,
+  fval (leapfrog_env x v) e2 = leapfrog_stepv x v.
+Proof.
+intros.
+unfold leapfrog_env.
+unfold_reflect' e2.
 reflexivity.
 Qed.
 
@@ -455,14 +459,6 @@ replace (B2R (fprec Tsingle) (femax Tsingle) val_v) with
 replace (B2R (fprec Tsingle) (femax Tsingle) val_x) with
 (B2R (fprec Tsingle) 128 val_x) in * by auto.
 (* clear var_x occurence*)
-(*
-set (r1:= ((((powerRZ 2 (- (5)) * (1 + del5) + eps5) *
-        (powerRZ 2 (- (5)) * (1 + del4) + eps4) * 
-        (1 + del3) + eps3) *
-       (- (1) * B2R (fprec Tsingle) 128 val_x * (1 + del2) + eps2) *
-       (1 + del1) + eps1) / powerRZ 2 1 * (1 + del0)) ) in *.
-set (r2:= ((powerRZ 2 (- (5)) * (1 + del8) + eps8) * B2R (fprec Tsingle) 128 val_v *
-       (1 + del7) + eps7)) in *. *)
 set (r1:= ((((powerRZ 2 (- (5)) * (1 + del6) + eps6) * (powerRZ 2 (- (5)) * (1 + del5) + eps5) *
         (1 + del4) + eps4) * (- (1) * B2R (fprec Tsingle) 128 val_x * (1 + del3) + eps3) *
        (1 + del2) + eps2) * (powerRZ 2 (- (1)) * (1 + del1) + eps1) * 
@@ -559,33 +555,6 @@ u <= a * Rabs(b) + c -> Rabs(b) <= d -> 0 <a -> u <= a * d + c.
 Proof.
 intros. nra.
 Qed.
-
-Lemma lt_lem: 
- forall n:nat,
-powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 1 / 2 * (1 / 32) ^ 2 * powerRZ 2 (- (12)) * IZR (Z.of_nat n)-
-1 / 32 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - powerRZ 2 (- (12)) <=
-powerRZ 2 (- (12)) * (IZR (Z.of_nat n) + 1).
-Proof.
-intros. 
-induction n. 
--unfold Z.of_nat. field_simplify. try interval.
--replace (IZR (Z.of_nat (S n)) + 1) with (IZR (Z.of_nat n) + 2). 
-replace (IZR (Z.of_nat (S n))) with (IZR (Z.of_nat n) + 1). 
-field_simplify. 
-field_simplify in IHn.
-replace ((63456 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 2080 * powerRZ 2 (- (12))) / 65536 <=
-powerRZ 2 (- (12)) * IZR (Z.of_nat n) + 2 * powerRZ 2 (- (12))) with 
-((63456 * powerRZ 2 (- (12)) * IZR (Z.of_nat n) - 2080 * powerRZ 2 (- (12))) / 65536 - powerRZ 2 (- (12)) <=
-powerRZ 2 (- (12)) * IZR (Z.of_nat n) + powerRZ 2 (- (12))). field_simplify. 
-assert ( 65536 * powerRZ 2 (- (12)) /65536 <= (67616 * powerRZ 2 (- (12))) / 65536). try interval.  
-assert (forall a b c d e: R, 0 <e -> (a-b)/e <= c/e -> b < d -> (a -d)/e <= c/e).
-intros. 
-Search Rdiv. 
-pose proof (Rdiv_lt_left_elim e0 (a-b) (c / e0) H0).
-Search Rdiv. 
-Admitted. 
-
-Definition local_err: R :=(/ powerRZ 2 12)%R.
 
 Lemma global_error2:
  (forall x v : float32, 
