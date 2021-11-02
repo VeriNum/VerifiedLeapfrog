@@ -530,15 +530,23 @@ rewrite ?Zpower_pos_powerRZ in H'; unfold powerRZ in H';
       rewrite ?powerRZ_pos_sub2 in H'; rewrite ?neg_powerRZ in H';
       rewrite ?Rmult_1_l  in H';
       rewrite ?Rmult_1_r  in H';
-      rewrite ?powerRZ_O in H';
+      rewrite ?powerRZ_O in H'; try lra;
       repeat (
         match type of H' with context [(Z.pos_sub (Z.to_pos _) _)] =>
           let x:= fresh "x" in set (x:= (Z.pos_sub (Z.to_pos _) _)%Z) in H'; 
 simpl in x; subst x 
         end);
-fold Tsingle in H'
+fold Tsingle in H';
+      repeat (
+        match type of H' with context [(env_ _ Tsingle _)] =>
+          let x:= fresh "x" in set (x:= (env_ _ Tsingle _)) in H'; 
+hnf in x; subst x 
+        end)
     end;
 clear H1 rndval H4 m H e0 m0.
+set (bv :=(FT2R Tsingle val_v)) in *.
+cbv [FT2R] in bv.
+assert (val_v = v). cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto.
 (* BLOCK 1*)
 (* TODO : cleanup with tactic or lemma *)
 simpl rval.  
