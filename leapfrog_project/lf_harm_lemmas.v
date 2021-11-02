@@ -197,15 +197,15 @@ intros.
  subst; auto.
 Qed.
 
-Ltac set_unfold_replace ex :=
+Ltac rndval_replace ex :=
   match goal with 
     H0: (rndval_with_cond 0 (mempty (Tsingle, Normal)) ex = (?r, (?si, ?s), ?p)) |- _ =>
-      let m := fresh "m" in set (m:=rndval_with_cond 0 (mempty (Tsingle, Normal)) ex); 
+      let m := fresh "m" in set (m:=rndval_with_cond 0 (mempty (Tsingle, Normal)) ex) in H0; 
       let H:= fresh  in 
       let H1:= fresh  in 
       let H2:= fresh  in 
       let H3:= fresh  in 
-      assert (r = fst (fst (m))) as H by (
+      assert (r = fst (fst (m))) as H by ( 
         replace m with (r, (si, s), p) by auto; auto);
       assert (si = fst (snd (fst (m)))) as H1 by (
         replace m with (r, (si, s), p) by auto; auto);
@@ -213,8 +213,7 @@ Ltac set_unfold_replace ex :=
         replace m with (r, (si, s), p) by auto; auto);
       assert (p =  snd (m)) as H3 by (
         replace m with (r, (si, s), p) by auto; auto);
-      compute in H, H1 ,H2 ,H3;
-      subst
+      compute in H, H1 ,H2 ,H3
 end.
 
 Import Interval.Tactic.
@@ -267,7 +266,7 @@ Ltac leapfrog_conds2_hold ex:=
       apply boundsmap_denote_e in H0;
       rewrite ?list_forall_Forall in *;
       rewrite list_forall_Forall in H0;
-      set_unfold_replace ex;
+      rndval_replace ex; subst;
       prepare_assumptions_about_free_variables;
 
 match goal with |- List.Forall (eval_cond2 _ ?M) _ =>
@@ -353,7 +352,7 @@ assert (forall i : cond, List.In i p -> eval_cond1 (env_ vmap) s i) as listconds
 );
 (destruct (rndval_with_cond_correct
                           _ HFIN _ HVALID _ _ _ _ rndval lc2 _ (eq_refl _)) as [] eqn:correct); 
-clear correct HFIN HVALID listconds 
+clear correct HFIN HVALID listconds
 end.
 
 Lemma powerRZ_pos_sub2: 
@@ -371,8 +370,7 @@ Proof.
 intros; pose proof power_RZ_inv x n H; symmetry; rewrite <- H0; nra. 
 Qed.
 
-(* TODO: fix so that eps and delts aren't associated with exact unary operations
-and powers of 2; i.e. consistent with VCFloat annotation of terms*)
+
 Ltac get_eps_delts := 
 match goal with 
   H0: enum_exists 0
@@ -395,9 +393,10 @@ Ltac get_rexp_with_eps_delt e :=
 match goal with 
   H0: rndval_with_cond 0 (mempty (Tsingle, Normal)) ?e =  
   (?r, (?si2, ?s), ?p) |- _ =>
-  inversion H0;
+  rndval_replace e;
+  (*inversion H0;*)
   subst si2 s r;
-  get_eps_delts;
+  get_eps_delts(*;
   match goal with | [H': reval _ _ (mget (mset (?M) _ _)) = B2R _ _ _ |- _] => 
   try (
     match type of H' with context [{| Fnum := ?n; Fexp := FLT_exp _ _ _ |}] =>
@@ -428,7 +427,7 @@ match goal with
         match type of H' with context [Z.pos_sub _ _] =>
           let x:= fresh "x" in set (x:= Z.pos_sub _ _) in H'; simpl in x; subst x 
         end ) 
-    end
+    end*)
 end.
 
 Require Import Coq.Logic.FunctionalExtensionality.
@@ -502,8 +501,44 @@ get_rndval_with_cond_correct e1.
 (* Populate hyps with some bounds on x and v*)
 fv_prepare_assumptions.
 (* turn rndval rexp to flt with eps delt *)
-get_rexp_with_eps_delt e1.
-clear H1 rndval H5 m H e0 p.
+get_rexp_with_eps_delt e1. 
+
+  match goal with | [H': reval _ _ (mget (mset (?M) _ _)) = B2R _ _ _ |- _] => 
+  repeat (
+    match type of H' with context [{| Fnum := ?n; Fexp := _ |}] =>
+      change n with (Z.pow_pos (2%Z) (Z.to_pos ((Z.log2 n%Z)%Z) ) ) in H';
+      let x:= fresh "x" in set (x:= Z.log2 _) in H'; simpl in x; subst x; try reflexivity;
+      repeat (
+      let x:= fresh "x" in set (x:= FLT_exp _ _ _) in H'; unfold FLT_exp in x; unfold Z.max in x; simpl in x; subst x
+            )
+    end
+      ) ;
+     let m := fresh "m" in set (m:=M); compute in m; unfold reval in H';
+      rewrite ?(mget_set Nat.eq_dec m) in H' ;
+      cbv [reval Prog.binary Prog.real_operations Tree.binary_real 
+      Prog.unary Prog.binary Tree.unary_real ] in H';
+      repeat (
+        match type of H' with context [mget m ?i] =>
+          let x:= fresh "x" in set (x:= mget m i) in H'; hnf in x; subst x 
+        end  );
+      repeat (
+        match type of H' with context [if Nat.eq_dec _ _ then _ else _] =>
+          let x:= fresh "x" in set (x:= if Nat.eq_dec _ _ then _ else _) in H'; hnf in x; subst x 
+        end  );
+cbv [F2R fone bpow radix_val radix2 Fexp Fnum] in H';
+rewrite ?Zpower_pos_powerRZ in H'; unfold powerRZ in H'; 
+      rewrite ?powerRZ_pos_sub2 in H'; rewrite ?neg_powerRZ in H';
+      rewrite ?Rmult_1_l  in H';
+      rewrite ?Rmult_1_r  in H';
+      rewrite ?powerRZ_O in H';
+      repeat (
+        match type of H' with context [(Z.pos_sub (Z.to_pos _) _)] =>
+          let x:= fresh "x" in set (x:= (Z.pos_sub (Z.to_pos _) _)%Z) in H'; 
+simpl in x; subst x 
+        end);
+fold Tsingle in H'
+    end;
+clear H1 rndval H4 m H e0 m0.
 (* BLOCK 1*)
 (* TODO : cleanup with tactic or lemma *)
 simpl rval.  
