@@ -507,7 +507,7 @@ Lemma one_step_errorx:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
     Rle (Rabs (Rminus (rval (leapfrog_env x v) e1) (B2R _ _ (fval (leapfrog_env x v) e1)))) 
-         (powerRZ 10 (-(6))%R.
+         (4719104053608470 / 37778931862957161709568)%R.
 Proof.
 intros.
 set (bmap:= leapfrog_bmap) in *.
@@ -723,10 +723,65 @@ with
        eps1 * - B2R (fprec Tsingle) 128 val_x * del0 * del) + 
       eps0 * del)) + eps)))
 by nra. 
-
-interval with (i_bisect (B2R (fprec Tsingle) 128 val_x), i_bisect (B2R (fprec Tsingle) 128 val_v), 
-i_taylor (B2R (fprec Tsingle) 128 val_x), i_taylor (B2R (fprec Tsingle) 128 val_v)). 
-
+rewrite ?Rabs_Ropp.
+interval_intro (Rabs
+  (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 + eps4 +
+   (B2R (fprec Tsingle) 128 val_x * del3 +
+    (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del3 +
+     powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del3 + 
+     eps4 * del3)) + eps3 +
+   (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+    - B2R (fprec Tsingle) 128 val_x +
+    powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x +
+    (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+     - B2R (fprec Tsingle) 128 val_x +
+     powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+     - B2R (fprec Tsingle) 128 val_x +
+     powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x) +
+    eps1 * - B2R (fprec Tsingle) 128 val_x +
+    (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+     - B2R (fprec Tsingle) 128 val_x * del0 +
+     powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+     - B2R (fprec Tsingle) 128 val_x * del0 +
+     powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del0 +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+      - B2R (fprec Tsingle) 128 val_x * del0 +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+      - B2R (fprec Tsingle) 128 val_x * del0 +
+      powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del0) +
+     eps1 * - B2R (fprec Tsingle) 128 val_x * del0) + eps0) +
+   (B2R (fprec Tsingle) 128 val_x * del +
+    (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del +
+     powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del + 
+     eps4 * del) +
+    (B2R (fprec Tsingle) 128 val_x * del3 * del +
+     (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del3 * del +
+      powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del3 * del +
+      eps4 * del3 * del)) + eps3 * del +
+    (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+     - B2R (fprec Tsingle) 128 val_x * del +
+     powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+     - B2R (fprec Tsingle) 128 val_x * del +
+     powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+      - B2R (fprec Tsingle) 128 val_x * del +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+      - B2R (fprec Tsingle) 128 val_x * del +
+      powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del) +
+     eps1 * - B2R (fprec Tsingle) 128 val_x * del +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+      - B2R (fprec Tsingle) 128 val_x * del0 * del +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+      - B2R (fprec Tsingle) 128 val_x * del0 * del +
+      powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del0 * del +
+      (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del0 * del) +
+      eps1 * - B2R (fprec Tsingle) 128 val_x * del0 * del) + 
+     eps0 * del)) + eps)) with (i_bisect (B2R (fprec Tsingle) 128 val_x), i_bisect (B2R (fprec Tsingle) 128 val_v)).
+nra. 
 try (
 repeat (
     match goal with |- context [?a - (?b + ?d)] =>
