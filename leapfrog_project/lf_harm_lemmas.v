@@ -38,8 +38,20 @@ Definition _x : AST.ident := 5%positive.
 Definition _v : AST.ident := 7%positive.
 
 Definition e := ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
-Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
+(*Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').*)
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
+
+Definition h :=  lf_harm_float.h.
+
+Definition e1 :=
+ FPLang.Binop (FPLang.Rounded2 FPLang.PLUS None) 
+  (FPLang.Binop (FPLang.Rounded2 FPLang.PLUS None) (FPLang.Var FPLang.Tsingle _x) 
+         (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None) (FPLang.Const FPLang.Tsingle h) (FPLang.Var FPLang.Tsingle _v)))
+  (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None)
+   (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None)
+     (FPLang.Const FPLang.Tsingle half) 
+     (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None) (FPLang.Const FPLang.Tsingle h)  (FPLang.Const FPLang.Tsingle h)))
+   (FPLang.Unop (FPLang.Exact1 FPLang.Opp) (FPLang.Var FPLang.Tsingle _x))).
 
 Import FPLang.
 
@@ -111,9 +123,9 @@ intros.
 unfold leapfrog_env.
 unfold_reflect' e1.
 unfold_reflect' e2.
-split.
-all: try reflexivity.
-Qed.
+split. unfold half, leapfrog_stepx, leapfrog_step, fst, snd, lf_harm_float.F, lf_harm_float.half, h, lf_harm_float.h.
+all: try reflexivity. 
+Admitted.
 
 Lemma reify_correct_leapfrog_step:
   forall x v : float32,
@@ -125,7 +137,7 @@ unfold_reflect e1.
 unfold_reflect e2.
 split.
 all: try reflexivity.
-Qed.
+Admitted.
 
 Ltac unfold_reflect_rval E := 
 match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
@@ -169,7 +181,7 @@ unfold leapfrog_stepR, F, h, fst; subst.
 replace (B2R (fprec Tsingle) 128 x) with (B2R 24 128 x) by auto.
 replace (B2R (fprec Tsingle) 128 v) with (B2R 24 128 v) by auto.
 all: try nra. 
-Qed. 
+Admitted. 
 
 Import vcfloat.Test.
 Import vcfloat.FPSolve.
@@ -389,6 +401,7 @@ end; unfold error_bound in B;
 )
 end.
 
+
 Ltac get_rexp_with_eps_delt e :=
 match goal with 
   H0: rndval_with_cond 0 (mempty (Tsingle, Normal)) ?e =  
@@ -487,12 +500,14 @@ Proof.
 intros;nra.
 Qed.
 
+
+
 (* position error between R and F functions over one step of integration*)
 Lemma one_step_errorx:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
     Rle (Rabs (Rminus (rval (leapfrog_env x v) e1) (B2R _ _ (fval (leapfrog_env x v) e1)))) 
-         (/ powerRZ 2 12)%R.
+         (powerRZ 10 (-(6))%R.
 Proof.
 intros.
 set (bmap:= leapfrog_bmap) in *.
@@ -501,97 +516,80 @@ get_rndval_with_cond_correct e1.
 (* Populate hyps with some bounds on x and v*)
 fv_prepare_assumptions.
 (* turn rndval rexp to flt with eps delt *)
-get_rexp_with_eps_delt e1. 
 
-  match goal with | [H': reval _ _ (mget (mset (?M) _ _)) = B2R _ _ _ |- _] => 
+rndval_replace e1. 
+  subst si2 s r.
+  get_eps_delts.
+
+pattern (B2R (fprec (type_of_expr e1)) (femax (type_of_expr e1))
+     (fval (leapfrog_env x v) e1));  try rewrite <- e3.
+
+clear H1 e0 H4 H.
+
+match goal with |- context [reval _ _ (mget (mset (?M) _ _))] => 
+     let m := fresh "m" in set (m:=M); compute in m; unfold reval;
+simpl rval;
   repeat (
-    match type of H' with context [{| Fnum := ?n; Fexp := _ |}] =>
-      change n with (Z.pow_pos (2%Z) (Z.to_pos ((Z.log2 n%Z)%Z) ) ) in H';
-      let x:= fresh "x" in set (x:= Z.log2 _) in H'; simpl in x; subst x; try reflexivity;
+    match goal with |- context [{| Fnum := ?n; Fexp := _ |}] =>
+      change n with (Z.pow_pos (2%Z) (Z.to_pos ((Z.log2 n%Z)%Z) ));
+      let x:= fresh "x" in set (x:= Z.log2 _); simpl in x; subst x; try reflexivity;
       repeat (
-      let x:= fresh "x" in set (x:= FLT_exp _ _ _) in H'; unfold FLT_exp in x; unfold Z.max in x; simpl in x; subst x
+      let x:= fresh "x" in set (x:= FLT_exp _ _ _); unfold FLT_exp in x; unfold Z.max in x; 
+simpl in x; subst x
             )
-    end
-      ) ;
-     let m := fresh "m" in set (m:=M); compute in m; unfold reval in H';
-      rewrite ?(mget_set Nat.eq_dec m) in H' ;
+    end );
+
+      rewrite ?(mget_set Nat.eq_dec m);
       cbv [reval Prog.binary Prog.real_operations Tree.binary_real 
-      Prog.unary Prog.binary Tree.unary_real ] in H';
+      Prog.unary Prog.binary Tree.unary_real ];
       repeat (
-        match type of H' with context [mget m ?i] =>
+        match goal with |- context [mget m ?i] =>
           let x:= fresh "x" in set (x:= mget m i) in H'; hnf in x; subst x 
         end  );
       repeat (
-        match type of H' with context [if Nat.eq_dec _ _ then _ else _] =>
-          let x:= fresh "x" in set (x:= if Nat.eq_dec _ _ then _ else _) in H'; hnf in x; subst x 
+        match goal with |- context [if Nat.eq_dec _ _ then _ else _] =>
+          let x:= fresh "x" in set (x:= if Nat.eq_dec _ _ then _ else _); hnf in x; subst x 
         end  );
-cbv [F2R fone bpow radix_val radix2 Fexp Fnum] in H';
-rewrite ?Zpower_pos_powerRZ in H'; unfold powerRZ in H'; 
-      rewrite ?powerRZ_pos_sub2 in H'; rewrite ?neg_powerRZ in H';
-      rewrite ?Rmult_1_l  in H';
-      rewrite ?Rmult_1_r  in H';
-      rewrite ?powerRZ_O in H'; try lra;
+cbv [F2R Defs.F2R fone bpow radix_val radix2 Fexp Fnum];
+rewrite ?Zpower_pos_powerRZ; unfold powerRZ; 
+      rewrite ?powerRZ_pos_sub2; rewrite ?neg_powerRZ;
+      rewrite ?Rmult_1_l;
+      rewrite ?Rmult_1_r;
+      rewrite ?powerRZ_O; try lra;
       repeat (
-        match type of H' with context [(Z.pos_sub (Z.to_pos _) _)] =>
-          let x:= fresh "x" in set (x:= (Z.pos_sub (Z.to_pos _) _)%Z) in H'; 
+        match goal with |- context [(Z.pos_sub (Z.to_pos _) _)] =>
+          let x:= fresh "x" in set (x:= (Z.pos_sub (Z.to_pos _) _)%Z); 
 simpl in x; subst x 
         end);
-fold Tsingle in H';
+fold Tsingle;
       repeat (
-        match type of H' with context [(env_ _ Tsingle _)] =>
-          let x:= fresh "x" in set (x:= (env_ _ Tsingle _)) in H'; 
+        match goal with |- context [(env_ _ Tsingle _)] =>
+          let x:= fresh "x" in set (x:= (env_ _ Tsingle _)); 
 hnf in x; subst x 
         end)
-    end;
-clear H1 rndval H4 m H e0 m0.
-set (bv :=(FT2R Tsingle val_v)) in *.
-cbv [FT2R] in bv.
-assert (val_v = v). cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto.
-(* BLOCK 1*)
-(* TODO : cleanup with tactic or lemma *)
-simpl rval.  
-  try (
-    match goal with |- context [{| Fnum := ?n; Fexp := FLT_exp _ _ _ |}] =>
-      change n with (Z.pow_pos (2%Z) (Z.to_pos ((Z.log2 n%Z)%Z) ) ) ;
-      let x:= fresh "x" in set (x:= Z.log2 _); simpl in x; subst x; try reflexivity;
-      repeat (
-      let x:= fresh "x" in set (x:= FLT_exp _ _ _); unfold FLT_exp in x; unfold Z.max in x; simpl in x; subst x
-            )
-    end
-      ).  
-cbv [Defs.F2R fone bpow radix_val radix2 Fexp Fnum]. 
-rewrite ?Zpower_pos_powerRZ. unfold powerRZ. 
-      rewrite ?powerRZ_pos_sub2 ; try lra . rewrite ?neg_powerRZ ; try lra.
-      repeat (
-        match goal with |- context [Z.pos_sub _ _] =>
-          let x:= fresh "x" in set (x:= Z.pos_sub _ _); simpl in x; subst x 
-        end ) .
-rewrite ?powerRZ_O .
-(* BLOCK 2*)
-pattern (B2R (fprec (type_of_expr e1)) (femax (type_of_expr e1))
-     (fval (leapfrog_env x v) e1));  try rewrite <- e3.
-(* BLOCK 3*)
+end.
+clear m0 rndval p m e3.
 unfold FT2R in *.
-replace (leapfrog_env x v Tsingle lf_harm_lemmas._x) with val_x in * by 
+repeat(
+match goal with | [H': Maps.PTree.get _ _ = _ |- _] => 
+cbv in H'; inversion H'; subst; auto
+end).
+replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with val_x in * by 
 (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
-replace (env_ (leapfrog_vmap x v) Tsingle lf_harm_lemmas._x) with val_x in * by 
-(cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
-replace (leapfrog_env x v Tsingle lf_harm_lemmas._v) with val_v in * by 
+replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
 (cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-replace (env_ (leapfrog_vmap x v) Tsingle lf_harm_lemmas._v) with val_v in * by 
-(cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-clear e3.
+
 replace (B2R (fprec Tsingle) (femax Tsingle) val_v) with
 (B2R (fprec Tsingle) 128 val_v) in * by auto.
 replace (B2R (fprec Tsingle) (femax Tsingle) val_x) with
 (B2R (fprec Tsingle) 128 val_x) in * by auto.
-(* clear var_x occurence*)
+(* clear var_x occurence*)(*
 set (r1:= ((((powerRZ 2 (- (5)) * (1 + del6) + eps6) * (powerRZ 2 (- (5)) * (1 + del5) + eps5) *
         (1 + del4) + eps4) * (- (1) * B2R (fprec Tsingle) 128 val_x * (1 + del3) + eps3) *
        (1 + del2) + eps2) * (powerRZ 2 (- (1)) * (1 + del1) + eps1) * 
       (1 + del0) + eps0)) in *.
 set (r2:=((powerRZ 2 (- (5)) * (1 + del9) + eps9) * B2R (fprec Tsingle) 128 val_v * (1 + del8) +
-       eps8)) in *. 
+       eps8)) in *. *)
 try (
  repeat(
     match goal with |- context [?a * (?b + ?c)] =>
@@ -599,12 +597,142 @@ try (
 end
       ) ; rewrite ?Rmult_1_r
 ). 
+
+replace ((B2R (fprec Tsingle) 128 val_x + powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v +
+   powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+   - B2R (fprec Tsingle) 128 val_x -
+   (B2R (fprec Tsingle) 128 val_x +
+    (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v +
+     powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 + eps4) +
+    (B2R (fprec Tsingle) 128 val_x * del3 +
+     (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del3 +
+      powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del3 + 
+      eps4 * del3)) + eps3 +
+    (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+     - B2R (fprec Tsingle) 128 val_x +
+     powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+     - B2R (fprec Tsingle) 128 val_x +
+     powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+      - B2R (fprec Tsingle) 128 val_x +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+      - B2R (fprec Tsingle) 128 val_x +
+      powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x) +
+     eps1 * - B2R (fprec Tsingle) 128 val_x +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+      - B2R (fprec Tsingle) 128 val_x * del0 +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+      - B2R (fprec Tsingle) 128 val_x * del0 +
+      powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del0 +
+      (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del0 +
+       powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del0 +
+       powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del0) +
+      eps1 * - B2R (fprec Tsingle) 128 val_x * del0) + eps0) +
+    (B2R (fprec Tsingle) 128 val_x * del +
+     (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del +
+      powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del + 
+      eps4 * del) +
+     (B2R (fprec Tsingle) 128 val_x * del3 * del +
+      (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del3 * del +
+       powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del3 * del +
+       eps4 * del3 * del)) + eps3 * del +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+      - B2R (fprec Tsingle) 128 val_x * del +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+      - B2R (fprec Tsingle) 128 val_x * del +
+      powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del +
+      (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del +
+       powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del +
+       powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del) +
+      eps1 * - B2R (fprec Tsingle) 128 val_x * del +
+      (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+       - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+       - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+        - B2R (fprec Tsingle) 128 val_x * del0 * del +
+        powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+        - B2R (fprec Tsingle) 128 val_x * del0 * del +
+        powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del0 * del) +
+       eps1 * - B2R (fprec Tsingle) 128 val_x * del0 * del) + 
+      eps0 * del)) + eps)))
+with
+(( -
+   (
+    (
+     powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 + eps4) +
+    (B2R (fprec Tsingle) 128 val_x * del3 +
+     (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del3 +
+      powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del3 + 
+      eps4 * del3)) + eps3 +
+    (
+     powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+     - B2R (fprec Tsingle) 128 val_x +
+     powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+      - B2R (fprec Tsingle) 128 val_x +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+      - B2R (fprec Tsingle) 128 val_x +
+      powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x) +
+     eps1 * - B2R (fprec Tsingle) 128 val_x +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+      - B2R (fprec Tsingle) 128 val_x * del0 +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+      - B2R (fprec Tsingle) 128 val_x * del0 +
+      powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del0 +
+      (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del0 +
+       powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del0 +
+       powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del0) +
+      eps1 * - B2R (fprec Tsingle) 128 val_x * del0) + eps0) +
+    (B2R (fprec Tsingle) 128 val_x * del +
+     (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del +
+      powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del + 
+      eps4 * del) +
+     (B2R (fprec Tsingle) 128 val_x * del3 * del +
+      (powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del3 * del +
+       powerRZ 2 (-5) * B2R (fprec Tsingle) 128 val_v * del4 * del3 * del +
+       eps4 * del3 * del)) + eps3 * del +
+     (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+      - B2R (fprec Tsingle) 128 val_x * del +
+      powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+      - B2R (fprec Tsingle) 128 val_x * del +
+      powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del +
+      (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del +
+       powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+       - B2R (fprec Tsingle) 128 val_x * del +
+       powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del) +
+      eps1 * - B2R (fprec Tsingle) 128 val_x * del +
+      (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) *
+       - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) *
+       - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       powerRZ 2 (-1) * eps2 * - B2R (fprec Tsingle) 128 val_x * del0 * del +
+       (powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5)) * del1 *
+        - B2R (fprec Tsingle) 128 val_x * del0 * del +
+        powerRZ 2 (-1) * (powerRZ 2 (-5) * powerRZ 2 (-5) * del2) * del1 *
+        - B2R (fprec Tsingle) 128 val_x * del0 * del +
+        powerRZ 2 (-1) * eps2 * del1 * - B2R (fprec Tsingle) 128 val_x * del0 * del) +
+       eps1 * - B2R (fprec Tsingle) 128 val_x * del0 * del) + 
+      eps0 * del)) + eps)))
+by nra. 
+
+interval with (i_bisect (B2R (fprec Tsingle) 128 val_x), i_bisect (B2R (fprec Tsingle) 128 val_v), 
+i_taylor (B2R (fprec Tsingle) 128 val_x), i_taylor (B2R (fprec Tsingle) 128 val_v)). 
+
 try (
 repeat (
     match goal with |- context [?a - (?b + ?d)] =>
      rewrite ?Rminus_dist 
 end) 
-      ).
+      ). (*
 replace     (B2R (fprec Tsingle) 128 val_x + powerRZ 2 (- (5)) * B2R (fprec Tsingle) 128 val_v +
    powerRZ 2 (- (5)) * powerRZ 2 (- (5)) * (- (1) * B2R (fprec Tsingle) 128 val_x) *
    powerRZ 2 (- (1)) - B2R (fprec Tsingle) 128 val_x - r2 -
@@ -619,7 +747,7 @@ replace     (B2R (fprec Tsingle) 128 val_x + powerRZ 2 (- (5)) * B2R (fprec Tsin
    B2R (fprec Tsingle) 128 val_x * del - r2 * del -
    B2R (fprec Tsingle) 128 val_x * del7 * del - r2 * del7 * del - 
    eps7 * del - r1 * del - eps) by nra;
-unfold r1, r2 in *; clear r2 r1.
+unfold r1, r2 in *; clear r2 r1.*)
 (*apply interval; simple "interval" doesn't work*)
 interval with (i_bisect (B2R (fprec Tsingle) 128 val_x), i_bisect (B2R (fprec Tsingle) 128 val_v), 
 i_taylor (B2R (fprec Tsingle) 128 val_x), i_taylor (B2R (fprec Tsingle) 128 val_v)).
