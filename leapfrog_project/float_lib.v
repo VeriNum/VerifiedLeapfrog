@@ -116,10 +116,25 @@ Ltac reify_float_expr E :=
  | Float32.of_intu ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int.unsigned i)))
  | Float32.of_long ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int64.signed i)))
  | Float32.of_longu ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int64.unsigned i)))
- | Float32.mul ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 MULT None) a' b')
- | Float32.div ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 DIV None) a' b')
+ | Float32.div ?a ?b => let a' := reify_float_expr a in
+    match b with 
+    | float32_of_Z ?n => let b1 := (eval compute in (Z.log2 n)) in let y:= (eval compute in (Z.pow 2 b1)) in let t:= (eval compute in (Z.eqb y n)) in
+     match t with 
+        | true => let b':= (eval compute in (Z.to_pos b1)) in constr:(@FPLang.Unop AST.ident (FPLang.Exact1 (FPLang.InvShift b' false)) a')
+        | false => let b' := reify_float_expr b in constr:(@FPLang.Binop AST.ident (FPLang.Rounded2 FPLang.DIV None) a' b') 
+      end
+    | _ => let b' := reify_float_expr b in constr:(@FPLang.Binop AST.ident (FPLang.Rounded2 FPLang.DIV None) a' b')
+    end
+ | Float32.mul ?a ?b => let a1 := eval red in a in
+    match a1 with 
+    | Float32.div (float32_of_Z 1%Z) ?d => let e' := constr:(Float32.div b d) in reify_float_expr e'
+    | _ => let  b1:= eval red in b in match b1 with 
+           | Float32.div (float32_of_Z 1%Z) ?d => let e' := constr:(Float32.div a d) in reify_float_expr e'
+           | _ => let a' := reify_float_expr a in   
+                  let b':=reify_float_expr b in 
+                    constr:(@FPLang.Binop AST.ident (FPLang.Rounded2 FPLang.MULT None) a' b')
+           end
+    end
  | Float32.add ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
                                       constr:(@Binop AST.ident (Rounded2 PLUS None) a' b')
  | Float32.sub ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
