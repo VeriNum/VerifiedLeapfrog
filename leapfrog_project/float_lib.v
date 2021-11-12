@@ -1,7 +1,10 @@
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
-
-Require vcfloat.Test.
+Require Export float_notations.
+(* MUST DO THE IMPORTS IN THIS ORDER
+   because "float" is defined in two different modules
+   and we want to end up with compcert.lib.Floats.float.
+*)
 
 Local Transparent Float32.of_bits.
 Local Transparent Float32.div.
@@ -16,24 +19,42 @@ Definition float_of_Z : Z -> float := BofZ 53 1024 eq_refl eq_refl.
 Coercion float32_of_Z: Z >-> float32.
 Coercion float_of_Z: Z >-> float.
 
-Declare Scope F32.
-Delimit Scope F32 with F32.
+Declare Scope float32_scope.
+Delimit Scope float32_scope with F32.
+Declare Scope float64_scope.
+Delimit Scope float64_scope with F64.
 
-Notation "x + y" := (Float32.add x y) (at level 50, left associativity) : F32.
-Notation "x - y"  := (Float32.sub x y) (at level 50, left associativity) : F32.
-Notation "x * y"  := (Float32.mul x y) (at level 40, left associativity) : F32.
-Notation "x / y"  := (Float32.div x y) (at level 40, left associativity) : F32.
-Notation "- x" := (Float32.neg x) (at level 35, right associativity) : F32.
+Notation "x + y" := (Float32.add x y) (at level 50, left associativity) : float32_scope.
+Notation "x - y"  := (Float32.sub x y) (at level 50, left associativity) : float32_scope.
+Notation "x * y"  := (Float32.mul x y) (at level 40, left associativity) : float32_scope.
+Notation "x / y"  := (Float32.div x y) (at level 40, left associativity) : float32_scope.
+Notation "- x" := (Float32.neg x) (at level 35, right associativity) : float32_scope.
 
-Notation "x <= y" := (Float32.cmp Cle x y = true) (at level 70, no associativity) : F32.
-Notation "x < y" := (Float32.cmp Clt x y = true) (at level 70, no associativity) : F32.
-Notation "x >= y" := (Float32.cmp Cge x y = true) (at level 70, no associativity) : F32.
-Notation "x > y" := (Float32.cmp Cgt x y = true) (at level 70, no associativity) : F32.
+Notation "x <= y" := (Float32.cmp Cle x y = true) (at level 70, no associativity) : float32_scope.
+Notation "x < y" := (Float32.cmp Clt x y = true) (at level 70, no associativity) : float32_scope.
+Notation "x >= y" := (Float32.cmp Cge x y = true) (at level 70, no associativity) : float32_scope.
+Notation "x > y" := (Float32.cmp Cgt x y = true) (at level 70, no associativity) : float32_scope.
 
-Notation "x <= y <= z" := (x <= y /\ y <= z)%F32 (at level 70, y at next level) : F32.
-Notation "x <= y < z" := (x <= y /\ y < z)%F32 (at level 70, y at next level) : F32.
-Notation "x < y < z" := (x < y /\ y < z)%F32 (at level 70, y at next level) : F32.
-Notation "x < y <= z" := (x < y /\ y <= z)%F32 (at level 70, y at next level) : F32.
+Notation "x <= y <= z" := (x <= y /\ y <= z)%F32 (at level 70, y at next level) : float32_scope.
+Notation "x <= y < z" := (x <= y /\ y < z)%F32 (at level 70, y at next level) : float32_scope.
+Notation "x < y < z" := (x < y /\ y < z)%F32 (at level 70, y at next level) : float32_scope.
+Notation "x < y <= z" := (x < y /\ y <= z)%F32 (at level 70, y at next level) : float32_scope.
+
+Notation "x + y" := (Float.add x y) (at level 50, left associativity) : float64_scope.
+Notation "x - y"  := (Float.sub x y) (at level 50, left associativity) : float64_scope.
+Notation "x * y"  := (Float.mul x y) (at level 40, left associativity) : float64_scope.
+Notation "x / y"  := (Float.div x y) (at level 40, left associativity) : float64_scope.
+Notation "- x" := (Float.neg x) (at level 35, right associativity) : float64_scope.
+
+Notation "x <= y" := (Float.cmp Cle x y = true) (at level 70, no associativity) : float64_scope.
+Notation "x < y" := (Float.cmp Clt x y = true) (at level 70, no associativity) : float64_scope.
+Notation "x >= y" := (Float.cmp Cge x y = true) (at level 70, no associativity) : float64_scope.
+Notation "x > y" := (Float.cmp Cgt x y = true) (at level 70, no associativity) : float64_scope.
+
+Notation "x <= y <= z" := (x <= y /\ y <= z)%F64 (at level 70, y at next level) : float64_scope.
+Notation "x <= y < z" := (x <= y /\ y < z)%F64 (at level 70, y at next level) : float64_scope.
+Notation "x < y < z" := (x < y /\ y < z)%F64 (at level 70, y at next level) : float64_scope.
+Notation "x < y <= z" := (x < y /\ y <= z)%F64 (at level 70, y at next level) : float64_scope.
 
 Ltac eq_hnf := 
  lazymatch goal with |- ?A = ?B =>
@@ -82,7 +103,7 @@ unfold FLT_exp in H.
 rewrite Digits.Zpos_digits2_pos in H.
 set (d := Digits.Zdigits radix2 _) in *.
 (* should be provable from here . . ., but what a pain! *)
-Admitted.
+Abort.
 
 Lemma is_finite_negate:
   forall x, Binary.is_finite 24 128 x = true ->
@@ -97,133 +118,9 @@ Lemma mul_minusone_negate:
  forall x, 
     Binary.is_finite 24 128 x = true ->
    Float32.mul (Float32.neg 1) x = Float32.neg x.
-Admitted.
-
-Require Import vcfloat.FPLang.
-
-Definition SterbenzSub32 := Float32.sub.
-Definition SterbenzSub := Float.sub.
-
-Definition placeholder32: AST.ident -> float32. intro. apply Float32.zero. Qed.
-
-Ltac reify_float_expr E :=
- match E with
- | placeholder32 ?i => constr:(@Var AST.ident Tsingle i)
- | Float.of_single ?f => constr:(@Unop AST.ident (CastTo Tdouble None) f)
- | Float.to_single ?f => constr:(@Unop AST.ident (CastTo Tsingle None) f)
- | float32_of_Z ?n => constr:(@Const AST.ident Tsingle (float32_of_Z n))
- | Float32.of_int ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int.signed i)))
- | Float32.of_intu ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int.unsigned i)))
- | Float32.of_long ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int64.signed i)))
- | Float32.of_longu ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int64.unsigned i)))
- | Float32.div ?a ?b => let a' := reify_float_expr a in
-    match b with 
-    | float32_of_Z ?n => let b1 := (eval compute in (Z.log2 n)) in let y:= (eval compute in (Z.pow 2 b1)) in let t:= (eval compute in (Z.eqb y n)) in
-     match t with 
-        | true => let b':= (eval compute in (Z.to_pos b1)) in constr:(@FPLang.Unop AST.ident (FPLang.Exact1 (FPLang.InvShift b' false)) a')
-        | false => let b' := reify_float_expr b in constr:(@FPLang.Binop AST.ident (FPLang.Rounded2 FPLang.DIV None) a' b') 
-      end
-    | _ => let b' := reify_float_expr b in constr:(@FPLang.Binop AST.ident (FPLang.Rounded2 FPLang.DIV None) a' b')
-    end
- | Float32.mul ?a ?b => let a1 := eval red in a in
-    match a1 with 
-    | Float32.div (float32_of_Z 1%Z) ?d => let e' := constr:(Float32.div b d) in reify_float_expr e'
-    | _ => let  b1:= eval red in b in match b1 with 
-           | Float32.div (float32_of_Z 1%Z) ?d => let e' := constr:(Float32.div a d) in reify_float_expr e'
-           | _ => let a' := reify_float_expr a in   
-                  let b':=reify_float_expr b in 
-                    constr:(@FPLang.Binop AST.ident (FPLang.Rounded2 FPLang.MULT None) a' b')
-           end
-    end
- | Float32.add ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 PLUS None) a' b')
- | Float32.sub ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
- | SterbenzSub32 ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident SterbenzMinus a' b')
- | Float32.neg ?a => let a' := reify_float_expr a in
-                                      constr:(@Unop AST.ident (Exact1 Opp) a')
- | Float32.abs ?a => let a' := reify_float_expr a in
-                                      constr:(@Unop AST.ident (Exact1 Abs) a')
- | float_of_Z ?n => constr:(@Const AST.ident Tsingle (float_of_Z n))
- | Float.of_int ?i => constr:(@Const AST.ident Tsingle (float_of_Z (Int.signed i)))
- | Float.of_intu ?i => constr:(@Const AST.ident Tsingle (float_of_Z (Int.unsigned i)))
- | Float.of_long ?i => constr:(@Const AST.ident Tsingle (float_of_Z (Int64.signed i)))
- | Float.of_longu ?i => constr:(@Const AST.ident Tsingle (float_of_Z (Int64.unsigned i)))
- | Float.mul ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 MULT None) a' b')
- | Float.div ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 DIV None) a' b')
- | Float.add ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 PLUS None) a' b')
- | Float.sub ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
- | SterbenzSub ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident SterbenzMinus a' b')
- | Float.neg ?a => let a' := reify_float_expr a in
-                                constr:(@Unop AST.ident (Exact1 Opp) a')
- | Float.abs ?a => let a' := reify_float_expr a in
-                                constr:(@Unop AST.ident (Exact1 Abs) a')
- | _ =>  let E' := eval red in E in reify_float_expr E'
- | _ => fail 100 "could not reify" E
- end.
-
-Ltac HO_reify_float_expr names E :=
- lazymatch names with
- | ?n :: ?names' =>
-             let Ev := constr:(E (placeholder32 n)) in 
-             HO_reify_float_expr names' Ev
- | nil =>reify_float_expr E
- end.
-
-Definition list_to_env (bindings: list (AST.ident * Values.val)) : (forall ty : type, AST.ident -> ftype ty) .
-pose (m :=   Maps.PTree_Properties.of_list bindings).
-intros ty i.
-destruct (type_eq_dec ty Tsingle); [ | destruct (type_eq_dec ty Tdouble)].
-{
-subst.
-destruct (Maps.PTree.get i m); [ | exact Float32.zero].
-destruct v; try exact f; exact Float32.zero.
-}
-{
-subst.
-destruct (Maps.PTree.get i m); [ | exact Float.zero].
-destruct v; try exact f; exact Float.zero.
-}
-exact (B754_zero (fprec ty) (femax ty) false).
-Defined.
-
-Ltac unfold_reflect E := 
-match goal with |- context [fval (list_to_env ?L) E] =>
- pattern (fval (list_to_env L) E);
- let HIDE := fresh "HIDE" in match goal with |- ?A _ => set (HIDE:=A) end;
- let m := fresh "m" in let m' := fresh "m'" in
- set (m := list_to_env L);
- hnf in m;
- set (m' := (Maps.PTree_Properties.of_list L)) in m;
- hnf in m'; simpl in m';
- let e' := eval hnf in E in change E with e';
- cbv [fval type_of_expr type_of_unop Datatypes.id];
- repeat change (type_lub _ _) with Tsingle;
- repeat change (type_lub _ _) with Tdouble;
- repeat change (cast_lub_l Tsingle Tsingle ?x) with x;
- repeat change (cast_lub_r Tsingle Tsingle ?x) with x;
- repeat change (cast_lub_l Tdouble Tdouble ?x) with x;
- repeat change (cast_lub_r Tdouble Tdouble ?x) with x;
- cbv [fop_of_unop fop_of_exact_unop fop_of_binop fop_of_rounded_binop];
- change (BOPP Tsingle) with Float32.neg;
- change (BPLUS Tsingle) with Float32.add;
- change (BMULT Tsingle) with Float32.mul;
- change (BDIV Tsingle) with Float32.div;
- repeat match goal with |- context [m ?t ?i] =>
-             let u := fresh "u" in set (u := m t i); hnf in u; subst u
- end;
- subst m' m;
- subst HIDE; cbv beta
-end.
-
-
-
+Proof.
+(* Almost certainly true, but a royal pain to prove. *)
+Abort.
 
 
 

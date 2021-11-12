@@ -1,6 +1,6 @@
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
-Require Import float_lib lf_harm_float lf_harm_real.
+Require Import float_lib lf_harm_float lf_harm_real vcfloat.
 
 Local Transparent Float32.of_bits.
 Local Transparent Float32.div.
@@ -34,26 +34,16 @@ Definition leapfrog_stepx x v := fst (leapfrog_step (x,v)).
 Definition leapfrog_stepv x v := snd (leapfrog_step (x,v)).
 
 Import ListNotations.
-Definition _x : AST.ident := 5%positive.
-Definition _v : AST.ident := 7%positive.
+Definition _x : AST.ident := 1121%positive.
+Definition _v : AST.ident := 1117%positive.
 
-Definition e := ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
-(*Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').*)
+Import FPLangOpt. 
+Import FPLang.
+
+Definition e :=  ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
+Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
 
-Definition h :=  lf_harm_float.h.
-
-Definition e1 :=
- FPLang.Binop (FPLang.Rounded2 FPLang.PLUS None) 
-  (FPLang.Binop (FPLang.Rounded2 FPLang.PLUS None) (FPLang.Var FPLang.Tsingle _x) 
-         (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None) (FPLang.Const FPLang.Tsingle h) (FPLang.Var FPLang.Tsingle _v)))
-  (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None)
-   (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None)
-     (FPLang.Const FPLang.Tsingle half) 
-     (FPLang.Binop (FPLang.Rounded2 FPLang.MULT None) (FPLang.Const FPLang.Tsingle h)  (FPLang.Const FPLang.Tsingle h)))
-   (FPLang.Unop (FPLang.Exact1 FPLang.Opp) (FPLang.Var FPLang.Tsingle _x))).
-
-Import FPLang.
 
 Definition list_to_bound_env (bindings: list  (AST.ident * Test.varinfo)) (bindings2: list  (AST.ident * Values.val)) : (forall ty : type, AST.ident -> ftype ty) .
 pose (bm := Maps.PTree_Properties.of_list bindings).
@@ -71,8 +61,6 @@ apply (B754_zero (fprec t) (femax t) true).
 apply (B754_zero (fprec ty) (femax ty) true).
 apply (B754_zero (fprec ty) (femax ty) true).
 Defined.
-
-Check list_to_bound_env.
 
 Ltac unfold_reflect' E := 
 match goal with |- context [fval (list_to_bound_env ?L1 ?L2) E] =>
@@ -94,6 +82,7 @@ match goal with |- context [fval (list_to_bound_env ?L1 ?L2) E] =>
  repeat change (cast_lub_l Tdouble Tdouble ?x) with x;
  repeat change (cast_lub_r Tdouble Tdouble ?x) with x;
  cbv [fop_of_unop fop_of_exact_unop fop_of_binop fop_of_rounded_binop];
+ change (cast _ _ ?a) with a;
  change (BOPP Tsingle) with Float32.neg;
  change (BPLUS Tsingle) with Float32.add;
  change (BMULT Tsingle) with Float32.mul;
@@ -114,18 +103,26 @@ Definition leapfrog_env  := (fun x v => list_to_bound_env leapfrog_bmap_list (le
 Definition leapfrog_bmap :=  Maps.PTree_Properties.of_list leapfrog_bmap_list.
 Definition leapfrog_vmap (x v : float32) := Maps.PTree_Properties.of_list (leapfrog_vmap_list x v).
 
-(*Lemma env_fval_reify_correct_leapfrog_step:
+Lemma env_fval_reify_correct_leapfrog_step:
   forall x v : float32,
   fval (leapfrog_env x v) e1 = leapfrog_stepx x v /\
   fval (leapfrog_env x v) e2 = leapfrog_stepv x v.
 Proof.
-intros.
-unfold leapfrog_env.
-unfold_reflect' e1.
-unfold_reflect' e2.
-split. unfold half, leapfrog_stepx, 
-leapfrog_step, fst, snd, 
-lf_harm_float.F.
+intros. 
+set (e1':= e1); unfold e1 in e1'; compute in e1'; fold Tsingle in e1'; fold _x in e1'; fold _v in e1'.
+set (e2':= e2); unfold e2 in e2'; compute in e2'; fold Tsingle in e2'; fold _x in e2'; fold _v in e2'.
+unfold leapfrog_env; split.
+{ unfold_reflect' e1'.
+unfold leapfrog_stepx, leapfrog_step, fst, snd, 
+lf_harm_float.F, lf_harm_float.h, lf_harm_float.half.
+replace (Float32.div  1%Z  32%Z) with (B2 Tsingle (- (5))) by
+(apply binary_float_eqb_eq; auto). 
+replace (Float32.div  1%Z  2%Z) with (B2 Tsingle (- (1))) by
+(apply binary_float_eqb_eq; auto). 
+Search "B2".
+
+x + B2 Tsingle (- (5)) * v + B2 Tsingle (- (11)) * - x
+
 replace (lf_harm_float.h * lf_harm_float.h * (- 1%Z * x) *
  lf_harm_float.half) with
 ((lf_harm_float.half * lf_harm_float.h * lf_harm_float.h * (- 1%Z * x))%F32) by
@@ -143,7 +140,7 @@ unfold_reflect e1.
 unfold_reflect e2.
 split.
 all: try reflexivity.
-Admitted.*)
+Admitted.
 
 Ltac unfold_reflect_rval E := 
 match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
@@ -189,8 +186,6 @@ replace (B2R (fprec Tsingle) 128 v) with (B2R 24 128 v) by auto.
 all: try nra. 
 Admitted. *)
 
-Import vcfloat.Test.
-Import vcfloat.FPSolve.
 
 Lemma finite_env (bmap: boundsmap) (vmap: valmap):
       boundsmap_denote bmap vmap ->

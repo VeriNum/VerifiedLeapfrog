@@ -1,23 +1,22 @@
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
+
 Require Import float_lib.
 
-Definition half := Float32.div 1 2.
+Local Open Scope float32_scope.
 
 (* Linear forcing function *)
-Definition F (x : float32) : float32 := (- 1%F32 * x)%F32.
+Definition F (x : float32) : float32 := -x.
 
 (* Time step*)
-Definition h := Float32.div 1 32.
-
-Opaque F h half.
+Definition h := 1 / 32.
 
 (* Single step of the integrator*)
 Definition leapfrog_step ( ic : float32 * float32) : float32 * float32 :=
-  (let x  := fst ic in let v:= snd ic in 
-  let x' := (x + h * v) + (h * h * F x)*half in
-  let v' :=  v + (half*h*(F x + F x')) in 
-  (x', v'))%F32.
+  let x  := fst ic in let v:= snd ic in 
+  let x' := (x + h * v) + (h * h * F x) / 2 in
+  let v' :=  v + (h*(F x + F x')/2) in 
+  (x', v').
 
 (* Main *)
 Fixpoint leapfrog ( ic : float32 * float32) (n : nat) : float32 * float32:=
