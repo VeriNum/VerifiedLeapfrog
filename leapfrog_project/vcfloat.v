@@ -204,8 +204,34 @@ Definition _v : AST.ident := 7%positive.
 
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
 
-Goal FPLangOpt.fcval e1 = Var Tsingle _x.
+Goal FPLangOpt.fshift (FPLangOpt.fcval e1) = Var Tsingle _x.
 simplify_fcval.
+ match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
+     focus (@FPLangOpt.fshift x1 x2);
+     let a' := eval hnf in a in change a with a';
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ]
+   (*  vcfloat_compute;
+     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
+ 
+ end.
+repeat(
+   match goal with |- context [FPLangOpt.binop_eqb ?a  ?b] =>
+      let x':= eval compute in (FPLangOpt.binop_eqb a  b) in change (FPLangOpt.binop_eqb a  b) with x'
+end).
+cbv beta iota zeta.
+vcfloat_simplifications.
+repeat(
+    match goal with |- context [cast ?a ?b ?c  ] =>
+      change (cast a b c) with c
+end).
+repeat (
+    match goal with |- context [binary_float_eqb ?a  ?b] =>
+      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
+end). cbv beta iota zeta.
+repeat(
+    match goal with |- context [FPLangOpt.to_inv_power_2 ?a  ] =>
+      let x':= eval compute in (FPLangOpt.to_inv_power_2 a  ) in change (FPLangOpt.to_inv_power_2 a) with x'
+end).
 Abort.
 
 End TESTING.
