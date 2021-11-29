@@ -39,11 +39,11 @@ Definition _v : AST.ident := 1117%positive.
 
 Import FPLangOpt. 
 Import FPLang.
+Import FPSolve.
 
 Definition e :=  ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / float32_of_Z 32)%F32 ) in exact e').
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
-
 
 Definition list_to_bound_env (bindings: list  (AST.ident * Test.varinfo)) (bindings2: list  (AST.ident * Values.val)) : (forall ty : type, AST.ident -> ftype ty) .
 pose (bm := Maps.PTree_Properties.of_list bindings).
@@ -103,12 +103,13 @@ Definition leapfrog_env  := (fun x v => list_to_bound_env leapfrog_bmap_list (le
 Definition leapfrog_bmap :=  Maps.PTree_Properties.of_list leapfrog_bmap_list.
 Definition leapfrog_vmap (x v : float32) := Maps.PTree_Properties.of_list (leapfrog_vmap_list x v).
 
+
 Lemma env_fval_reify_correct_leapfrog_step:
   forall x v : float32,
   fval (leapfrog_env x v) e1 = leapfrog_stepx x v /\
   fval (leapfrog_env x v) e2 = leapfrog_stepv x v.
 Proof.
-intros. 
+intros. (*
 set (e1':= e1); unfold e1 in e1'; compute in e1'; fold Tsingle in e1'; fold _x in e1'; fold _v in e1'.
 set (e2':= e2); unfold e2 in e2'; compute in e2'; fold Tsingle in e2'; fold _x in e2'; fold _v in e2'.
 unfold leapfrog_env; split.
@@ -127,7 +128,7 @@ replace (lf_harm_float.h * lf_harm_float.h * (- 1%Z * x) *
  lf_harm_float.half) with
 ((lf_harm_float.half * lf_harm_float.h * lf_harm_float.h * (- 1%Z * x))%F32) by
 auto.
-all: try reflexivity. 
+all: try reflexivity. *)
 Admitted.
 
 Lemma reify_correct_leapfrog_step:
@@ -186,6 +187,7 @@ replace (B2R (fprec Tsingle) 128 v) with (B2R 24 128 v) by auto.
 all: try nra. 
 Admitted. *)
 
+Import vcfloat.Test.
 
 Lemma finite_env (bmap: boundsmap) (vmap: valmap):
       boundsmap_denote bmap vmap ->
@@ -209,6 +211,123 @@ intros.
  destruct (type_eq_dec ty Tsingle); [ | reflexivity].
  subst; auto.
 Qed.
+
+Lemma check_shift:
+  forall x v : float32,
+    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  @FPLangOpt.fshift_div _ _ (leapfrog_env x v) (@FPLangOpt.fshift _ _ (@FPLangOpt.fcval _ _ e1)) = Var Tsingle _x.
+Proof.
+simplify_fcval.
+ match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
+     focus (@FPLangOpt.fshift x1 x2);
+let a' := eval hnf in a in change a with a
+(*
+     cbv beta fix iota delta [FPLangOpt.fshift_mul_ne FPLangOpt.fcval_nonrec ]*)
+   (*  vcfloat_compute;
+     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
+ 
+ end.
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ].
+repeat(
+   match goal with |- context [FPLangOpt.binop_eqb ?a  ?b] =>
+      let x':= eval compute in (FPLangOpt.binop_eqb a  b) in change (FPLangOpt.binop_eqb a  b) with x'
+end).
+cbv beta iota zeta.
+vcfloat_simplifications.
+repeat(
+    match goal with |- context [cast ?a ?b ?c  ] =>
+      change (cast a b c) with c
+end).
+repeat (
+    match goal with |- context [FPLangOpt.to_power_2 ?a] =>
+      let x':= eval compute in (FPLangOpt.to_power_2 a) in change (FPLangOpt.to_power_2 a) with x'
+end).
+
+repeat (
+    match goal with |- context [binary_float_eqb ?a  ?b] =>
+      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
+end). cbv beta iota zeta.
+repeat(
+    match goal with |- context [FPLangOpt.to_inv_power_2 ?a  ] =>
+      let x':= eval compute in (FPLangOpt.to_inv_power_2 a  ) in change (FPLangOpt.to_inv_power_2 a) with x'
+end).
+unfold out_of_focus. 
+clear out_of_focus.
+intros.
+(*shift div *)
+ match goal with |- context [@FPLangOpt.fshift_div ?x1 ?x2 ?env ?a] =>
+     focus (@FPLangOpt.fshift_div x1 x2 env);
+     let a' := eval hnf in a in change a with a' (*
+     cbv beta fix iota delta [FPLangOpt.fshift_mul_ne FPLangOpt.fcval_nonrec ]*)
+   (*  vcfloat_compute;
+     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
+ 
+ end.
+     cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec].
+repeat(
+   match goal with |- context [FPLangOpt.binop_eqb ?a  ?b] =>
+      let x':= eval compute in (FPLangOpt.binop_eqb a  b) in change (FPLangOpt.binop_eqb a  b) with x'
+end).
+cbv beta iota zeta.
+vcfloat_simplifications.
+repeat(
+    match goal with |- context [cast ?a ?b ?c  ] =>
+      change (cast a b c) with c
+end).
+repeat (
+    match goal with |- context [FPLangOpt.to_power_2_pos ?a] =>
+      let x':= eval compute in (FPLangOpt.to_power_2_pos a) in change (FPLangOpt.to_power_2_pos a) with x'
+end).
+
+repeat (
+    match goal with |- context [binary_float_eqb ?a  ?b] =>
+      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
+end). cbv beta iota zeta.
+
+repeat(
+    match goal with |- context [FPLangOpt.to_inv_power_2 ?a  ] =>
+      let x':= eval compute in (FPLangOpt.to_inv_power_2 a  ) in change (FPLangOpt.to_inv_power_2 a) with x'
+end).
+
+repeat(
+    match goal with |- context [Bexact_inverse _ _ _ _ ?a ] =>
+set (c:=a)
+end).
+set (g:=Bexact_inverse (fprec Tsingle) (femax Tsingle) (fprec_gt_0 Tsingle)
+         (fprec_lt_femax Tsingle) c)
+.
+unfold c in *; clear c.
+ cbv beta iota zeta delta[Bexact_inverse] in g.
+simpl in g.
+unfold g.
+repeat (
+    match goal with |- context [binary_float_eqb ?a  ?b] =>
+      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
+end). cbv beta iota zeta.
+clear g.
+assert ((is_finite (fprec Tsingle) (femax Tsingle)
+             (fval (leapfrog_env x v)
+                (Unop (Exact1 (InvShift 10 false))
+                   (Unop (CastTo Tsingle None)
+                      (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))))) = true)
+.
+pose proof finite_env leapfrog_bmap (leapfrog_vmap x v) H.
+
+
+rewrite H0.
+
+
+repeat (
+    match goal with |- context [eqb ?a  ?b] =>
+      let x':= eval compute in (eqb a  b) in change (eqb a  b) with x'
+end). 
+
+simpl.
+
+cbv [fval] in H0.
+
+
+
 
 Ltac rndval_replace ex :=
   match goal with 
@@ -517,6 +636,8 @@ match goal with | [H': Maps.PTree.get _ _ = _ |- _] =>
 cbv in H'; inversion H'; subst; auto
 end)
 end.
+Print e1.
+
 
 Lemma one_step_errorx:
   forall x v : float32,

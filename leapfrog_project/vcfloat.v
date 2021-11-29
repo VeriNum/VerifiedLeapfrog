@@ -16,6 +16,8 @@ Ltac reify_float_expr E :=
  | placeholder32 ?i => constr:(@Var AST.ident Tsingle i)
  | Float.of_single ?f => constr:(@Unop AST.ident (CastTo Tdouble None) f)
  | Float.to_single ?f => constr:(@Unop AST.ident (CastTo Tsingle None) f)
+ (*| float32_of_Z (Z.neg ?n) => constr:(@Unop AST.ident (Exact1 Opp) (@Const AST.ident Tsingle (float32_of_Z (Z.pos n))))
+ | float32_of_Z (Z.pos ?n) => constr:(@Const AST.ident Tsingle (float32_of_Z (Z.pos n))) *)
  | float32_of_Z ?n => constr:(@Const AST.ident Tsingle (float32_of_Z n))
  | Float32.of_int ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int.signed i)))
  | Float32.of_intu ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int.unsigned i)))
@@ -54,7 +56,7 @@ Ltac reify_float_expr E :=
                                 constr:(@Unop AST.ident (Exact1 Opp) a')
  | Float.abs ?a => let a' := reify_float_expr a in
                                 constr:(@Unop AST.ident (Exact1 Abs) a')
- | _ =>  let E' := eval red in E in reify_float_expr E'
+ | _ => let E' := eval red in E in reify_float_expr E'
  | _ => fail 100 "could not reify" E
  end.
 
@@ -183,7 +185,7 @@ Local Close Scope R_scope.
 
 Local Open Scope float32_scope.
 
-Definition F (x : float32) : float32 := float32_of_Z (-1) * x.
+Definition F (x : float32) : float32 := float32_of_Z(1) * x.
 
 (* Time step*)
 Definition h := float32_of_Z 1 / float32_of_Z 32.
@@ -196,24 +198,29 @@ Definition leapfrog_step ( ic : float32 * float32) : float32 * float32 :=
   (x', v').
 
 Definition leapfrog_stepx := fun x v => fst (leapfrog_step (x,v)).
-
+Definition g := fun x => F x.
 
 Import ListNotations.
 Definition _x : AST.ident := 5%positive.
 Definition _v : AST.ident := 7%positive.
 
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
+Definition e :=  ltac:(let e' := reify_float_expr constr:( (float32_of_Z (-1))%F32 ) in exact e').
+Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x]) F in exact e').
 
-Goal FPLangOpt.fshift (FPLangOpt.fcval e1) = Var Tsingle _x.
-simplify_fcval.
+Print e1.
+
+Goal @FPLangOpt.fshift _ _ (@FPLangOpt.fcval _ _ e1) = Var Tsingle _x.
+simplify_fcval. 
  match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
      focus (@FPLangOpt.fshift x1 x2);
-     let a' := eval hnf in a in change a with a';
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ]
+     let a' := eval hnf in a in change a with a'(*
+     cbv beta fix iota delta [FPLangOpt.fshift_mul_ne FPLangOpt.fcval_nonrec ]*)
    (*  vcfloat_compute;
      match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
  
  end.
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ].
 repeat(
    match goal with |- context [FPLangOpt.binop_eqb ?a  ?b] =>
       let x':= eval compute in (FPLangOpt.binop_eqb a  b) in change (FPLangOpt.binop_eqb a  b) with x'
@@ -225,6 +232,11 @@ repeat(
       change (cast a b c) with c
 end).
 repeat (
+    match goal with |- context [FPLangOpt.to_power_2 ?a] =>
+      let x':= eval compute in (FPLangOpt.to_power_2 a) in change (FPLangOpt.to_power_2 a) with x'
+end).
+
+repeat (
     match goal with |- context [binary_float_eqb ?a  ?b] =>
       let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
 end). cbv beta iota zeta.
@@ -233,5 +245,6 @@ repeat(
       let x':= eval compute in (FPLangOpt.to_inv_power_2 a  ) in change (FPLangOpt.to_inv_power_2 a) with x'
 end).
 Abort.
+
 
 End TESTING.
