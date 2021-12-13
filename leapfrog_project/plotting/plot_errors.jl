@@ -15,6 +15,8 @@ generate the corresponding julia data.
 
 Out: six plots, two for each compiler (gcc,
 compcert) and two for julia data.
+
+Author: Ariel Kellison, 12/2021
 """
 
 fpath = @__DIR__
