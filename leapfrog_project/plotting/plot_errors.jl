@@ -3,6 +3,19 @@ using Plots.PlotMeasures
 using DelimitedFiles
 using Random, Distributions
 
+"""
+Call this as jl script on main def'd at bottom.
+
+Takes as inputs four files and int. Files should be 
+ordered as gcc input, gcc output, compcert input,
+compcert output. Int is the number of random points
+used to generate compiler data; it is needed to 
+generater the correspinding julia data.
+
+Outputs are six plots, two for each compiler (gcc,
+compcert) and two for julia jit LLVM. 
+"""
+
 fpath = @__DIR__
 
 # formally proven bound for one step of LF integration (position)

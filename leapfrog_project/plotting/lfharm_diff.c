@@ -1,5 +1,10 @@
 /*
- * LFHARM.C: program to integrate harmonic oscillator using leapfrog.
+ * Purpose: this file produces two .txt files: file1 
+ * lists random inputs used for leapfrog integration, file2 
+ * lists absolute error between single and dble 
+ * prec on that input. 
+ *
+ * Author: Ariel Kellison, December 2021
  */
 
 #include <math.h>
