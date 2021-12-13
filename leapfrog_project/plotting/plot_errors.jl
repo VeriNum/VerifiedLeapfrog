@@ -4,16 +4,17 @@ using DelimitedFiles
 using Random, Distributions
 
 """
-Call this as jl script on main def'd at bottom.
+Call this as jl script on main def'd at bottom on inputs:
+julia -L plot_errors.jl -e 'main(args)'.
 
-Takes as inputs four files and int. Files should be 
+Args: four files (str) and int. Files should be
 ordered as gcc input, gcc output, compcert input,
 compcert output. Int is the number of random points
-used to generate compiler data; it is needed to 
-generater the correspinding julia data.
+used to generate compiler data; needed to
+generate the corresponding julia data.
 
-Outputs are six plots, two for each compiler (gcc,
-compcert) and two for julia jit LLVM. 
+Out: six plots, two for each compiler (gcc,
+compcert) and two for julia data.
 """
 
 fpath = @__DIR__
@@ -21,7 +22,7 @@ fpath = @__DIR__
 # formally proven bound for one step of LF integration (position)
 pbnd      = 4719104053608481 / 37778931862957161709568
 
-function plot_comps(file1, file2, file3, file4)
+function plot_comps(file1::String, file2::String, file3::String, file4::String)
     """
     resource: https://docs.julialang.org/en/v1/stdlib/DelimitedFiles/
     """
@@ -64,14 +65,17 @@ function plot_comps(file1, file2, file3, file4)
     plot!([max_x_gcc for i in 1:len],seriestype="vline",label="worst empirical error=$max_x_gcc" )
     plota = histogram!(vec_x_gcc, xlabel = "floating-point error",ylabel = "frequency",
     label="empirical error",size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
-    legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12)
+    legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12,
+    ytickfontsize = 12,
+    title = "Absolute position error - GCC")
     savefig(plota,fpath*"/gcc_errors.png")
 
     plot([pbnd for i in -1:1],seriestype="hline",label="formally proven bound=$pbnd" )
     plotb = scatter!(vec_in_x_gcc,vec_x_gcc, ylabel = "floating-point error",xlabel = "position val",
     size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
-    yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12, label="empirical error",
-    xlims = (-1,1))
+    yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
+    label="empirical error",
+    xlims = (-1,1), title = "Absolute position error - GCC")
     savefig(plotb,fpath*"/gcc_errors2.png")
 
     # plots for CompCert
@@ -80,14 +84,17 @@ function plot_comps(file1, file2, file3, file4)
     plot!([max_x_cc for i in 1:len],seriestype="vline",label="worst empirical error=$max_x_cc" )
     plota = histogram!(vec_x_cc, xlabel = "floating-point error",ylabel = "frequency",
     label="empirical error",size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
-    legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12)
+    legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12,
+    ytickfontsize = 12,
+    title = "Absolute position error - CompCert")
     savefig(plota,fpath*"/cc_errors.png")
 
     plot([pbnd for i in -1:1],seriestype="hline",label="formally proven bound=$pbnd" )
     plotb = scatter!(vec_in_x_cc,vec_x_cc, ylabel = "floating-point error",xlabel = "position val",
     size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
-    yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12, label="empirical error",
-    xlims = (-1,1))
+    yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
+    label="empirical error",
+    xlims = (-1,1), title = "Absolute position error - CompCert")
     savefig(plotb,fpath*"/cc_errors2.png")
 end
 
@@ -131,14 +138,16 @@ function plot_julia(sz)
     plot!([max1 for i in 1:sz],seriestype="vline",label="worst empirical error=$max1" )
     plota = histogram!(xs, xlabel = "floating-point error",ylabel = "frequency",
     label="empirical error",size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
-    legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12)
+    legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12,
+    ytickfontsize = 12, title = "Absolute position error - Julia")
     savefig(plota,fpath*"/julia_errors.png")
 
     plot([pbnd for i in -1:1],seriestype="hline",label="formally proven bound=$pbnd" )
     plotb = scatter!(x1,xs, ylabel = "floating-point error",xlabel = "position val",
     size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
-    yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12, label="empirical error",
-    xlims = (-1,1))
+    yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
+    label="empirical error",
+    xlims = (-1,1), title = "Absolute position error - Julia")
     savefig(plotb,fpath*"/julia_errors2.png")
 end
 
@@ -153,5 +162,5 @@ function main(file1,file2,file3,file4,sz)
 
     plot_comps(file1,file2,file3,file4)
     plot_julia(sz)
-    
+
 end
