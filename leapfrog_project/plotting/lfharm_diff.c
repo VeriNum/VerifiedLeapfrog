@@ -48,7 +48,7 @@ void lfstep64(double **x, double **v, double h, int size)
 /* main */
 int main(int argc, char *argv[]){
 	
-	if (argc <= 3 ){
+	if (argc <= 2 ){
     		printf("Takes two arguments: number of inputs, id for filename\n");
     		return 0;
 	}
