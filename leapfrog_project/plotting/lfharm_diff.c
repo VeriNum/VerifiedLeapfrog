@@ -1,7 +1,7 @@
 /*
  * Purpose: this file produces two txt files. 
- * file1 : lists random inputs used for leapfrog integration, 
- * file2 : lists absolute error (first x, then v) between sngl and dbl 
+ * file1 : random inputs used for leapfrog integration, 
+ * file2 : absolute error (first x then v) between sngl and dbl 
  *         precision on random inputs. 
  *
  * Author: Ariel Kellison, December 2021
@@ -25,11 +25,10 @@ void lfstep32(float **x, float **v, float h, int size)
 {
 	float a;
 
-	for (int n = 0; n < size; n++)
-	{
+	for (int n = 0; n < size; n++){
 		a = -1.0f * (*x)[n];
-  	(*x)[n] = (*x)[n] + h * (*v)[n] + 0.5f * (h * h * -1.0f * (*x)[n]);		/* position step */
-  	(*v)[n] = (*v)[n] + 0.5f * (h * -1.0f * (*x)[n] + a);		/* velocity step */
+	  	(*x)[n] = (*x)[n] + h * (*v)[n] + 0.5f * (h * h * -1.0f * (*x)[n]);		/* position step */
+  		(*v)[n] = (*v)[n] + 0.5f * (h * -1.0f * (*x)[n] + a);		/* velocity step */
 	}
 }
 
@@ -39,17 +38,20 @@ void lfstep64(double **x, double **v, double h, int size)
 
 	double a;
 
-	for (int n = 0; n < size; n++)
-	{
+	for (int n = 0; n < size; n++){
 		a = -1.0 * (*x)[n];
-  	(*x)[n] = (*x)[n] + h * (*v)[n] + 0.5 * (h * h * -1.0 * (*x)[n]);		/* position step */
-  	(*v)[n] = (*v)[n] + 0.5 * (h * -1.0 * (*x)[n] + a);		/* velocity step */
+  		(*x)[n] = (*x)[n] + h * (*v)[n] + 0.5 * (h * h * -1.0 * (*x)[n]);		/* position step */
+  		(*v)[n] = (*v)[n] + 0.5 * (h * -1.0 * (*x)[n] + a);		/* velocity step */
 	}
 }
 
 /* main */
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
+	
+	if (argc <= 3 ){
+    		printf("Takes two arguments: number of inputs, id for filename\n");
+    		return 0;
+	}
 	
 	int max  = atoi(argv[1]);
 	double hd = 1.0/32.0;
@@ -71,10 +73,10 @@ int main(int argc, char *argv[])
 	float *vfrands  = calloc(max, sizeof(float));
 
 	for (int n = 0; n < max; n++){
-		xdrands[n] = randfrom(-1.0, 1.0);
-		xfrands[n] = (float) xdrands[n];
-		vdrands[n] = randfrom(-1.0, 1.0);
-		vfrands[n] = (float) vdrands[n];
+		xfrands[n] = randfrom(-1.0, 1.0);
+		xdrands[n] = xfrands[n];
+		vfrands[n] = randfrom(-1.0, 1.0);
+		vdrands[n] = vfrands[n];
 	}
 
 	lf_in_data = fopen(filename1, "w");
