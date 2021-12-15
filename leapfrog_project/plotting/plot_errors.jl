@@ -48,26 +48,30 @@ function plot_comps(in_file::String, err_file::String)
     
     # plot histogram 
 
-    plot([pbnd for i in 1:len],seriestype="vline",label="formally proven bound=$pbnd" )
+    plot([pbnd for i in 1:len],seriestype="vline",label="formally proven bound=$pbnd",
+	left_margin = 15mm, right_margin = 15mm
+	 )
     plota = histogram!(
         vec_x, xlabel = "floating-point error",ylabel = "frequency",
         label="empirical error",size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
         legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12,
         ytickfontsize = 12,
-        title = "Absolute position error"
+        title = "Leapfrog integration: absolute position error"
     )
     savefig(plota,fpath*"/histo_errors.png")
     
     # plot scatter
 
-    plot([pbnd for i in -1:1],seriestype="hline",label="formally proven bound=$pbnd" )
+    plot([pbnd for i in -1:1],seriestype="hline",label="formally proven bound=$pbnd",
+        left_margin = 15mm, right_margin = 15mm
+	 )
     plotb = scatter!(
-        vec_in_x, vec_x, ylabel = "floating-point error",xlabel = "position val",
+        vec_in_x, vec_x, ylabel = "floating-point error",xlabel = "initial position",
         size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
         yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
         label="empirical error",
-        xlims = (-1,1), title = "Absolute position error"
-    )
+        xlims = (-1,1), title = "Leapfrog integration: absolute position error"    
+	)
     savefig(plotb,fpath*"/scatter_errors.png")
 end
 
