@@ -305,12 +305,31 @@ repeat (
       let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
 end). cbv beta iota zeta.
 clear g.
-assert ((is_finite (fprec Tsingle) (femax Tsingle)
-             (fval (leapfrog_env x v)
-                (Unop (Exact1 (InvShift 10 false))
-                   (Unop (CastTo Tsingle None)
-                      (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))))) = true)
-.
+
+
+
+assert   ((is_nan (fprec Tsingle) (femax Tsingle)
+            (fval (leapfrog_env x v)
+               (Unop (Exact1 (InvShift 10 false))
+                  (Unop (CastTo Tsingle None)
+                     (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))))) =
+false).
+
+symmetry. 
+assert (is_nan_expr (leapfrog_env x v) e = false).
+simpl. cbv [is_zero_expr rval]. 
+apply orb_false_iff. split.
+rewrite ?ROrderedType.Reqb_eq.
+
+assert ((B2R (fprec Tsingle) (femax Tsingle)
+     (B754_finite 24 128 false 8388608 (FLT_exp (-149) 24 1)
+        (proj1
+           (binary_round_correct 24 128 eq_refl eq_refl mode_NE
+              false 1 0)))) <> 0). apply Rlt_dichotomy_converse.
+right. simpl. cbv [Defs.F2R IZR]. simpl. interval.
+
+Search "Reqb".
+simpl. cbv [Defs.F2R].
 pose proof finite_env leapfrog_bmap (leapfrog_vmap x v) H.
 
 
