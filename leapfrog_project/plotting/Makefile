@@ -17,3 +17,6 @@ Diffcc: lfharm_diff.c
 
 clean:
 	$(RM) gcc_lfharm_diff compcc_lfharm_diff
+
+out_clean:
+	$(RM) *.png *.txt
