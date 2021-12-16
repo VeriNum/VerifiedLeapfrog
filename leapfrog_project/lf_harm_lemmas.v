@@ -45,6 +45,8 @@ Definition e :=  ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / floa
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
 
+Print e1. 
+
 Definition list_to_bound_env (bindings: list  (AST.ident * Test.varinfo)) (bindings2: list  (AST.ident * Values.val)) : (forall ty : type, AST.ident -> ftype ty) .
 pose (bm := Maps.PTree_Properties.of_list bindings).
 pose (vm := Maps.PTree_Properties.of_list bindings2). 
@@ -109,7 +111,7 @@ Lemma env_fval_reify_correct_leapfrog_step:
   fval (leapfrog_env x v) e1 = leapfrog_stepx x v /\
   fval (leapfrog_env x v) e2 = leapfrog_stepv x v.
 Proof.
-intros. (*
+intros. (* 
 set (e1':= e1); unfold e1 in e1'; compute in e1'; fold Tsingle in e1'; fold _x in e1'; fold _v in e1'.
 set (e2':= e2); unfold e2 in e2'; compute in e2'; fold Tsingle in e2'; fold _x in e2'; fold _v in e2'.
 unfold leapfrog_env; split.
@@ -212,82 +214,56 @@ intros.
  subst; auto.
 Qed.
 
+Import Interval.Tactic.
+
+Definition optimize {V: Type} {NANS: Nans} (e: expr) env : expr :=
+  @fshift_div V NANS env (@fshift V NANS (@fcval V NANS e)).
+
+Ltac simplify_opt e1 :=
+  match e1 with (optimize ?e) =>   
+  unfold optimize;
+  let e' := eval hnf in e in change e with e';
+      cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+                    FPLangOpt.option_pair_of_options];
+     vcfloat_compute;
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+     vcfloat_compute;
+     fshift_compute;
+     cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
+     vcfloat_compute;
+    fshift_compute;
+    vcfloat_simplifications;
+    fshift_compute
+(*
+repeat(
+    match goal with |- context [Bexact_inverse _ _ _ _ ?a ] =>
+set (c:=a)
+end)*)
+ | _ => fail 100 "no opt to simplify"
+end
+.
+
 Lemma check_shift:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
   @FPLangOpt.fshift_div _ _ (leapfrog_env x v) (@FPLangOpt.fshift _ _ (@FPLangOpt.fcval _ _ e1)) = Var Tsingle _x.
 Proof.
-simplify_fcval.
- match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
-     focus (@FPLangOpt.fshift x1 x2);
-let a' := eval hnf in a in change a with a
-(*
-     cbv beta fix iota delta [FPLangOpt.fshift_mul_ne FPLangOpt.fcval_nonrec ]*)
-   (*  vcfloat_compute;
-     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
- 
- end.
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ].
-repeat(
-   match goal with |- context [FPLangOpt.binop_eqb ?a  ?b] =>
-      let x':= eval compute in (FPLangOpt.binop_eqb a  b) in change (FPLangOpt.binop_eqb a  b) with x'
-end).
-cbv beta iota zeta.
-vcfloat_simplifications.
-repeat(
-    match goal with |- context [cast ?a ?b ?c  ] =>
-      change (cast a b c) with c
-end).
-repeat (
-    match goal with |- context [FPLangOpt.to_power_2 ?a] =>
-      let x':= eval compute in (FPLangOpt.to_power_2 a) in change (FPLangOpt.to_power_2 a) with x'
-end).
 
-repeat (
-    match goal with |- context [binary_float_eqb ?a  ?b] =>
-      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
-end). cbv beta iota zeta.
-repeat(
-    match goal with |- context [FPLangOpt.to_inv_power_2 ?a  ] =>
-      let x':= eval compute in (FPLangOpt.to_inv_power_2 a  ) in change (FPLangOpt.to_inv_power_2 a) with x'
-end).
-unfold out_of_focus. 
-clear out_of_focus.
-intros.
+simplify_opt (optimize e1).
+
+(*intros.
 (*shift div *)
  match goal with |- context [@FPLangOpt.fshift_div ?x1 ?x2 ?env ?a] =>
      focus (@FPLangOpt.fshift_div x1 x2 env);
-     let a' := eval hnf in a in change a with a' (*
-     cbv beta fix iota delta [FPLangOpt.fshift_mul_ne FPLangOpt.fcval_nonrec ]*)
-   (*  vcfloat_compute;
-     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
+     let a' := eval hnf in a in change a with a' ;
+     cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
+     vcfloat_compute;
+    fshift_compute;
+    vcfloat_simplifications;
+    fshift_compute
+    (* match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
  
- end.
-     cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec].
-repeat(
-   match goal with |- context [FPLangOpt.binop_eqb ?a  ?b] =>
-      let x':= eval compute in (FPLangOpt.binop_eqb a  b) in change (FPLangOpt.binop_eqb a  b) with x'
-end).
-cbv beta iota zeta.
-vcfloat_simplifications.
-repeat(
-    match goal with |- context [cast ?a ?b ?c  ] =>
-      change (cast a b c) with c
-end).
-repeat (
-    match goal with |- context [FPLangOpt.to_power_2_pos ?a] =>
-      let x':= eval compute in (FPLangOpt.to_power_2_pos a) in change (FPLangOpt.to_power_2_pos a) with x'
-end).
-
-repeat (
-    match goal with |- context [binary_float_eqb ?a  ?b] =>
-      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
-end). cbv beta iota zeta.
-
-repeat(
-    match goal with |- context [FPLangOpt.to_inv_power_2 ?a  ] =>
-      let x':= eval compute in (FPLangOpt.to_inv_power_2 a  ) in change (FPLangOpt.to_inv_power_2 a) with x'
-end).
+ end.*)
 
 repeat(
     match goal with |- context [Bexact_inverse _ _ _ _ ?a ] =>
@@ -306,35 +282,40 @@ repeat (
 end). cbv beta iota zeta.
 clear g.
 
+match goal with |- context [eqb ?a ?b] =>
+set (y:= eqb a b) in * end. 
 
-
-assert   ((is_nan (fprec Tsingle) (femax Tsingle)
-            (fval (leapfrog_env x v)
-               (Unop (Exact1 (InvShift 10 false))
-                  (Unop (CastTo Tsingle None)
-                     (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))))) =
-false).
+match goal with |- context [Binop ?b ?e1 (if ?c then ?d else ?e)] =>
+destruct c end.
 
 symmetry. 
-assert (is_nan_expr (leapfrog_env x v) e = false).
-simpl. cbv [is_zero_expr rval]. 
-apply orb_false_iff. split.
-rewrite ?ROrderedType.Reqb_eq.
+assert (is_nan_expr (leapfrog_env x v) (Unop (Exact1 (InvShift 10 false))
+                  (Unop (CastTo Tsingle None)
+                     (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))) = false).
+simpl. 
+(* because x is finite *)
 
-assert ((B2R (fprec Tsingle) (femax Tsingle)
-     (B754_finite 24 128 false 8388608 (FLT_exp (-149) 24 1)
-        (proj1
-           (binary_round_correct 24 128 eq_refl eq_refl mode_NE
-              false 1 0)))) <> 0). apply Rlt_dichotomy_converse.
-right. simpl. cbv [Defs.F2R IZR]. simpl. interval.
+pose proof finite_env leapfrog_bmap (leapfrog_vmap x v) H Tsingle 1121. unfold  lf_harm_lemmas._x.
+apply is_finite_not_is_nan; auto.  
 
-Search "Reqb".
-simpl. cbv [Defs.F2R].
-pose proof finite_env leapfrog_bmap (leapfrog_vmap x v) H.
+pose proof is_nan_expr_correct (leapfrog_env x v) 
+(Unop (Exact1 (InvShift 10 false))
+               (Unop (CastTo Tsingle None)
+                  (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))).
 
+change ((type_of_expr
+             (Unop (Exact1 (InvShift 10 false))
+                (Unop (CastTo Tsingle None)
+                   (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))))) with
+Tsingle in *.
+rewrite H0 in H1.  
 
-rewrite H0.
+match goal with |- context [?a = Binop ?b ?e1 (if ?c then ?d else ?e)] =>
+destruct c end.
 
+admit.  
+
+rewrite H0 in H1.  
 
 repeat (
     match goal with |- context [eqb ?a  ?b] =>

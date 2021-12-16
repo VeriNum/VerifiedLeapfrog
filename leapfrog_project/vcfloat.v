@@ -160,11 +160,13 @@ Ltac simplify_float_ops x :=
 Ltac fshift_compute :=
 repeat match goal with
 | |- context [binop_eqb ?a  ?b] =>
-      simplify_float_ops (binop_eqb a b); cbv beta iota zeta 
+      simplify_float_ops (binop_eqb a b); cbv beta iota zeta
 | |- context [to_power_2 ?a] =>
       simplify_float_ops (to_power_2 a) 
+| |- context [to_power_2_pos ?a] =>
+      simplify_float_ops (to_power_2_pos a) 
 | |- context [binary_float_eqb ?a  ?b] =>
-      simplify_float_ops (binary_float_eqb a b); cbv beta iota zeta
+      simplify_float_ops (binary_float_eqb a b); cbv beta iota zeta; vcfloat_simplifications
 | |- context [to_inv_power_2 ?a] =>
       simplify_float_ops (to_inv_power_2 a) 
 end.
@@ -205,6 +207,23 @@ Ltac simplify_fshift :=
      match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
  end.
 
+Definition optimize {V: Type} {NANS: Nans} (e: expr) : expr :=
+  @fshift V NANS (@fcval V NANS e).
+
+Ltac simplify_opt e1 :=
+  match e1 with (optimize ?e) =>   
+  unfold optimize;
+  let e' := eval hnf in e in change e with e';
+      cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+                    FPLangOpt.option_pair_of_options];
+     vcfloat_compute;
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+     vcfloat_compute;
+     fshift_compute
+ | _ => fail 100 "no opt to simplify"
+end
+.
+
 Module TESTING.
 
 Local Close Scope R_scope.
@@ -234,12 +253,8 @@ Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_
 Definition e :=  ltac:(let e' := reify_float_expr constr:( (float32_of_Z (-1))%F32 ) in exact e').
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x]) F in exact e').
 
-Print e1.
-
-Goal @FPLangOpt.fshift _ _ (@FPLangOpt.fcval _ _ e1) = Var Tsingle _x.
-simplify_fcval. 
-simplify_fshift.
+Goal optimize e1 = Var Tsingle _x.
+simplify_opt (optimize e1).
 Abort.
-
 
 End TESTING.
