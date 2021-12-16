@@ -45,7 +45,6 @@ Definition e :=  ltac:(let e' := reify_float_expr constr:((float32_of_Z 1 / floa
 Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
 
-Print e1. 
 
 Definition list_to_bound_env (bindings: list  (AST.ident * Test.varinfo)) (bindings2: list  (AST.ident * Values.val)) : (forall ty : type, AST.ident -> ftype ty) .
 pose (bm := Maps.PTree_Properties.of_list bindings).
@@ -191,6 +190,7 @@ Admitted. *)
 
 Import vcfloat.Test.
 
+
 Lemma finite_env (bmap: boundsmap) (vmap: valmap):
       boundsmap_denote bmap vmap ->
 forall ty i, is_finite (fprec ty) (femax ty) ((env_ vmap) ty i) = true.
@@ -253,6 +253,19 @@ Import Interval.Tactic.
 Definition optimize {V: Type} {NANS: Nans} (e: expr) env : expr :=
   @fshift_div V NANS env (@fshift V NANS (@fcval V NANS e)).
 
+Lemma optimize_type {V: Type}{NANS: Nans} env: 
+   forall e: expr, @type_of_expr V (optimize e env) = @type_of_expr V e.
+Proof.
+intros.
+unfold optimize.
+pose proof fcval_type e0.
+pose proof fshift_type (fcval e0).
+pose proof fshift_type_div env (fshift (fcval e0)). 
+pose proof (eq_trans (fshift_type (fcval e0)) (@fcval_type V NANS e0)) .
+rewrite H2 in H1. auto. 
+Defined.
+
+
 Ltac simplify_opt e1 :=
   match e1 with (optimize ?e) =>   
   unfold optimize;
@@ -277,6 +290,7 @@ end)*)
 end
 .
 
+(*
 Lemma check_shift:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
@@ -318,12 +332,21 @@ clear g.
 
 intros.
 
+match goal with |- context [eqb ?a ?b] =>
+set (y:= eqb a b) in * 
+end. 
+
+destruct eqb in y; subst y. simpl. 
+
 fin_assumptions.
 
-match goal with |- context [eqb ?a ?b] =>
-set (y:= eqb a b) in * end. 
+repeat(
+match goal with H: context[ (is_finite ?a ?b ?c)] |- _ => 
+apply is_finite_not_is_nan in H
+end)
+. 
 
-apply is_finite_not_is_nan in Hfin_x. 
+eapply is_nan_expr_correct. 
 
 match goal with |- context [Binop ?b ?e1 (if ?c then ?d else ?e)] =>
 destruct c end.
@@ -332,7 +355,8 @@ symmetry.
 assert (is_nan_expr (leapfrog_env x v) (Unop (Exact1 (InvShift 10 false))
                   (Unop (CastTo Tsingle None)
                      (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))) = false).
-simpl; auto. 
+simpl. auto. 
+cbv in Hval_x;inversion Hval_x; clear Hval_x; subst. auto.
 replace (leapfrog_env x v Tsingle lf_harm_lemmas._x) with val_x in * by 
 (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto). auto.
 (* because x is finite *)
@@ -368,7 +392,7 @@ cbv [fval] in H0.
 
 
 
-
+*)
 Ltac rndval_replace ex :=
   match goal with 
     H0: (rndval_with_cond 0 (mempty (Tsingle, Normal)) ex = (?r, (?si, ?s), ?p)) |- _ =>
@@ -676,19 +700,30 @@ match goal with | [H': Maps.PTree.get _ _ = _ |- _] =>
 cbv in H'; inversion H'; subst; auto
 end)
 end.
-Print e1.
 
 
 Lemma one_step_errorx:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-    Rle (Rabs (Rminus (rval (leapfrog_env x v) e1) (B2R _ _ (fval (leapfrog_env x v) e1)))) 
+    Rle (Rabs (Rminus (rval (leapfrog_env x v) e1) (B2R _ _ (fval (leapfrog_env x v) (optimize e1 (leapfrog_env x v) ))))) 
          (4719104053608481 / 37778931862957161709568)%R.
 Proof.
+
 intros.
+
 set (bmap:= leapfrog_bmap) in *.
 hnf in bmap. simpl in bmap.
-get_rndval_with_cond_correct e1.
+
+cbv [type_of_expr].
+match goal with |- context [type_of_expr (optimize ?e ?env)] =>
+replace (type_of_expr (optimize  e env)) with (type_of_expr e)
+end .
+apply optimize_type. 
+
+revert H0. destruct u. 
+simplify_opt (optimize e1).
+
+get_rndval_with_cond_correct e1. 
 (* Populate hyps with some bounds on x and v*)
 fv_prepare_assumptions.
 (* turn rndval rexp to flt with eps delt *)
