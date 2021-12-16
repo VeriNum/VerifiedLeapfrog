@@ -214,6 +214,40 @@ intros.
  subst; auto.
 Qed.
 
+
+Ltac fin_assumptions :=
+match goal with
+  H: boundsmap_denote (?bmap) (?vmap)
+  |- _
+  => 
+apply boundsmap_denote_e in H;
+rewrite list_forall_Forall in H;
+repeat
+ (let j := fresh "j" in let t := fresh "t" in let i' := fresh "i'" in 
+  let lo := fresh "lo" in let hi := fresh "hi" in let yy := fresh "yy" in 
+ let v := fresh "v" in 
+ let x := fresh "x" in let U := fresh "U" in let W := fresh "W" in
+ let Hx := fresh "Hx" in let Hj := fresh "Hj" in let Ht := fresh "Ht"  in
+ let Hi := fresh "Hi" in  
+inversion H as [ | [j [t i' lo hi]] yy [v [x [U W]]] Hx [Hj Ht Hi]];
+ clear H; rename Hx into H;
+ rewrite U in *; clear U;
+subst j t lo hi yy;
+ match type of Hi with _ = ?i =>
+  let valx := fresh "val" i in 
+  let Hval := fresh "Hval" i in
+  let Hinj := fresh "Hinj" i in
+  let Hfin := fresh "Hfin" i in
+  let Hrange := fresh "Hrange" i in
+  rename x into valx;
+  destruct W as [Hval [Hinj [Hfin Hrange]]];
+ first [apply val_inject_single_inv_r in Hinj
+       | apply val_inject_double_inv_r in Hinj
+       | fail 88 "val_inject_inv failed" ];
+  subst v i'
+ end)
+ end.
+
 Import Interval.Tactic.
 
 Definition optimize {V: Type} {NANS: Nans} (e: expr) env : expr :=
@@ -282,8 +316,14 @@ repeat (
 end). cbv beta iota zeta.
 clear g.
 
+intros.
+
+fin_assumptions.
+
 match goal with |- context [eqb ?a ?b] =>
 set (y:= eqb a b) in * end. 
+
+apply is_finite_not_is_nan in Hfin_x. 
 
 match goal with |- context [Binop ?b ?e1 (if ?c then ?d else ?e)] =>
 destruct c end.
@@ -292,11 +332,11 @@ symmetry.
 assert (is_nan_expr (leapfrog_env x v) (Unop (Exact1 (InvShift 10 false))
                   (Unop (CastTo Tsingle None)
                      (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))) = false).
-simpl. 
+simpl; auto. 
+replace (leapfrog_env x v Tsingle lf_harm_lemmas._x) with val_x in * by 
+(cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto). auto.
 (* because x is finite *)
-
-pose proof finite_env leapfrog_bmap (leapfrog_vmap x v) H Tsingle 1121. unfold  lf_harm_lemmas._x.
-apply is_finite_not_is_nan; auto.  
+ 
 
 pose proof is_nan_expr_correct (leapfrog_env x v) 
 (Unop (Exact1 (InvShift 10 false))
