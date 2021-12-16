@@ -5,6 +5,7 @@ Require Import float_lib.
 
 Require vcfloat.Test.
 Require Import vcfloat.FPLang.
+Require Import vcfloat.FPLangOpt.
 
 Definition SterbenzSub32 := Float32.sub.
 Definition SterbenzSub := Float.sub.
@@ -16,8 +17,6 @@ Ltac reify_float_expr E :=
  | placeholder32 ?i => constr:(@Var AST.ident Tsingle i)
  | Float.of_single ?f => constr:(@Unop AST.ident (CastTo Tdouble None) f)
  | Float.to_single ?f => constr:(@Unop AST.ident (CastTo Tsingle None) f)
- (*| float32_of_Z (Z.neg ?n) => constr:(@Unop AST.ident (Exact1 Opp) (@Const AST.ident Tsingle (float32_of_Z (Z.pos n))))
- | float32_of_Z (Z.pos ?n) => constr:(@Const AST.ident Tsingle (float32_of_Z (Z.pos n))) *)
  | float32_of_Z ?n => constr:(@Const AST.ident Tsingle (float32_of_Z n))
  | Float32.of_int ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int.signed i)))
  | Float32.of_intu ?i => constr:(@Const AST.ident Tsingle (float32_of_Z (Int.unsigned i)))
@@ -153,6 +152,23 @@ Ltac simplify_B754_finite x :=
         change x with  (B754_finite prec emax sign' m' e' (@hide _ p))
       end.
 
+Ltac simplify_float_ops x :=
+  let y:= eval compute in x in 
+    change x with y
+.
+
+Ltac fshift_compute :=
+repeat match goal with
+| |- context [binop_eqb ?a  ?b] =>
+      simplify_float_ops (binop_eqb a b); cbv beta iota zeta 
+| |- context [to_power_2 ?a] =>
+      simplify_float_ops (to_power_2 a) 
+| |- context [binary_float_eqb ?a  ?b] =>
+      simplify_float_ops (binary_float_eqb a b); cbv beta iota zeta
+| |- context [to_inv_power_2 ?a] =>
+      simplify_float_ops (to_inv_power_2 a) 
+end.
+
 Ltac vcfloat_compute := 
 vcfloat_partial_compute;
 repeat match goal with
@@ -164,9 +180,9 @@ repeat match goal with
 | |- context [Bmult ?prec ?emax ?p1 ?p2 ?p3 ?mode ?a1 ?a2] =>
       simplify_B754_finite (Bmult prec emax p1 p2 p3 mode a1 a2)
 | |- context [Bplus ?prec ?emax ?p1 ?p2 ?p3 ?mode ?a1 ?a2] =>
-      simplify_B754_finite (Bmult prec emax p1 p2 p3 mode a1 a2)
+      simplify_B754_finite (Bplus prec emax p1 p2 p3 mode a1 a2)
 | |- context [Bminus ?prec ?emax ?p1 ?p2 ?p3 ?mode ?a1 ?a2] =>
-      simplify_B754_finite (Bmult prec emax p1 p2 p3 mode a1 a2)
+      simplify_B754_finite (Bminus prec emax p1 p2 p3 mode a1 a2) 
 end.
 
 Ltac simplify_fcval :=
@@ -176,6 +192,16 @@ Ltac simplify_fcval :=
      cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
                     FPLangOpt.option_pair_of_options];
      vcfloat_compute;
+     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
+ end.
+
+Ltac simplify_fshift :=
+ match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
+     focus (@FPLangOpt.fshift x1 x2);
+     let a' := eval hnf in a in change a with a';
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+     vcfloat_compute;
+     fshift_compute;
      match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
  end.
 
@@ -212,38 +238,7 @@ Print e1.
 
 Goal @FPLangOpt.fshift _ _ (@FPLangOpt.fcval _ _ e1) = Var Tsingle _x.
 simplify_fcval. 
- match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
-     focus (@FPLangOpt.fshift x1 x2);
-     let a' := eval hnf in a in change a with a'(*
-     cbv beta fix iota delta [FPLangOpt.fshift_mul_ne FPLangOpt.fcval_nonrec ]*)
-   (*  vcfloat_compute;
-     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
- 
- end.
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ].
-repeat(
-   match goal with |- context [FPLangOpt.binop_eqb ?a  ?b] =>
-      let x':= eval compute in (FPLangOpt.binop_eqb a  b) in change (FPLangOpt.binop_eqb a  b) with x'
-end).
-cbv beta iota zeta.
-vcfloat_simplifications.
-repeat(
-    match goal with |- context [cast ?a ?b ?c  ] =>
-      change (cast a b c) with c
-end).
-repeat (
-    match goal with |- context [FPLangOpt.to_power_2 ?a] =>
-      let x':= eval compute in (FPLangOpt.to_power_2 a) in change (FPLangOpt.to_power_2 a) with x'
-end).
-
-repeat (
-    match goal with |- context [binary_float_eqb ?a  ?b] =>
-      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
-end). cbv beta iota zeta.
-repeat(
-    match goal with |- context [FPLangOpt.to_inv_power_2 ?a  ] =>
-      let x':= eval compute in (FPLangOpt.to_inv_power_2 a  ) in change (FPLangOpt.to_inv_power_2 a) with x'
-end).
+simplify_fshift.
 Abort.
 
 
