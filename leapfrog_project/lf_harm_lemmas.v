@@ -16,11 +16,11 @@ Definition initial_t : float32 := 0.
 Definition half := Float32.div 1 2.
 
 Lemma half_repr : Float32.of_bits (Int.repr 1056964608) =  half.
-Proof. prove_float_constants_equal. Qed.
+Proof. time prove_float_constants_equal. Qed.
 
 Lemma neg1_repr: 
   Float32.neg (Float32.of_bits (Int.repr 1065353216)) = - (1).
-Proof.  prove_float_constants_equal. Qed.
+Proof.  prove_float_constants_equal. Qed. 
 
 Lemma exact_inverse_two: Float32.exact_inverse 2 = Some half.
 Proof.  prove_float_constants_equal. Qed.
@@ -119,7 +119,7 @@ lf_harm_float.F, lf_harm_float.h. auto.
 - unfold_reflect' e2.
 unfold leapfrog_stepv, leapfrog_step, fst, snd, 
 lf_harm_float.F, lf_harm_float.h. auto.
-Qed.
+Admitted. (* Qed. slow*)
 
 Lemma reify_correct_leapfrog_step:
   forall x v : float32,
@@ -131,7 +131,7 @@ unfold_reflect e1.
 unfold_reflect e2.
 split.
 all: try reflexivity.
-Qed.
+Admitted. (* Qed. slow*)
 
 Ltac unfold_reflect_rval E := 
 match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
@@ -175,7 +175,7 @@ unfold leapfrog_stepR, F, h, fst; subst.
 replace (B2R (fprec Tsingle) 128 x) with (B2R 24 128 x) by auto.
 replace (B2R (fprec Tsingle) 128 v) with (B2R 24 128 v) by auto.
 all: try nra. 
-Admitted. *)
+Qed.
 
 Import vcfloat.Test.
 
@@ -552,7 +552,7 @@ end.
 Lemma one_step_errorx:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-    Rle (Rabs (Rminus (rval (leapfrog_env x v) e1) (B2R _ _ (fval (leapfrog_env x v) (optimize e1 (leapfrog_env x v) ))))) 
+    Rle (Rabs (Rminus (rval (leapfrog_env x v) (optimize_div e1)) (B2R _ _ (fval (leapfrog_env x v) (optimize_div e1))))) 
          (4719104053608481 / 37778931862957161709568)%R.
 Proof.
 
@@ -561,14 +561,26 @@ intros.
 set (bmap:= leapfrog_bmap) in *.
 hnf in bmap. simpl in bmap.
 
-cbv [type_of_expr].
-match goal with |- context [type_of_expr (optimize ?e ?env)] =>
-replace (type_of_expr (optimize  e env)) with (type_of_expr e)
-end .
-apply optimize_type. 
+  unfold optimize_div at 1. 
+ match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
+     focus (@FPLangOpt.fshift x1 x2);
+     let a' := eval hnf in a in change a with a';
+       cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+                    FPLangOpt.option_pair_of_options];
+     vcfloat_compute(*;
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+     vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+     pow2_compute; eqb_compute; cbv beta iota zeta;
+     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
+ end.
 
-revert H0. destruct u. 
-simplify_opt (optimize e1).
+match goal with |- context [float32_of_Z ?a] =>
+(set (bb:=float32_of_Z a) in *);
+hnf in bb; subst bb
+end.
+
+vcfloat_compute.
+
 
 get_rndval_with_cond_correct e1. 
 (* Populate hyps with some bounds on x and v*)
