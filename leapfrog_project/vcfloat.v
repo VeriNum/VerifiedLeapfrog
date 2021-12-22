@@ -159,19 +159,32 @@ Ltac simplify_float_ops x :=
     change x with y
 .
 
-Ltac fshift_compute :=
+Ltac eqb_compute :=
 repeat match goal with
 | |- context [binop_eqb ?a  ?b] =>
-      simplify_float_ops (binop_eqb a b); cbv beta iota zeta
+      simplify_float_ops (binop_eqb a b)
+| |- context [binary_float_eqb ?a  ?b] =>
+      simplify_float_ops (binary_float_eqb a b)
+end.
+
+Ltac pow2_compute :=
+repeat match goal with
 | |- context [to_power_2 ?a] =>
       simplify_float_ops (to_power_2 a) 
 | |- context [to_power_2_pos ?a] =>
       simplify_float_ops (to_power_2_pos a) 
-| |- context [binary_float_eqb ?a  ?b] =>
-      simplify_float_ops (binary_float_eqb a b); cbv beta iota zeta; vcfloat_simplifications
 | |- context [to_inv_power_2 ?a] =>
       simplify_float_ops (to_inv_power_2 a) 
 end.
+
+Ltac exact_inv_compute :=
+repeat match goal with
+| |- context [Bexact_inverse] =>  cbv [Bexact_inverse ]
+| |- context [Pos.eq_dec ?a ?b] =>
+      simplify_float_ops (Pos.eq_dec a b); cbv beta iota zeta
+| |- context [Z_le_dec ?a ?b] =>
+      simplify_float_ops (Z_le_dec a b); cbv beta iota zeta
+end. 
 
 Ltac vcfloat_compute := 
 vcfloat_partial_compute;
@@ -203,10 +216,23 @@ Ltac simplify_fshift :=
  match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
      focus (@FPLangOpt.fshift x1 x2);
      let a' := eval hnf in a in change a with a';
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+       cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+                    FPLangOpt.option_pair_of_options];
      vcfloat_compute;
-     fshift_compute;
+     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+     vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+     pow2_compute; eqb_compute; cbv beta iota zeta;
      match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
+ end.
+
+Ltac simplify_fshift_div :=
+ match goal with |- context [@FPLangOpt.fshift_div ?x1 ?x2 ?a] =>
+    simplify_fshift;
+    focus (@FPLangOpt.fshift_div x1 x2);
+    cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
+    vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+    pow2_compute; vcfloat_simplifications;
+    exact_inv_compute; eqb_compute; cbv beta iota zeta 
  end.
 
 Definition optimize {V: Type} {NANS: Nans} (e: expr) : expr :=
@@ -214,20 +240,6 @@ Definition optimize {V: Type} {NANS: Nans} (e: expr) : expr :=
 
 Definition optimize_div {V: Type} {NANS: Nans} (e: expr) : expr :=
   @fshift_div V NANS (@fshift V NANS (@fcval V NANS e)).
-
-Ltac simplify_opt e1 :=
-  match e1 with (optimize ?e) =>   
-  unfold optimize;
-  let e' := eval hnf in e in change e with e';
-      cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
-                    FPLangOpt.option_pair_of_options];
-     vcfloat_compute;
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
-     vcfloat_compute;
-     fshift_compute
- | _ => fail 100 "no opt to simplify"
-end
-.
 
 Module TESTING.
 
@@ -259,74 +271,13 @@ Definition e :=  ltac:(let e' := reify_float_expr constr:( (float32_of_Z (-1))%F
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x]) F in exact e').
 
 Goal optimize_div e1 = Var Tsingle _x.
-  unfold optimize_div. 
-  let e' := eval hnf in e1 in change e1 with e'.
-       cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
-                    FPLangOpt.option_pair_of_options];
-     vcfloat_compute.
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ].
-     vcfloat_simplifications.
-repeat match goal with
-| |- context [binop_eqb ?a  ?b] =>
-      simplify_float_ops (binop_eqb a b)
-end.      
- cbv beta iota zeta.
-repeat match goal with
-| |- context [to_power_2 ?a] =>
-      simplify_float_ops (to_power_2 a) 
-| |- context [to_power_2_pos ?a] =>
-      simplify_float_ops (to_power_2_pos a) 
-| |- context [binary_float_eqb ?a  ?b] =>
-      simplify_float_ops (binary_float_eqb a b)
-| |- context [to_inv_power_2 ?a] =>
-      simplify_float_ops (to_inv_power_2 a) 
-end. 
-
-cbv beta iota zeta.
-
-cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec].
-vcfloat_simplifications.
-repeat match goal with
-| |- context [binop_eqb ?a  ?b] =>
-      simplify_float_ops (binop_eqb a b)
-end.
-cbv beta iota zeta.
-repeat match goal with
-| |- context [to_power_2 ?a] =>
-      simplify_float_ops (to_power_2 a) 
-| |- context [to_power_2_pos ?a] =>
-      simplify_float_ops (to_power_2_pos a) 
-| |- context [binary_float_eqb ?a  ?b] =>
-      simplify_float_ops (binary_float_eqb a b)
-| |- context [to_inv_power_2 ?a] =>
-      simplify_float_ops (to_inv_power_2 a) 
-end. 
-vcfloat_simplifications.
-
-match goal with
-|- context [Bexact_inverse] =>
-cbv [Bexact_inverse ];
-match goal with
-|- context [Pos.eq_dec ?a ?b] =>
-      simplify_float_ops (Pos.eq_dec a b); cbv beta iota zeta
-end
-end. 
-
-repeat match goal with
-|- context [Z_le_dec ?a ?b] =>
-      simplify_float_ops (Z_le_dec a b); cbv beta iota zeta
-end.
-
-repeat match goal with
-|- context [binary_float_eqb ?a  ?b] =>
-      simplify_float_ops (binary_float_eqb a b)
-end.
-
-cbv beta iota zeta.  
-
+  unfold optimize_div; 
+  simplify_fshift_div.
+Abort.
 
 Goal optimize e1 = Var Tsingle _x.
-simplify_opt (optimize e1).
+  unfold optimize. 
+  simplify_fshift. 
 Abort.
 
 End TESTING.
