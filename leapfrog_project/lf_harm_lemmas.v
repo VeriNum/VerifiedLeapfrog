@@ -110,27 +110,16 @@ Lemma env_fval_reify_correct_leapfrog_step:
   fval (leapfrog_env x v) e1 = leapfrog_stepx x v /\
   fval (leapfrog_env x v) e2 = leapfrog_stepv x v.
 Proof.
-intros. (* 
-set (e1':= e1); unfold e1 in e1'; compute in e1'; fold Tsingle in e1'; fold _x in e1'; fold _v in e1'.
-set (e2':= e2); unfold e2 in e2'; compute in e2'; fold Tsingle in e2'; fold _x in e2'; fold _v in e2'.
+intros. 
+unfold leapfrog_env.
 unfold leapfrog_env; split.
-{ unfold_reflect' e1'.
+- unfold_reflect' e1.
 unfold leapfrog_stepx, leapfrog_step, fst, snd, 
-lf_harm_float.F, lf_harm_float.h, lf_harm_float.half.
-replace (Float32.div  1%Z  32%Z) with (B2 Tsingle (- (5))) by
-(apply binary_float_eqb_eq; auto). 
-replace (Float32.div  1%Z  2%Z) with (B2 Tsingle (- (1))) by
-(apply binary_float_eqb_eq; auto). 
-Search "B2".
-
-x + B2 Tsingle (- (5)) * v + B2 Tsingle (- (11)) * - x
-
-replace (lf_harm_float.h * lf_harm_float.h * (- 1%Z * x) *
- lf_harm_float.half) with
-((lf_harm_float.half * lf_harm_float.h * lf_harm_float.h * (- 1%Z * x))%F32) by
-auto.
-all: try reflexivity. *)
-Admitted.
+lf_harm_float.F, lf_harm_float.h. auto.
+- unfold_reflect' e2.
+unfold leapfrog_stepv, leapfrog_step, fst, snd, 
+lf_harm_float.F, lf_harm_float.h. auto.
+Qed.
 
 Lemma reify_correct_leapfrog_step:
   forall x v : float32,
@@ -142,7 +131,7 @@ unfold_reflect e1.
 unfold_reflect e2.
 split.
 all: try reflexivity.
-Admitted.
+Qed.
 
 Ltac unfold_reflect_rval E := 
 match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
@@ -169,7 +158,7 @@ match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
  subst HIDE; cbv beta
 end.
 
-(*Lemma env_rval_reify_correct_leapfrog_step:
+Lemma env_rval_reify_correct_leapfrog_step:
   forall x v : float32,
   forall x1 v1 : R,
   x1 = B2R _ _ x ->
@@ -246,153 +235,10 @@ subst j t lo hi yy;
        | fail 88 "val_inject_inv failed" ];
   subst v i'
  end)
- end.
-
-Import Interval.Tactic.
-
-Definition optimize {V: Type} {NANS: Nans} (e: expr) env : expr :=
-  @fshift_div V NANS env (@fshift V NANS (@fcval V NANS e)).
-
-Lemma optimize_type {V: Type}{NANS: Nans} env: 
-   forall e: expr, @type_of_expr V (optimize e env) = @type_of_expr V e.
-Proof.
-intros.
-unfold optimize.
-pose proof fcval_type e0.
-pose proof fshift_type (fcval e0).
-pose proof fshift_type_div env (fshift (fcval e0)). 
-pose proof (eq_trans (fshift_type (fcval e0)) (@fcval_type V NANS e0)) .
-rewrite H2 in H1. auto. 
-Defined.
-
-
-Ltac simplify_opt e1 :=
-  match e1 with (optimize ?e) =>   
-  unfold optimize;
-  let e' := eval hnf in e in change e with e';
-      cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
-                    FPLangOpt.option_pair_of_options];
-     vcfloat_compute;
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
-     vcfloat_compute;
-     fshift_compute;
-     cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
-     vcfloat_compute;
-    fshift_compute;
-    vcfloat_simplifications;
-    fshift_compute
-(*
-repeat(
-    match goal with |- context [Bexact_inverse _ _ _ _ ?a ] =>
-set (c:=a)
-end)*)
- | _ => fail 100 "no opt to simplify"
-end
+ end
 .
 
-(*
-Lemma check_shift:
-  forall x v : float32,
-    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-  @FPLangOpt.fshift_div _ _ (leapfrog_env x v) (@FPLangOpt.fshift _ _ (@FPLangOpt.fcval _ _ e1)) = Var Tsingle _x.
-Proof.
 
-simplify_opt (optimize e1).
-
-(*intros.
-(*shift div *)
- match goal with |- context [@FPLangOpt.fshift_div ?x1 ?x2 ?env ?a] =>
-     focus (@FPLangOpt.fshift_div x1 x2 env);
-     let a' := eval hnf in a in change a with a' ;
-     cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
-     vcfloat_compute;
-    fshift_compute;
-    vcfloat_simplifications;
-    fshift_compute
-    (* match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
- 
- end.*)
-
-repeat(
-    match goal with |- context [Bexact_inverse _ _ _ _ ?a ] =>
-set (c:=a)
-end).
-set (g:=Bexact_inverse (fprec Tsingle) (femax Tsingle) (fprec_gt_0 Tsingle)
-         (fprec_lt_femax Tsingle) c)
-.
-unfold c in *; clear c.
- cbv beta iota zeta delta[Bexact_inverse] in g.
-simpl in g.
-unfold g.
-repeat (
-    match goal with |- context [binary_float_eqb ?a  ?b] =>
-      let x':= eval compute in (binary_float_eqb a  b) in change (binary_float_eqb a  b) with x'
-end). cbv beta iota zeta.
-clear g.
-
-intros.
-
-match goal with |- context [eqb ?a ?b] =>
-set (y:= eqb a b) in * 
-end. 
-
-destruct eqb in y; subst y. simpl. 
-
-fin_assumptions.
-
-repeat(
-match goal with H: context[ (is_finite ?a ?b ?c)] |- _ => 
-apply is_finite_not_is_nan in H
-end)
-. 
-
-eapply is_nan_expr_correct. 
-
-match goal with |- context [Binop ?b ?e1 (if ?c then ?d else ?e)] =>
-destruct c end.
-
-symmetry. 
-assert (is_nan_expr (leapfrog_env x v) (Unop (Exact1 (InvShift 10 false))
-                  (Unop (CastTo Tsingle None)
-                     (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))) = false).
-simpl. auto. 
-cbv in Hval_x;inversion Hval_x; clear Hval_x; subst. auto.
-replace (leapfrog_env x v Tsingle lf_harm_lemmas._x) with val_x in * by 
-(cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto). auto.
-(* because x is finite *)
- 
-
-pose proof is_nan_expr_correct (leapfrog_env x v) 
-(Unop (Exact1 (InvShift 10 false))
-               (Unop (CastTo Tsingle None)
-                  (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))).
-
-change ((type_of_expr
-             (Unop (Exact1 (InvShift 10 false))
-                (Unop (CastTo Tsingle None)
-                   (Unop (Exact1 Opp) (Var Tsingle lf_harm_lemmas._x)))))) with
-Tsingle in *.
-rewrite H0 in H1.  
-
-match goal with |- context [?a = Binop ?b ?e1 (if ?c then ?d else ?e)] =>
-destruct c end.
-
-admit.  
-
-rewrite H0 in H1.  
-
-repeat (
-    match goal with |- context [eqb ?a  ?b] =>
-      let x':= eval compute in (eqb a  b) in change (eqb a  b) with x'
-end). 
-
-simpl.
-
-cbv [fval] in H0.
-
-
-
-*)
 Ltac rndval_replace ex :=
   match goal with 
     H0: (rndval_with_cond 0 (mempty (Tsingle, Normal)) ex = (?r, (?si, ?s), ?p)) |- _ =>
@@ -410,7 +256,8 @@ Ltac rndval_replace ex :=
       assert (p =  snd (m)) as H3 by (
         replace m with (r, (si, s), p) by auto; auto);
       compute in H, H1 ,H2 ,H3
-end.
+end
+.
 
 Import Interval.Tactic.
 
