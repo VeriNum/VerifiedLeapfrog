@@ -272,35 +272,47 @@ Ltac simplify_fcval :=
      match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
  end.
 
-Ltac simplify_fshift :=
- match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
-     focus (@FPLangOpt.fshift x1 x2);
-     let a' := eval hnf in a in change a with a';
-       cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
-                    FPLangOpt.option_pair_of_options];
-     vcfloat_compute;
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
-     vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
-     pow2_compute; eqb_compute; cbv beta iota zeta;
-     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
- end.
-
-Ltac simplify_fshift_div :=
- match goal with |- context [@FPLangOpt.fshift_div ?x1 ?x2 ?a] =>
-    simplify_fshift;
-    focus (@FPLangOpt.fshift_div x1 x2);
-    cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
-    vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
-    pow2_compute; vcfloat_simplifications;
-    exact_inv_compute; eqb_compute; cbv beta iota zeta;
-    match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
- end.
-
 Definition optimize {V: Type} {NANS: Nans} (e: expr) : expr :=
   @fshift V NANS (@fcval V NANS e).
 
 Definition optimize_div {V: Type} {NANS: Nans} (e: expr) : expr :=
   @fshift_div V NANS (@fshift V NANS (@fcval V NANS e)).
+
+Ltac simplify_shift_opt E :=
+  match E with 
+  | optimize ?e' =>
+    let e:= constr:(fshift (fcval e')) in change E with e;
+    match e with | @fshift ?x1 ?x2 ?a =>
+        let a' := eval hnf in a in change a with a' ;
+        cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+              FPLangOpt.option_pair_of_options];
+        vcfloat_compute;
+        cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+        vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+        pow2_compute; eqb_compute; cbv beta iota zeta 
+   end
+  | _ => fail 100 "expr should be optimized"
+end.
+
+Ltac simplify_shift_div_opt E  :=
+  match E with 
+    optimize_div ?e' =>
+   let e:= constr:(fshift_div (fshift (fcval e'))) in change E with e;
+   match e with | @FPLangOpt.fshift_div ?x1 ?x2 (@fshift ?x3 ?x4 ?a) =>
+    let a' := eval hnf in a in change a with a' ;
+    cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+          FPLangOpt.option_pair_of_options];
+    vcfloat_compute;
+    cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+    vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+    pow2_compute; eqb_compute; cbv beta iota zeta ;
+    cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
+    vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+    pow2_compute; vcfloat_simplifications;
+    exact_inv_compute; eqb_compute; cbv beta iota zeta
+  end
+ end.
+
 
 Module TESTING.
 
@@ -331,25 +343,14 @@ Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_
 Definition e :=  ltac:(let e' := reify_float_expr constr:( (float32_of_Z (-1))%F32 ) in exact e').
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x]) F in exact e').
 
-Goal optimize_div e1 = Var Tsingle _x.
-  unfold optimize_div. 
- match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
-     focus (@FPLangOpt.fshift x1 x2);
-     let a' := eval hnf in a in change a with a';
-       cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
-                    FPLangOpt.option_pair_of_options];
-     vcfloat_compute
-     (*cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
-     vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
-     pow2_compute; eqb_compute; cbv beta iota zeta;
-     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
- end.
-
-Abort.
 
 Goal optimize e1 = Var Tsingle _x.
-  unfold optimize. 
-  simplify_fshift. 
+  simplify_shift_opt (optimize e1).
 Abort.
+
+Goal optimize_div e1 = Var Tsingle _x.
+  simplify_shift_div_opt (optimize_div e1).
+Abort.
+
 
 End TESTING.
