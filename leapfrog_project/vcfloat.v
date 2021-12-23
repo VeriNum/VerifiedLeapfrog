@@ -139,7 +139,7 @@ Ltac vcfloat_partial_compute :=
   cbv beta iota delta [fop_of_binop fop_of_unop fop_of_rounded_binop fop_of_rounded_unop]; 
   cbv beta iota delta [BMULT BDIV BPLUS BMINUS BINOP];
   repeat (set (z := fprec _); compute in z; subst z); 
-  repeat (set (z := femax _); compute in z; subst z); 
+  repeat (set (z := femax _); compute in z; subst z);
   repeat (set (x := float32_of_Z _); hnf in x; subst x).
 
 Definition hide {T: Type} {x: T} := x.
@@ -232,7 +232,8 @@ Ltac simplify_fshift_div :=
     cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
     vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
     pow2_compute; vcfloat_simplifications;
-    exact_inv_compute; eqb_compute; cbv beta iota zeta 
+    exact_inv_compute; eqb_compute; cbv beta iota zeta;
+    match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
  end.
 
 Definition optimize {V: Type} {NANS: Nans} (e: expr) : expr :=
@@ -271,8 +272,19 @@ Definition e :=  ltac:(let e' := reify_float_expr constr:( (float32_of_Z (-1))%F
 Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x]) F in exact e').
 
 Goal optimize_div e1 = Var Tsingle _x.
-  unfold optimize_div; 
-  simplify_fshift_div.
+  unfold optimize_div. 
+ match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
+     focus (@FPLangOpt.fshift x1 x2);
+     let a' := eval hnf in a in change a with a';
+       cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+                    FPLangOpt.option_pair_of_options];
+     vcfloat_compute
+     (*cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
+     vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+     pow2_compute; eqb_compute; cbv beta iota zeta;
+     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
+ end.
+
 Abort.
 
 Goal optimize e1 = Var Tsingle _x.
