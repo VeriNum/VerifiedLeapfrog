@@ -656,34 +656,51 @@ end.
 Lemma one_step_errorx:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-    Rle (Rabs (Rminus (rval (leapfrog_env x v) (optimize_div e1)) (B2R _ _ (fval (leapfrog_env x v) (optimize_div e1))))) 
+    Rle (Rabs (Rminus (rval (leapfrog_env x v) (optimize_div e1)) 
+   (B2R _ _ (fval (leapfrog_env x v) (optimize_div e1))))) 
          (4719104053608481 / 37778931862957161709568)%R.
 Proof.
-
 intros.
-
 set (bmap:= leapfrog_bmap) in *.
 hnf in bmap. simpl in bmap.
-
-  unfold optimize_div at 1. 
- match goal with |- context [@FPLangOpt.fshift ?x1 ?x2 ?a] =>
-     focus (@FPLangOpt.fshift x1 x2);
-     let a' := eval hnf in a in change a with a';
-       cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
-                    FPLangOpt.option_pair_of_options];
-     vcfloat_compute(*;
-     cbv beta fix iota delta [FPLangOpt.fshift FPLangOpt.fcval_nonrec ];
-     vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
-     pow2_compute; eqb_compute; cbv beta iota zeta;
-     match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end*)
- end.
-
-match goal with |- context [float32_of_Z ?a] =>
-(set (bb:=float32_of_Z a) in *);
-hnf in bb; subst bb
+match goal with |- context [ rval ?env ?e] =>
+simplify_shift_div_opt e
 end.
+match goal with |- context [ rval ?env ?e] =>
+match goal with
+    H: boundsmap_denote ?bmap ?vmap |- _ =>
+let HFIN:= fresh in (
+assert (forall ty i, is_finite (fprec ty) (femax ty) ((env_ vmap) ty i) = true) as HFIN by
+ (apply (finite_env bmap vmap H))
+);
+(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) e) as [[r [si2 s]] p] eqn:rndval);
+let lc2:= fresh in (
+assert (list_forall (eval_cond2 (mk_env bmap vmap) s) p ) as lc2);
+(*leapfrog_conds2_hold*)
+match goal with
+    H0: boundsmap_denote ?bmap ?vmap
+      |- _ =>
+      apply boundsmap_denote_e in H0 ;
+      rewrite ?list_forall_Forall in *;
+      rewrite list_forall_Forall in H0 ;
+      rndval_replace e; subst
+end
+end
+end.
+prepare_assumptions_about_free_variables.
+  match goal with |- List.Forall (eval_cond2 _ ?M) _ =>
+   let m := fresh "m" in set (m:=M); compute in m; subst m;
+  fold Tsingle; fold Tdouble
+end.
+repeat
+    match goal with |- context [ type_lub ?a ?b ] =>
+     first [change (type_lub a b) with Tsingle
+            |change (type_lub a b) with Tdouble]
+    end.
 
-vcfloat_compute.
+(* proof obligations for underflow from InvShift *)
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_eval_cond2_vmap).
 
 
 get_rndval_with_cond_correct e1. 
