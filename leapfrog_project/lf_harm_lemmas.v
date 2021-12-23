@@ -23,7 +23,7 @@ Lemma neg1_repr:
 Proof.  prove_float_constants_equal. Qed.
 
 Lemma exact_inverse_two: Float32.exact_inverse 2 = Some half.
-Proof.  prove_float_constants_equal. Qed.
+Proof.  prove_float_constants_equal. Time Qed.
 
 Lemma leapfrog_step_is_finite:
   forall n, 0 <= n < 100 ->
@@ -63,8 +63,75 @@ apply (B754_zero (fprec ty) (femax ty) true).
 apply (B754_zero (fprec ty) (femax ty) true).
 Defined.
 
+Ltac unfold_corresponding e :=
+  (* This tactic is given a term (E1=E2), where E1 is an expression
+     with internal nodes Bplus, Bminus, etc. and arbitrary leaves;
+    and E2 is an expression which, if carefully unfolded in the right places,
+    would have just the same tree structure.  And it carefully unfolds
+    just in the right places, and returns (E1=E2') where E2' is the unfolding of E2.
+
+    We want this tactic because, if we do not carefully unfold E2 before
+   calling reflexivity, then reflexivity takes forever and then Qed takes
+   two-to-the-forever.   In particular, some of the operators we may need
+   to unfold are Float32.add, Float32.sub, et cetera. *)
+lazymatch e with eq ?E1 ?E2 =>
+lazymatch E1 with
+ | Bplus ?a1 ?b1 ?c1 ?d1 ?e1 ?f1 ?l1 ?r1 =>
+    lazymatch E2 with
+    | Bplus _ _ _ _ _ _ ?l2 ?r2 => 
+          let l2' := unfold_corresponding constr:(eq l1 l2) in
+          let r2' := unfold_corresponding constr:(eq r1 r2) in
+          constr:(Bplus a1 b1 c1 d1 e1 f1 l2' r2')
+   | _ => 
+          let E2' := eval red  in E2 in unfold_corresponding constr:(eq E1 E2')
+    end
+ | Bminus ?a1 ?b1 ?c1 ?d1 ?e1 ?f1 ?l1 ?r1 =>
+    lazymatch E2 with
+    | Bminus _ _ _ _ _ _ ?l2 ?r2 => 
+          let l2' := unfold_corresponding constr:(eq l1 l2) in
+          let r2' := unfold_corresponding constr:(eq r1 r2) in
+          constr:(Bminus a1 b1 c1 d1 e1 f1 l2' r2') 
+   | _ => 
+          let E2' := eval red  in E2 in unfold_corresponding constr:(eq E1 E2')
+    end
+ | Bmult ?a1 ?b1 ?c1 ?d1 ?e1 ?f1 ?l1 ?r1 =>
+    lazymatch E2 with
+    | Bmult _ _ _ _ _ _ ?l2 ?r2 => 
+          let l2' := unfold_corresponding constr:(eq l1 l2) in
+          let r2' := unfold_corresponding constr:(eq r1 r2) in
+          constr:(Bmult a1 b1 c1 d1 e1 f1 l2' r2')
+   | _ => 
+          let E2' := eval red  in E2 in unfold_corresponding constr:(eq E1 E2')
+    end
+ | Bdiv ?a1 ?b1 ?c1 ?d1 ?e1 ?f1 ?l1 ?r1 =>
+    lazymatch E2 with
+    | Bdiv _ _ _ _ _ _ ?l2 ?r2 => 
+          let l2' := unfold_corresponding constr:(eq l1 l2) in
+          let r2' := unfold_corresponding constr:(eq r1 r2) in
+          constr:(Bdiv a1 b1 c1 d1 e1 f1 l2' r2') 
+   | _ => 
+          let E2' := eval red  in E2 in unfold_corresponding constr:(eq E1 E2')
+    end
+ | Bopp ?a1 ?b1 ?c1 ?x1 =>
+    lazymatch E2 with
+    | Bopp _ _ _ ?x2 => 
+          let x2' := unfold_corresponding constr:(eq x1 x2) in
+          constr:(Bopp a1 b1 c1 x2') 
+   | _ => 
+          let E2' := eval red  in E2 in unfold_corresponding constr:(eq E1 E2')
+    end
+ | _ => constr:(E2)
+end end.
+
+Ltac unfold_float_ops_for_equality :=
+  (* see comment at Ltac unfold_corresponding. *)
+  lazymatch goal with |- ?a = ?b => 
+        let b' := unfold_corresponding constr:(a=b) in change (a=b')
+  end.
+
 Ltac unfold_reflect' E := 
-match goal with |- context [fval (list_to_bound_env ?L1 ?L2) E] =>
+repeat lazymatch goal with 
+| |- context [fval (list_to_bound_env ?L1 ?L2) E] =>
  pattern (fval (list_to_bound_env L1 L2) E);
  let HIDE := fresh "HIDE" in match goal with |- ?A _ => set (HIDE:=A) end;
  let m := fresh "m" in let m' := fresh "m'" in
@@ -75,25 +142,37 @@ match goal with |- context [fval (list_to_bound_env ?L1 ?L2) E] =>
  set (m2 := (Maps.PTree_Properties.of_list L2)) in m;
  hnf in m2; simpl in m2;
  let e' := eval hnf in E in change E with e';
- cbv [fval type_of_expr type_of_unop Datatypes.id];
- repeat change (type_lub _ _) with Tsingle;
- repeat change (type_lub _ _) with Tdouble;
- repeat change (cast_lub_l Tsingle Tsingle ?x) with x;
- repeat change (cast_lub_r Tsingle Tsingle ?x) with x;
- repeat change (cast_lub_l Tdouble Tdouble ?x) with x;
- repeat change (cast_lub_r Tdouble Tdouble ?x) with x;
- cbv [fop_of_unop fop_of_exact_unop fop_of_binop fop_of_rounded_binop];
- change (cast _ _ ?a) with a;
- change (BOPP Tsingle) with Float32.neg;
- change (BPLUS Tsingle) with Float32.add;
- change (BMULT Tsingle) with Float32.mul;
- change (BDIV Tsingle) with Float32.div;
+ cbv [fval type_of_expr type_of_unop 
+        fop_of_unop fop_of_exact_unop fop_of_rounded_unop
+        fop_of_binop fop_of_rounded_binop Datatypes.id];
  repeat match goal with |- context [m ?t ?i] =>
              let u := fresh "u" in set (u := m t i); hnf in u; subst u
  end;
  subst m1 m2 m; 
+ repeat (change (type_lub ?a ?b) with a || change (type_lub ?a ?b) with b);
+ repeat change (cast_lub_l _ _ ?x) with x;
+ repeat change (cast_lub_r _ _ ?x) with x;
+ repeat change (cast _ _ ?x) with x;
+ cbv beta delta [BPLUS BMINUS BMULT BDIV BOPP BINOP];
+(* change (Bplus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.add;
+ change (Bminus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.sub;
+ change (Bmult (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.mul;
+ change (Bdiv (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.div; 
+ change (Bopp (fprec Tsingle) (femax Tsingle) _) with Float32.neg;
+ change (Bplus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.add;
+ change (Bminus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.sub;
+ change (Bmult (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.mul;
+ change (Bdiv (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.div; 
+ change (Bopp (fprec Tsingle) (femax Tsingle) _) with Float.neg;
+*)
  subst HIDE; cbv beta
+(* lazymatch goal with |- ?a = ?b => 
+        let b' := unfold_corresponding constr:(a=b) in change (a=b')
+  end
+*)
+| |- context [fval ?env E] => let y := eval red in env in change env with y
 end.
+
 
 
 Definition leapfrog_bmap_list := 
@@ -105,6 +184,27 @@ Definition leapfrog_bmap :=  Maps.PTree_Properties.of_list leapfrog_bmap_list.
 Definition leapfrog_vmap (x v : float32) := Maps.PTree_Properties.of_list (leapfrog_vmap_list x v).
 
 
+Lemma env_fval_reify_correct_leapfrog_step_x:
+  forall x v : float32,
+  fval (leapfrog_env x v) e1 = leapfrog_stepx x v.
+Proof.
+intros. 
+Time unfold_reflect' e1.  (* 0.045 sec *)
+Time unfold_float_ops_for_equality. (* 0.008 sec *)
+Time reflexivity. (* 0.000 sec *)
+Time Qed.  (* 0.013 sec *)
+
+
+Lemma env_fval_reify_correct_leapfrog_step_v:
+  forall x v : float32,
+  fval (leapfrog_env x v) e2 = leapfrog_stepv x v.
+Proof.
+intros.
+Time unfold_reflect' e2.  (* 0.076 sec *)
+Time unfold_float_ops_for_equality. (* 0.0011 sec *)
+Time reflexivity. (* 0.001 sec *)
+Time Qed.  (* 0.03 sec *)
+
 Lemma env_fval_reify_correct_leapfrog_step:
   forall x v : float32,
   fval (leapfrog_env x v) e1 = leapfrog_stepx x v /\
@@ -113,12 +213,8 @@ Proof.
 intros. 
 unfold leapfrog_env.
 unfold leapfrog_env; split.
-- unfold_reflect' e1.
-unfold leapfrog_stepx, leapfrog_step, fst, snd, 
-lf_harm_float.F, lf_harm_float.h. auto.
-- unfold_reflect' e2.
-unfold leapfrog_stepv, leapfrog_step, fst, snd, 
-lf_harm_float.F, lf_harm_float.h. auto.
+- unfold_reflect' e1. unfold_float_ops_for_equality. reflexivity.
+- unfold_reflect' e2. unfold_float_ops_for_equality. reflexivity.
 Qed.
 
 Lemma reify_correct_leapfrog_step:
@@ -131,7 +227,12 @@ unfold_reflect e1.
 unfold_reflect e2.
 split.
 all: try reflexivity.
-Qed.
+Abort.  (* This Qed blows up.  The solution may be, 
+  in part, to replace the unfold_reflect  in vcfloat.v with the unfold_reflect' in this file,
+  and use it as in the proof of env_fval_reify_correct_leapfrog_step. 
+  But that's not the entire answer, becuse perhaps this list_to_env thing is 
+  obsolete now anyway?
+*)
 
 Ltac unfold_reflect_rval E := 
 match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
