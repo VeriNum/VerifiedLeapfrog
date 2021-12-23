@@ -12,9 +12,69 @@ Definition SterbenzSub := Float.sub.
 
 Definition placeholder32: AST.ident -> float32. intro. apply Float32.zero. Qed.
 
+Module B_Float_Notations.
+
+Declare Scope float1_scope.
+Delimit Scope float1_scope with F1.
+Declare Scope float2_scope.
+Delimit Scope float2_scope with F2.
+
+Notation "x + y" := (Bplus (fprec Tsingle) (femax Tsingle) eq_refl eq_refl (plus_nan _) mode_NE x y) (at level 50, left associativity) : float1_scope.
+Notation "x - y"  := (Bminus (fprec Tsingle) (femax Tsingle) eq_refl eq_refl (plus_nan _) mode_NE x y) (at level 50, left associativity) : float1_scope.
+Notation "x * y"  := (Bmult (fprec Tsingle) (femax Tsingle) eq_refl eq_refl (mult_nan _) mode_NE x y) (at level 40, left associativity) : float1_scope.
+Notation "x / y"  := (Bdiv (fprec Tsingle) (femax Tsingle) eq_refl eq_refl (div_nan _) mode_NE x y) (at level 40, left associativity) : float1_scope.
+Notation "- x" := (Bopp (fprec Tsingle) (femax Tsingle) (opp_nan _) x) (at level 35, right associativity) : float1_scope.
+
+Notation "x + y" := (Bplus (fprec Tdouble) (femax Tdouble) eq_refl eq_refl (plus_nan _) mode_NE x y) (at level 50, left associativity) : float2_scope.
+Notation "x - y"  := (Bminus (fprec Tdouble) (femax Tdouble) eq_refl eq_refl (plus_nan _) mode_NE x y) (at level 50, left associativity) : float2_scope.
+Notation "x * y"  := (Bmult (fprec Tdouble) (femax Tdouble) eq_refl eq_refl (mult_nan _) mode_NE x y) (at level 40, left associativity) : float2_scope.
+Notation "x / y"  := (Bdiv (fprec Tdouble) (femax Tdouble) eq_refl eq_refl (div_nan _) mode_NE x y) (at level 40, left associativity) : float2_scope.
+Notation "- x" := (Bopp (fprec Tdouble) (femax Tdouble) (opp_nan _) x) (at level 35, right associativity) : float2_scope.
+
+End B_Float_Notations.
+
+
+Ltac ground_pos p := 
+ match p with
+ | Z.pos ?p' => ground_pos p'
+ | xH => constr:(tt) 
+ | xI ?p' => ground_pos p' 
+ | xO ?p' => ground_pos p' 
+ end.
+
+Ltac find_type prec emax :=
+ match prec with
+ | 24%Z => match emax with 128%Z => constr:(Tsingle) end
+ | 53%Z => match emax with 1024%Z => constr:(Tdouble) end
+ | Z.pos ?precp => 
+     let g := ground_pos precp in let g := ground_pos emax in 
+     constr:(TYPE precp emax (ZLT_intro prec emax (eq_refl _)) (BOOL_intro _ (eq_refl _)))
+ end.
+
+Definition Zconst (t: type) : Z -> ftype t :=
+  BofZ (fprec t) (femax t) (Pos2Z.is_pos (fprecp t)) (fprec_lt_femax t).
+
 Ltac reify_float_expr E :=
  match E with
  | placeholder32 ?i => constr:(@Var AST.ident Tsingle i)
+ | cast ?tto _ ?f => constr:(@Unop AST.ident (CastTo tto None) f)
+ | BofZ ?prec ?emax _ _ ?z => let t := find_type prec emax in
+                                                 constr:(@Const AST.ident t (Zconst t z))
+ | BofZ (fprec ?t) _ _ _ ?z => constr:(@Const AST.ident t (Zconst t z))
+ | Zconst ?t ?z => constr:(@Const AST.ident t (Zconst t z))
+ | BofZ _ _ _ _ => fail 1 "reify_float_expr failed on" E "because the prec,emax arguments must be either integer literals or of the form (fprec _),(femax _)"
+ | Bplus _ _ _ _ mode_NE ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
+                                      constr:(@Binop AST.ident (Rounded2 PLUS None) a' b')
+ | Bminus _ _ _ _ mode_NE ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
+                                      constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
+ | Bmult _ _ _ _ mode_NE ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
+                                      constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
+ | Bdiv _ _ _ _ mode_NE ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
+                                      constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
+ | Bopp _ _ _ ?a => let a' := reify_float_expr a in 
+                                      constr:(@Unop AST.ident (Exact1 Opp) a')
+ | Babs _ _ _ ?a => let a' := reify_float_expr a in 
+                                      constr:(@Unop AST.ident (Exact1 Abs) a')
  | Float.of_single ?f => constr:(@Unop AST.ident (CastTo Tdouble None) f)
  | Float.to_single ?f => constr:(@Unop AST.ident (CastTo Tsingle None) f)
  | float32_of_Z ?n => constr:(@Const AST.ident Tsingle (float32_of_Z n))

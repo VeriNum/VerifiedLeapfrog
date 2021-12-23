@@ -154,6 +154,8 @@ repeat lazymatch goal with
  repeat change (cast_lub_r _ _ ?x) with x;
  repeat change (cast _ _ ?x) with x;
  cbv beta delta [BPLUS BMINUS BMULT BDIV BOPP BINOP];
+ change (fprec_gt_0 Tsingle) with (eq_refl Lt);
+ change (fprec_lt_femax Tsingle) with (eq_refl Lt);
 (* change (Bplus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.add;
  change (Bminus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.sub;
  change (Bmult (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.mul;
@@ -183,6 +185,7 @@ Definition leapfrog_env  := (fun x v => list_to_bound_env leapfrog_bmap_list (le
 Definition leapfrog_bmap :=  Maps.PTree_Properties.of_list leapfrog_bmap_list.
 Definition leapfrog_vmap (x v : float32) := Maps.PTree_Properties.of_list (leapfrog_vmap_list x v).
 
+Import B_Float_Notations.
 
 Lemma env_fval_reify_correct_leapfrog_step_x:
   forall x v : float32,
