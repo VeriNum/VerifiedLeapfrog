@@ -199,8 +199,11 @@ Ltac vcfloat_partial_compute :=
   cbv beta iota delta [fop_of_binop fop_of_unop fop_of_rounded_binop fop_of_rounded_unop]; 
   cbv beta iota delta [BMULT BDIV BPLUS BMINUS BINOP];
   repeat (set (z := fprec _); compute in z; subst z); 
-  repeat (set (z := femax _); compute in z; subst z);
-  repeat (set (x := float32_of_Z _); hnf in x; subst x).
+  repeat (set (z := femax _); compute in z; subst z); 
+  repeat match goal with |- context [float32_of_Z ?a] =>
+    set (z := float32_of_Z a);
+    hnf in z; subst z
+  end.
 
 Definition hide {T: Type} {x: T} := x.
 
