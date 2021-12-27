@@ -178,8 +178,8 @@ end.
 
 
 Definition leapfrog_bmap_list := 
-  [(_v, {|Test.var_type:=Tsingle; Test.var_name:=_v; Test.var_lobound:=-1; Test.var_hibound:=1|});
-  (_x,{|Test.var_type:=Tsingle; Test.var_name:=_x; Test.var_lobound:=-1; Test.var_hibound:=1|})].
+  [(_v, {|Test.var_type:=Tsingle; Test.var_name:=_v; Test.var_lobound:=powerRZ 2 (- (101)); Test.var_hibound:=1|});
+  (_x,{|Test.var_type:=Tsingle; Test.var_name:=_x; Test.var_lobound:=powerRZ 2 (- (101)); Test.var_hibound:=1|})].
 Definition leapfrog_vmap_list (x v : float32) := [(_x, Values.Vsingle x);(_v, Values.Vsingle v)].
 Definition leapfrog_env  := (fun x v => list_to_bound_env leapfrog_bmap_list (leapfrog_vmap_list x v)). 
 Definition leapfrog_bmap :=  Maps.PTree_Properties.of_list leapfrog_bmap_list.
@@ -343,9 +343,9 @@ subst j t lo hi yy;
 .
 
 
-Ltac rndval_replace ex :=
+Ltac rndval_replace :=
   match goal with 
-    H0: (rndval_with_cond 0 (mempty (Tsingle, Normal)) ex = (?r, (?si, ?s), ?p)) |- _ =>
+    H0: (rndval_with_cond 0 (mempty (Tsingle, Normal)) ?ex = (?r, (?si, ?s), ?p)) |- _ =>
       let m := fresh "m" in set (m:=rndval_with_cond 0 (mempty (Tsingle, Normal)) ex) in H0; 
       let H:= fresh  in 
       let H1:= fresh  in 
@@ -413,7 +413,7 @@ Ltac leapfrog_conds2_hold ex:=
       apply boundsmap_denote_e in H0;
       rewrite ?list_forall_Forall in *;
       rewrite list_forall_Forall in H0;
-      rndval_replace ex; subst;
+      rndval_replace; subst;
       prepare_assumptions_about_free_variables;
 
 match goal with |- List.Forall (eval_cond2 _ ?M) _ =>
@@ -540,7 +540,7 @@ Ltac get_rexp_with_eps_delt e :=
 match goal with 
   H0: rndval_with_cond 0 (mempty (Tsingle, Normal)) ?e =  
   (?r, (?si2, ?s), ?p) |- _ =>
-  rndval_replace e;
+  rndval_replace;
   subst si2 s r;
   get_eps_delts
 
@@ -568,6 +568,7 @@ match goal with
   H: boundsmap_denote (?bmap) (?vmap)
   |- _
   => 
+assert (boundsmap_denote (bmap) (vmap)) as BMD by (apply H);
 apply boundsmap_denote_e in H;
 rewrite list_forall_Forall in H;
 repeat
@@ -604,9 +605,9 @@ intros;nra.
 Qed.
 
 Ltac reduce_abs_error:=
-match goal with |- context [reval _ _ (mget (mset (?M) _ _))] => 
-     let m := fresh "m" in set (m:=M); compute in m; unfold reval;
-simpl rval;
+match goal with |- context [reval _ _ (mget (mset (?M) _ _))  = _ ] => 
+  let m := fresh "m" in set (m:=M); compute in m; unfold reval;
+  simpl rval; try (cbv [id]);
   repeat (
     match goal with |- context [{| Fnum := ?n; Fexp := _ |}] =>
       change n with (Z.pow_pos (2%Z) (Z.to_pos ((Z.log2 n%Z)%Z) ));
@@ -628,8 +629,8 @@ simpl in x; subst x
           let x:= fresh "x" in set (x:= if Nat.eq_dec _ _ then _ else _); hnf in x; subst x 
         end  );
 cbv [F2R Defs.F2R fone bpow radix_val radix2 Fexp Fnum];
-rewrite ?Zpower_pos_powerRZ; unfold powerRZ; 
-      rewrite ?powerRZ_pos_sub2; rewrite ?neg_powerRZ;
+rewrite ?Zpower_pos_powerRZ; unfold powerRZ;
+      rewrite ?powerRZ_pos_sub2;
       rewrite ?Rmult_1_l;
       rewrite ?Rmult_1_r;
       rewrite ?powerRZ_O; try lra;
@@ -649,7 +650,16 @@ unfold FT2R in *;
 repeat(
 match goal with | [H': Maps.PTree.get _ _ = _ |- _] => 
 cbv in H'; inversion H'; subst; auto
-end)
+end);
+try change (fprec Tsingle) with 24%Z ;
+try change (femax Tsingle) with 128%Z ;
+repeat match goal with |- context [(/ ?b ^ Pos.to_nat ?p)] =>
+let x:= (constr:(Z.opp ( Z.of_nat (Pos.to_nat p)))) in
+set (x':= x) in *; simpl in x';
+replace (/ b ^ Pos.to_nat p) with
+(powerRZ b x') by
+(try rewrite ?pow_powerRZ; try simpl; try nra); unfold x'; clear x'
+end
 end.
 
 
@@ -667,98 +677,48 @@ match goal with |- context [ rval ?env ?e] =>
 simplify_shift_div_opt e
 end.
 match goal with |- context [ rval ?env ?e] =>
-match goal with
-    H: boundsmap_denote ?bmap ?vmap |- _ =>
-let HFIN:= fresh in (
-assert (forall ty i, is_finite (fprec ty) (femax ty) ((env_ vmap) ty i) = true) as HFIN by
- (apply (finite_env bmap vmap H))
-);
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) e) as [[r [si2 s]] p] eqn:rndval);
-let lc2:= fresh in (
-assert (list_forall (eval_cond2 (mk_env bmap vmap) s) p ) as lc2);
-(*leapfrog_conds2_hold*)
-match goal with
-    H0: boundsmap_denote ?bmap ?vmap
-      |- _ =>
-      apply boundsmap_denote_e in H0 ;
-      rewrite ?list_forall_Forall in *;
-      rewrite list_forall_Forall in H0 ;
-      rndval_replace e; subst
-end
-end
+get_rndval_with_cond_correct e;
+set (ty:= type_of_expr e) in *;
+simpl in ty;
+cbv [Datatypes.id] in ty;   
+repeat change (type_lub Tsingle Tsingle) with Tsingle in ty; 
+unfold ty in *; clear ty
 end.
-prepare_assumptions_about_free_variables.
-  match goal with |- List.Forall (eval_cond2 _ ?M) _ =>
-   let m := fresh "m" in set (m:=M); compute in m; subst m;
-  fold Tsingle; fold Tdouble
-end.
-repeat
-    match goal with |- context [ type_lub ?a ?b ] =>
-     first [change (type_lub a b) with Tsingle
-            |change (type_lub a b) with Tdouble]
-    end.
-
-(* proof obligations for underflow from InvShift *)
-repeat (apply List.Forall_cons; try apply List.Forall_nil;
-try solve_one_eval_cond2_vmap).
-
-
-get_rndval_with_cond_correct e1. 
 (* Populate hyps with some bounds on x and v*)
 fv_prepare_assumptions.
 (* turn rndval rexp to flt with eps delt *)
-rndval_replace e1; 
+rndval_replace.
 subst si2 s r;
 get_eps_delts.
-pattern (B2R (fprec (type_of_expr e1)) (femax (type_of_expr e1))
-     (fval (leapfrog_env x v) e1));  try rewrite <- e3.
-clear H1 e0 H4 H;
-reduce_abs_error. 
-clear rndval p m e3.
+revert e3; reduce_abs_error.
+(* TODO: following rewrites are better handled in previous tactics *)
+(* env rewrite*)
+replace ((env_ (leapfrog_vmap val_x val_v))) with (leapfrog_env val_x val_v) in * by
+(apply lf_env_eq; apply BMD).
+(* var rewrites *)
 replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with val_x in * by 
 (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
 replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
 (cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-replace (B2R (fprec Tsingle) (femax Tsingle) val_v) with
-(B2R (fprec Tsingle) 128 val_v) in * by auto.
-replace (B2R (fprec Tsingle) (femax Tsingle) val_x) with
-(B2R (fprec Tsingle) 128 val_x) in * by auto.
-try (
- repeat(
-    match goal with |- context [?a * (?b + ?c)] =>
+(* TODO: changes should be handled fv_prepare_assumptions *)
+change (fprec Tsingle) with 24%Z in *; 
+change (femax Tsingle) with 128%Z in *. 
+
+intros; rewrite <- e3.
+
+repeat match goal with |- context [?a * (?b + ?c)] =>
     rewrite ?Rmult_plus_distr_l; rewrite ?Rmult_plus_distr_r
-end
-      ) ; rewrite ?Rmult_1_r
-). 
-    match goal with |- context [Rabs (?a + ?b + ?c -(?v)) <= _] =>
+end ; rewrite ?Rmult_1_r;
+match goal with |- context [Rabs (?a + ?b + ?c -(?v)) <= _] =>
 field_simplify (a + b + c - (v))
- end
-.
-    match goal with |- context [Rabs (?v) <= _] =>
-interval_intro (Rabs v)
- end
-;
-nra.
-(* oddly, the following doesn't work but above two lines do
-interval with (i_bisect (B2R (fprec Tsingle) 128 val_x), i_bisect (B2R (fprec Tsingle) 128 val_v)).
-*)
+end;
+match goal with |- context [Rabs (?v) <= _] =>
+field_simplify v;
+interval_intro (Rabs v);
+try interval
+end.
 Qed.
 
-Lemma local_errorx:
-  forall x v : float32,
-  forall x1 v1 : R,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-  x1 = B2R _ _ x ->
-  v1 = B2R _ _ v -> 
-    Rle (Rabs (Rminus (fst(leapfrog_stepR (x1,v1))) (B2R _ _ (leapfrog_stepx x v)))) (/ powerRZ 2 12)%R.
-Proof.
-intros.
-replace (fst (leapfrog_stepR (x1,v1))) with (rval (leapfrog_env x v) e1).
-replace (leapfrog_stepx x v) with ((fval (leapfrog_env x v) e1)).
-pose proof one_step_errorx x v H; auto. 
-pose proof env_fval_reify_correct_leapfrog_step x v; auto.
-pose proof env_rval_reify_correct_leapfrog_step x v x1 v1 H0 H1; destruct H2; auto.
-Qed.
 
 (*velocity error between R and F functions over one step of integration*)
 Lemma one_step_errorv:
