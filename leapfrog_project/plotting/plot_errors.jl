@@ -50,7 +50,7 @@ function plot_errors(in_file::String, err_file::String, pos::Bool)
     pos ? fstr      = "position" : fstr      = "velocity"
     pos ? pbnd      = pbnd_x     : pbnd      = pbnd_v
     pos ? out_dat   = vec_x      : out_dat   = vec_v
-    pos ? in_dat    = vec_in_x   : in_dat    = vec_out_v
+    pos ? in_dat    = vec_in_x   : in_dat    = vec_in_v
 
     # plot histogram 
 
@@ -72,7 +72,7 @@ function plot_errors(in_file::String, err_file::String, pos::Bool)
         left_margin = 15mm, right_margin = 15mm
 	 )
     plotb = scatter!(
-        in_dat, out_dat, ylabel = "floating-point error",xlabel = "initial $plot_l",
+        in_dat, out_dat, ylabel = "floating-point error",xlabel = "initial $fstr",
         size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
         yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
         label="empirical error",
