@@ -489,8 +489,7 @@ assert (forall i : cond, List.In i p -> eval_cond1 (env_ vmap) s i) as listconds
 );
 replace (mk_env bmap vmap) with (env_ vmap) in * by (apply env_mk_env; auto);
 (destruct (rndval_with_cond_correct
-                          _ HFIN _ HVALID _ _ _ _ rndval lc2 _ (eq_refl _)) as [] eqn:correct)(*; 
-clear correct HFIN HVALID listconds*)
+                          _ HFIN _ HVALID _ _ _ _ rndval lc2 _ (eq_refl _)) as [] eqn:correct)
 end.
 
 Lemma powerRZ_pos_sub2: 
@@ -765,6 +764,7 @@ fv_prepare_assumptions.
 rndval_replace.
 subst si2 s r;
 get_eps_delts.
+clear correct HFIN HVALID listconds.
 revert e3; reduce_abs_error.
 (* env rewrite *)
 replace ((env_ (leapfrog_vmap val_x val_v))) with (leapfrog_env val_x val_v) in * by
@@ -866,6 +866,7 @@ fv_prepare_assumptions.
 rndval_replace.
 subst si2 s r;
 get_eps_delts.
+clear correct HFIN HVALID listconds.
 revert e3; reduce_abs_error.
 
 (* env rewrite*)
