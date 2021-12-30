@@ -317,7 +317,8 @@ try rewrite (@fcval_type V NANS). intros.
 revert H1 H2.
 generalize (fval env (fshift (fcval e))).
 try rewrite fshift_type. try rewrite (@fcval_type V NANS). intros.
-pose proof binary_float_eqb_eq_rect_r (type_of_expr e) (type_of_expr e)  f (fval env e) eq_refl .
+pose proof binary_float_eqb_eq_rect_r
+   (type_of_expr e) (type_of_expr e) f (fval env e) eq_refl .
 try rewrite H2 in H3. clear H2; symmetry in H3; apply binary_float_eqb_eq in H3. subst.
 revert H1.
 generalize (fval env (fshift_div (fshift (fcval e)))).
@@ -325,6 +326,18 @@ try rewrite fshift_type_div. try rewrite fshift_type. try rewrite (@fcval_type V
 destruct (fval env e); try discriminate.
 all: destruct f; simpl in H1; try contradiction; try simpl; try reflexivity.
 } 
+Qed.
+
+Definition optimize_div_correct' {V: Type} {NANS: Nans}:
+  forall env e, 
+    Binary.is_nan _ _ (fval env e) = false ->
+   binary_float_eqb (fval env e) (fval env (@optimize_div V NANS e)) = true.
+Proof.
+intros.
+rewrite optimize_div_correct.
+rewrite binary_float_eqb_eq_rect_r.
+apply binary_float_eqb_eq. auto.
+apply H.
 Qed.
 
 Ltac simplify_shift_opt E :=
