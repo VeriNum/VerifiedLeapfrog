@@ -764,7 +764,7 @@ fv_prepare_assumptions.
 rndval_replace.
 subst si2 s r;
 get_eps_delts.
-clear correct HFIN HVALID listconds.
+clear correct.
 revert e3; reduce_abs_error.
 (* env rewrite *)
 replace ((env_ (leapfrog_vmap val_x val_v))) with (leapfrog_env val_x val_v) in * by
@@ -866,7 +866,7 @@ fv_prepare_assumptions.
 rndval_replace.
 subst si2 s r;
 get_eps_delts.
-clear correct HFIN HVALID listconds.
+clear correct.
 revert e3; reduce_abs_error.
 
 (* env rewrite*)
