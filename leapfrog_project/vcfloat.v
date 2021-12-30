@@ -281,6 +281,52 @@ Definition optimize {V: Type} {NANS: Nans} (e: expr) : expr :=
 Definition optimize_div {V: Type} {NANS: Nans} (e: expr) : expr :=
   @fshift_div V NANS (@fshift V NANS (@fcval V NANS e)).
 
+Lemma optimize_div_type {V: Type} {NANS: Nans}:
+  forall e : expr, @type_of_expr V (optimize_div e) = 
+    @type_of_expr V e.
+Proof.
+intros;
+apply (eq_trans (fshift_type_div (fshift (fcval e)))
+      (eq_trans (fshift_type (fcval e)) (fcval_type e))).
+Defined.
+
+Lemma optimize_div_correct {V: Type} {NANS: Nans}:
+  forall env e,
+    Binary.is_nan _ _ (fval env e) = false ->
+    fval env (optimize_div e) = 
+      eq_rect_r ftype (fval env e) (@optimize_div_type V NANS e).
+Proof.
+intros. unfold optimize_div.
+rewrite fshift_div_correct.
+{ rewrite (@fshift_correct V NANS).
+rewrite (@fcval_correct V NANS).
+unfold eq_rect_r.
+repeat rewrite rew_compose.
+f_equal.
+repeat rewrite <- eq_trans_sym_distr.
+rewrite <- eq_trans_assoc.
+f_equal.
+}
+{
+pose proof fshift_div_correct' env (fshift (fcval e)).
+pose proof fshift_correct' env (fcval e).
+rewrite (@fcval_correct V NANS env e) in H1.
+revert H0 H1.
+generalize (fval env (fcval e)).
+try rewrite (@fcval_type V NANS). intros.
+revert H1 H2.
+generalize (fval env (fshift (fcval e))).
+try rewrite fshift_type. try rewrite (@fcval_type V NANS). intros.
+pose proof binary_float_eqb_eq_rect_r (type_of_expr e) (type_of_expr e)  f (fval env e) eq_refl .
+try rewrite H2 in H3. clear H2; symmetry in H3; apply binary_float_eqb_eq in H3. subst.
+revert H1.
+generalize (fval env (fshift_div (fshift (fcval e)))).
+try rewrite fshift_type_div. try rewrite fshift_type. try rewrite (@fcval_type V NANS). intros.
+destruct (fval env e); try discriminate.
+all: destruct f; simpl in H1; try contradiction; try simpl; try reflexivity.
+} 
+Qed.
+
 Ltac simplify_shift_opt E :=
   match E with 
   | optimize ?e' =>
