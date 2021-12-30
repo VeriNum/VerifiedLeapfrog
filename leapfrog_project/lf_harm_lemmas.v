@@ -187,6 +187,7 @@ Definition leapfrog_vmap (x v : float32) := Maps.PTree_Properties.of_list (leapf
 
 Import B_Float_Notations.
 
+
 Lemma env_fval_reify_correct_leapfrog_step_x:
   forall x v : float32,
   fval (leapfrog_env x v) e1 = leapfrog_stepx x v.
@@ -452,32 +453,6 @@ repeat
     end
 end.
 
-
-(*
-Lemma leapfrogx_cond2_holds:
-  forall x v : float32,
-    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-   forall r0 si2_0 s0 p0 , 
-      rndval_with_cond 0 (mempty (Tsingle, Normal)) e1 =
-         (r0, (si2_0, s0), p0) ->
-      list_forall (eval_cond2 (mk_env leapfrog_bmap (leapfrog_vmap x v)) s0) p0.
-Proof.
-intros.
-leapfrog_conds2_hold e1.
-Qed. 
-
-Lemma leapfrogv_cond2_holds:
-  forall x v : float32,
-    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-   forall r0 si2_0 s0 p0 , 
-      rndval_with_cond 0 (mempty (Tsingle, Normal)) e2 =
-         (r0, (si2_0, s0), p0) ->
-      list_forall (eval_cond2 (mk_env leapfrog_bmap (leapfrog_vmap x v)) s0) p0.
-Proof.
-intros.
-leapfrog_conds2_hold e2.
-Qed. *)
-
 Ltac leapfrog_conds1_hold ex lc2:=
   match goal with
     H0: boundsmap_denote ?bmap ?vmap 
@@ -488,18 +463,6 @@ apply list_forall_spec;
 apply (list_forall_ext (eval_cond2 (env_ vmap) s)); auto;
     apply eval_cond2_correct
 end.
-(*
-Lemma leapfrogx_cond1_holds:
-  forall x v : float32,
-    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-   forall r si2 s p, 
-      rndval_with_cond 0 (mempty (Tsingle, Normal)) e1 =
-         (r, (si2, s), p) ->
-    forall i : cond, List.In i p -> eval_cond1 (env_ (leapfrog_vmap x v)) s i.
-Proof.
-intros ? ? ? ? ? ? ? ?. 
-leapfrog_conds1_hold e1. 
-Qed.*)
 
 Ltac get_rndval_with_conds ex:=
 match goal with
@@ -526,8 +489,8 @@ assert (forall i : cond, List.In i p -> eval_cond1 (env_ vmap) s i) as listconds
 );
 replace (mk_env bmap vmap) with (env_ vmap) in * by (apply env_mk_env; auto);
 (destruct (rndval_with_cond_correct
-                          _ HFIN _ HVALID _ _ _ _ rndval lc2 _ (eq_refl _)) as [] eqn:correct); 
-clear correct HFIN HVALID listconds
+                          _ HFIN _ HVALID _ _ _ _ rndval lc2 _ (eq_refl _)) as [] eqn:correct)(*; 
+clear correct HFIN HVALID listconds*)
 end.
 
 Lemma powerRZ_pos_sub2: 
@@ -737,7 +700,32 @@ Proof.
 intros; field_simplify; reflexivity.
 Qed.
 
-(*velocity error between R and F functions over one step of integration*)
+Lemma leapfrog_stepx_is_finite:
+  forall x v : float32,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  Binary.is_finite 24 128 (fval (leapfrog_env x v) e1) = true.
+Proof. 
+intros.
+set (bmap:= leapfrog_bmap) in *.
+hnf in bmap. simpl in bmap.
+get_rndval_with_conds e1.
+get_conds2.
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_cond2 (FT2R Tsingle val_x ) (FT2R Tsingle val_v )). 
+get_rndval_with_cond_correct e1 H0 H1 rndval s p.
+replace (leapfrog_env x v) with (env_ (leapfrog_vmap x v)). 
++ apply e0.
++ symmetry; apply lf_env_eq; apply H.
+Qed.
+
+Lemma leapfrog_opt_stepx_is_finite {V: Type} {NANS: Nans}:
+  forall x v : float32,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  Binary.is_finite _ _ (fval (leapfrog_env x v) (optimize_div e1)) = true.
+Proof. 
+Admitted.
+
+(* single step velocity error *)
 Lemma one_step_errorv:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
@@ -778,8 +766,7 @@ rndval_replace.
 subst si2 s r;
 get_eps_delts.
 revert e3; reduce_abs_error.
-(* TODO: following rewrites are better handled in previous tactics *)
-(* env rewrite*)
+(* env rewrite *)
 replace ((env_ (leapfrog_vmap val_x val_v))) with (leapfrog_env val_x val_v) in * by
 (apply lf_env_eq; apply BMD).
 (* var rewrites *)
@@ -787,7 +774,7 @@ replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with val_x in * by
 (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
 replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
 (cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-(* TODO: changes should be handled fv_prepare_assumptions *)
+
 change (fprec Tsingle) with 24%Z in *; 
 change (femax Tsingle) with 128%Z in *.
 
@@ -837,10 +824,9 @@ try interval_intro (Rabs v);
 try interval;
 try nra
 end.
-
 Qed.
 
-
+(* single step position error *)
 Lemma one_step_errorx:
   forall x v : float32,
     boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
@@ -881,7 +867,7 @@ rndval_replace.
 subst si2 s r;
 get_eps_delts.
 revert e3; reduce_abs_error.
-(* TODO: following rewrites are better handled in previous tactics *)
+
 (* env rewrite*)
 replace ((env_ (leapfrog_vmap val_x val_v))) with (leapfrog_env val_x val_v) in * by
 (apply lf_env_eq; apply BMD).
@@ -890,7 +876,7 @@ replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with val_x in * by
 (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
 replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
 (cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-(* TODO: changes should be handled fv_prepare_assumptions *)
+
 change (fprec Tsingle) with 24%Z in *; 
 change (femax Tsingle) with 128%Z in *. 
 
@@ -915,11 +901,13 @@ Lemma local_errorx:
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
-    Rle (Rabs (Rminus (fst(leapfrog_stepR (x1,v1))) (B2R _ _ (leapfrog_stepv x v)))) (/ powerRZ 2 12)%R.
+    Rle (Rabs (Rminus (fst(leapfrog_stepR (x1,v1))) 
+    (B2R _ _ (leapfrog_stepv x v)))) 
+    (4719104053608481 / 37778931862957161709568)%R.
 Proof.
 intros.
-replace (fst (leapfrog_stepR (x1,v1))) with (rval (leapfrog_env x v) e1).
-replace (leapfrog_stepx x v) with ((fval (leapfrog_env x v) e1)).
+replace (fst (leapfrog_stepR (x1,v1))) with (rval (leapfrog_env x v) (optimize_div e1)).
+replace (leapfrog_stepx x v) with ((fval (leapfrog_env x v) (optimize_div e1))).
 pose proof one_step_errorx x v H; auto. 
 pose proof env_fval_reify_correct_leapfrog_step x v; auto.
 pose proof env_rval_reify_correct_leapfrog_step x v x1 v1; auto.
@@ -944,6 +932,25 @@ Admitted.
 
 Definition iternf  (n:nat) (x v :float32) :=  leapfrog (x%F32, v%F32) n.
 Definition iternfR (n:nat) (x v :R) :=  leapfrogR (x,v) n .
+
+Lemma global_error2:
+  forall x v : float32, 
+  forall x1 v1 : R,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  x1 = B2R _ _ x ->
+  v1 = B2R _ _ v -> 
+  forall n: nat, 
+  INR n <= 1/lf_harm_real.h -> 
+  Rle (Rabs (Rminus (fst(iternfR n x1%R v1%R)) (B2R _ _ (fst(iternf n x%F32 v%F32))))) ( sqrt (INR n))%R .
+Proof.
+intros. induction n. 
+-unfold iternf ,iternfR ,INR, leapfrog, leapfrogR, 
+leapfrog_stepx,lf_harm_real.h in *;
+replace (powerRZ (/ powerRZ 2 12 + 1) (Z.of_nat 0)) with 1 by auto; 
+replace (/ powerRZ 2 12 *0) with  (0) by nra; auto; subst; unfold fst; unfold snd;
+replace (B2R 24 128 x - B2R 24 128 x) with 0 by nra;
+replace (B2R 24 128 v - B2R 24 128 v) with 0 by nra;
+split. all: try interval.
 
 (* Note: I think the following proof had been completed for the first branch
  - position - but not the second. Anyway, the "local error" proofs above should
