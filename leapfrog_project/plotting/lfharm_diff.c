@@ -28,7 +28,7 @@ void lfstep32(float **x, float **v, float h, int size)
 	for (int n = 0; n < size; n++){
 		a = -1.0f * (*x)[n];
 	  	(*x)[n] = (*x)[n] + h * (*v)[n] + 0.5f * (h * h * -1.0f * (*x)[n]);		/* position step */
-  		(*v)[n] = (*v)[n] + 0.5f * (h * -1.0f * (*x)[n] + a);		/* velocity step */
+  		(*v)[n] = (*v)[n] + 0.5f * h * ( -1.0f * (*x)[n] + a);		/* velocity step */
 	}
 }
 
@@ -41,7 +41,7 @@ void lfstep64(double **x, double **v, double h, int size)
 	for (int n = 0; n < size; n++){
 		a = -1.0 * (*x)[n];
   		(*x)[n] = (*x)[n] + h * (*v)[n] + 0.5 * (h * h * -1.0 * (*x)[n]);		/* position step */
-  		(*v)[n] = (*v)[n] + 0.5 * (h * -1.0 * (*x)[n] + a);		/* velocity step */
+		(*v)[n] = (*v)[n] + 0.5 * h * ( -1.0 * (*x)[n] + a);		/* velocity step */
 	}
 }
 
@@ -54,8 +54,8 @@ int main(int argc, char *argv[]){
 	}
 	
 	int max  = atoi(argv[1]);
-	double hd = 1.0/32.0;
-	float hf  = (float) hd;
+	float hf = 1.0/32.0;
+	double hd  = (double) hf;
 	char filename1[25]= "lf_in_data_";
 	char filename2[25]= "lf_out_data_";
 
