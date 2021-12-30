@@ -702,7 +702,7 @@ Qed.
 Lemma leapfrog_stepx_is_finite:
   forall x v : float32,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-  Binary.is_finite 24 128 (fval (leapfrog_env x v) e1) = true.
+  Binary.is_finite _ _(fval (leapfrog_env x v) e1) = true.
 Proof. 
 intros.
 set (bmap:= leapfrog_bmap) in *.
@@ -717,12 +717,24 @@ replace (leapfrog_env x v) with (env_ (leapfrog_vmap x v)).
 + symmetry; apply lf_env_eq; apply H.
 Qed.
 
-Lemma leapfrog_opt_stepx_is_finite {V: Type} {NANS: Nans}:
+
+Lemma leapfrog_opt_stepx_is_finite:
   forall x v : float32,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
   Binary.is_finite _ _ (fval (leapfrog_env x v) (optimize_div e1)) = true.
-Proof. 
-Admitted.
+Proof.
+intros.
+pose proof leapfrog_stepx_is_finite x v H.
+set (env:=(leapfrog_env x v)) in *.
+pose proof is_finite_not_is_nan _ _  (fval env e1) H0.
+pose proof 
+  binary_float_eqb_is_finite (fval env e1) 
+    (fval env (optimize_div e1)) 
+    H0 
+    (optimize_div_correct' env e1 H1).
+apply H2.
+Qed.
+
 
 (* single step velocity error *)
 Lemma one_step_errorv:
@@ -738,17 +750,12 @@ hnf in bmap. simpl in bmap.
 match goal with |- context [ rval ?env ?e] =>
 simplify_shift_div_opt e
 end.
-
 match goal with |- context [ rval ?env ?e] =>
 get_rndval_with_conds e
 end.
-
 get_conds2.
-
 repeat (apply List.Forall_cons; try apply List.Forall_nil;
 try solve_one_cond2 (FT2R Tsingle val_x ) (FT2R Tsingle val_v )). 
-
-
 match goal with |- context [ rval ?env ?e] =>
 get_rndval_with_cond_correct e H0 H1 rndval s p;
 set (ty:= type_of_expr e) in *;
@@ -757,7 +764,6 @@ cbv [Datatypes.id] in ty;
 repeat change (type_lub Tsingle Tsingle) with Tsingle in ty; 
 unfold ty in *; clear ty
 end.
-
 (* Populate hyps with some bounds on x and v*)
 fv_prepare_assumptions.
 (* turn rndval rexp to flt with eps delt *)
@@ -774,12 +780,9 @@ replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with val_x in * by
 (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
 replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
 (cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-
 change (fprec Tsingle) with 24%Z in *; 
 change (femax Tsingle) with 128%Z in *.
-
 intros. rewrite <- e3.
-
 match goal with |- context[ (?v + ?b * ?c - ((?v + ?b * ?c') * (1 + ?del) + ?eps))] =>
 pose proof (del_eps_reduce2 1 v (b*c) (b*c') del eps) as uH;
 rewrite ?Rmult_1_l in uH;
@@ -818,7 +821,6 @@ end.
 repeat match goal with |- context [?a * (?b + ?c)] =>
     rewrite ?Rmult_plus_distr_l; rewrite ?Rmult_plus_distr_r
 end; rewrite ?Rmult_1_r.
-
 match goal with |- context [Rabs (?v) <= _] =>
 try interval_intro (Rabs v);
 try interval;
@@ -903,13 +905,20 @@ Lemma local_errorx:
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
     Rle (Rabs (Rminus (fst(leapfrog_stepR (x1,v1))) 
-    (B2R _ _ (leapfrog_stepv x v)))) 
+    (B2R _ _ (leapfrog_stepx x v)))) 
     (4719104053608481 / 37778931862957161709568)%R.
 Proof.
 intros.
-replace (fst (leapfrog_stepR (x1,v1))) with (rval (leapfrog_env x v) (optimize_div e1)).
-replace (leapfrog_stepx x v) with ((fval (leapfrog_env x v) (optimize_div e1))).
+replace (fst (leapfrog_stepR (x1,v1))) with 
+  (rval (leapfrog_env x v) (optimize_div e1)).
+replace (leapfrog_stepx x v) with 
+  ((fval (leapfrog_env x v) (optimize_div e1))).
 pose proof one_step_errorx x v H; auto. 
+replace (leapfrog_stepx x v) with 
+  ((fval (leapfrog_env x v) e1)).
+symmetry; apply binary_float_eqb_eq.
+pose proof 
+pose proof optimize_div_correct'.
 pose proof env_fval_reify_correct_leapfrog_step x v; auto.
 pose proof env_rval_reify_correct_leapfrog_step x v x1 v1; auto.
 Admitted.
