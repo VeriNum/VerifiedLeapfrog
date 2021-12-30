@@ -1,6 +1,7 @@
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
 Require Import float_lib lf_harm_float lf_harm_real vcfloat.
+Set Bullet Behavior "Strict Subproofs". 
 
 Local Transparent Float32.of_bits.
 Local Transparent Float32.div.
@@ -263,20 +264,45 @@ match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
  subst HIDE; cbv beta
 end.
 
-Lemma env_rval_reify_correct_leapfrog_step:
+Lemma env_rval_reify_correct_leapfrog_stepx:
   forall x v : float32,
   forall x1 v1 : R,
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
-  rval (leapfrog_env x v) e1 = fst (leapfrog_stepR (x1,v1)) /\
-  rval (leapfrog_env x v) e2 = snd (leapfrog_stepR (x1,v1)).
+  rval (leapfrog_env x v) (optimize_div e1) = fst (leapfrog_stepR (x1,v1)).
 Proof.
 intros.
 unfold leapfrog_env.
-unfold_reflect_rval e1.
-unfold_reflect_rval e2.
-simpl. cbv [Defs.F2R FLT_exp]; simpl. rewrite ?Z.pow_pos_fold. 
-unfold leapfrog_stepR, F, h, fst; subst. 
+match goal with |- context [rval ?env ?e] =>
+  simplify_shift_div_opt e
+end.
+match goal with |- context [rval ?env ?e] =>
+  unfold_reflect_rval e; cbv [id]
+end.
+simpl; rewrite ?Z.pow_pos_fold. 
+unfold leapfrog_stepR, F, h, fst; subst.  
+replace (B2R (fprec Tsingle) 128 x) with (B2R 24 128 x) by auto.
+replace (B2R (fprec Tsingle) 128 v) with (B2R 24 128 v) by auto.
+all: try nra. 
+Qed.
+
+Lemma env_rval_reify_correct_leapfrog_stepv:
+  forall x v : float32,
+  forall x1 v1 : R,
+  x1 = B2R _ _ x ->
+  v1 = B2R _ _ v -> 
+  rval (leapfrog_env x v) (optimize_div e2) = snd (leapfrog_stepR (x1,v1)).
+Proof.
+intros.
+unfold leapfrog_env.
+match goal with |- context [rval ?env ?e] =>
+  simplify_shift_div_opt e
+end.
+match goal with |- context [rval ?env ?e] =>
+  unfold_reflect_rval e; cbv [id]
+end.
+simpl; rewrite ?Z.pow_pos_fold. 
+unfold leapfrog_stepR, F, h, fst; subst.  
 replace (B2R (fprec Tsingle) 128 x) with (B2R 24 128 x) by auto.
 replace (B2R (fprec Tsingle) 128 v) with (B2R 24 128 v) by auto.
 all: try nra. 
@@ -717,6 +743,43 @@ replace (leapfrog_env x v) with (env_ (leapfrog_vmap x v)).
 + symmetry; apply lf_env_eq; apply H.
 Qed.
 
+Lemma leapfrog_stepv_is_finite:
+  forall x v : float32,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  Binary.is_finite _ _(fval (leapfrog_env x v) e2) = true.
+Proof. 
+intros.
+set (bmap:= leapfrog_bmap) in *.
+hnf in bmap. simpl in bmap.
+get_rndval_with_conds e2.
+get_conds2.
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_cond2 (FT2R Tsingle val_x ) (FT2R Tsingle val_v )). 
+get_rndval_with_cond_correct e2 H0 H1 rndval s p.
+replace (leapfrog_env x v) with (env_ (leapfrog_vmap x v)). 
++ apply e0.
++ symmetry; apply lf_env_eq; apply H.
+Qed.
+
+Lemma leapfrog_stepx_not_nan:
+  forall x v : float32,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  Binary.is_nan _ _(fval (leapfrog_env x v) e1) = false.
+Proof. 
+intros.
+apply is_finite_not_is_nan.
+apply leapfrog_stepx_is_finite; apply H.
+Qed.
+
+Lemma leapfrog_stepv_not_nan:
+  forall x v : float32,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  Binary.is_nan _ _(fval (leapfrog_env x v) e2) = false.
+Proof. 
+intros.
+apply is_finite_not_is_nan.
+apply leapfrog_stepv_is_finite; apply H.
+Qed.
 
 Lemma leapfrog_opt_stepx_is_finite:
   forall x v : float32,
@@ -724,15 +787,28 @@ Lemma leapfrog_opt_stepx_is_finite:
   Binary.is_finite _ _ (fval (leapfrog_env x v) (optimize_div e1)) = true.
 Proof.
 intros.
-pose proof leapfrog_stepx_is_finite x v H.
 set (env:=(leapfrog_env x v)) in *.
-pose proof is_finite_not_is_nan _ _  (fval env e1) H0.
 pose proof 
   binary_float_eqb_is_finite (fval env e1) 
     (fval env (optimize_div e1)) 
-    H0 
-    (optimize_div_correct' env e1 H1).
-apply H2.
+    (leapfrog_stepx_is_finite x v H) 
+    (optimize_div_correct' env e1 (leapfrog_stepx_not_nan x v H)).
+assumption.
+Qed.
+
+Lemma leapfrog_opt_stepv_is_finite:
+  forall x v : float32,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+  Binary.is_finite _ _ (fval (leapfrog_env x v) (optimize_div e2)) = true.
+Proof.
+intros.
+set (env:=(leapfrog_env x v)) in *.
+pose proof 
+  binary_float_eqb_is_finite (fval env e2) 
+    (fval env (optimize_div e2)) 
+    (leapfrog_stepv_is_finite x v H) 
+    (optimize_div_correct' env e2 (leapfrog_stepv_not_nan x v H)).
+assumption.
 Qed.
 
 
@@ -898,7 +974,7 @@ try interval
 end.
 Qed.
 
-Lemma local_errorx:
+Lemma local_errorx :
   forall x v : float32,
   forall x1 v1 : R,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
@@ -911,17 +987,18 @@ Proof.
 intros.
 replace (fst (leapfrog_stepR (x1,v1))) with 
   (rval (leapfrog_env x v) (optimize_div e1)).
-replace (leapfrog_stepx x v) with 
-  ((fval (leapfrog_env x v) (optimize_div e1))).
-pose proof one_step_errorx x v H; auto. 
-replace (leapfrog_stepx x v) with 
-  ((fval (leapfrog_env x v) e1)).
-symmetry; apply binary_float_eqb_eq.
-pose proof 
-pose proof optimize_div_correct'.
-pose proof env_fval_reify_correct_leapfrog_step x v; auto.
-pose proof env_rval_reify_correct_leapfrog_step x v x1 v1; auto.
-Admitted.
++ replace (B2R 24 128 (leapfrog_stepx x v)) with
+  (B2R _ _(fval (leapfrog_env x v) (optimize_div e1))).
+  - pose proof one_step_errorx x v H; apply H2.
+  - rewrite <- env_fval_reify_correct_leapfrog_step_x; 
+  pose proof optimize_div_correct' (leapfrog_env x v) e1 
+  (leapfrog_stepx_not_nan x v H);
+revert H2;
+generalize (fval (leapfrog_env x v) (optimize_div e1));
+rewrite optimize_div_type; intros;
+apply binary_float_eqb_eq in H2; subst; reflexivity.
++ rewrite (@env_rval_reify_correct_leapfrog_stepx x v x1 v1); auto.
+Qed.
 
 Lemma local_errorv:
   forall x v : float32,
@@ -929,42 +1006,30 @@ Lemma local_errorv:
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
-    Rle (Rabs (Rminus (snd(leapfrog_stepR (x1,v1))) (B2R _ _ (leapfrog_stepv x v)))) (/ powerRZ 2 12)%R.
+    Rle (Rabs (Rminus (snd(leapfrog_stepR (x1,v1))) 
+    (B2R _ _ (leapfrog_stepv x v)))) 
+    (4934642575282197 / 75557863725914323419136)%R.
 Proof.
 intros.
-replace (snd (leapfrog_stepR (x1,v1))) with (rval (leapfrog_env x v) e1).
-replace (leapfrog_stepx x v) with ((fval (leapfrog_env x v) e1)).
-pose proof one_step_errorx x v H; auto. 
-pose proof env_fval_reify_correct_leapfrog_step x v; auto.
-pose proof env_rval_reify_correct_leapfrog_step x v x1 v1; auto.
-Admitted.
+replace (snd (leapfrog_stepR (x1,v1))) with 
+  (rval (leapfrog_env x v) (optimize_div e2)).
++ replace (B2R 24 128 (leapfrog_stepv x v)) with
+  (B2R _ _(fval (leapfrog_env x v) (optimize_div e2))).
+  - pose proof one_step_errorv x v H. apply H2.
+  - rewrite <- env_fval_reify_correct_leapfrog_step_v; 
+  pose proof optimize_div_correct' (leapfrog_env x v) e2 
+  (leapfrog_stepv_not_nan x v H);
+revert H2;
+generalize (fval (leapfrog_env x v) (optimize_div e2));
+rewrite optimize_div_type; intros;
+apply binary_float_eqb_eq in H2; subst; reflexivity.
++ rewrite (@env_rval_reify_correct_leapfrog_stepv x v x1 v1); auto.
+Qed.
 
 
 Definition iternf  (n:nat) (x v :float32) :=  leapfrog (x%F32, v%F32) n.
 Definition iternfR (n:nat) (x v :R) :=  leapfrogR (x,v) n .
 
-Lemma global_error2:
-  forall x v : float32, 
-  forall x1 v1 : R,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-  x1 = B2R _ _ x ->
-  v1 = B2R _ _ v -> 
-  forall n: nat, 
-  INR n <= 1/lf_harm_real.h -> 
-  Rle (Rabs (Rminus (fst(iternfR n x1%R v1%R)) (B2R _ _ (fst(iternf n x%F32 v%F32))))) ( sqrt (INR n))%R .
-Proof.
-intros. induction n. 
--unfold iternf ,iternfR ,INR, leapfrog, leapfrogR, 
-leapfrog_stepx,lf_harm_real.h in *;
-replace (powerRZ (/ powerRZ 2 12 + 1) (Z.of_nat 0)) with 1 by auto; 
-replace (/ powerRZ 2 12 *0) with  (0) by nra; auto; subst; unfold fst; unfold snd;
-replace (B2R 24 128 x - B2R 24 128 x) with 0 by nra;
-replace (B2R 24 128 v - B2R 24 128 v) with 0 by nra;
-split. all: try interval.
-
-(* Note: I think the following proof had been completed for the first branch
- - position - but not the second. Anyway, the "local error" proofs above should
-be made obsolete *)
 Lemma global_error2:
  (forall x v : float32, 
   forall x1 v1 : R,
