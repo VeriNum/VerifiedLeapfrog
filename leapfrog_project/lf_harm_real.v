@@ -67,4 +67,40 @@ intros. destruct ic as [x v].
 unfold leapfrogR, leapfrog_stepR, F, fst, snd; field_simplify; nra.
 Qed.
 
+Lemma one_stepR_x_alt2:
+  forall ic1 ic2: R * R,
+  (fst (leapfrog_stepR ic1) - fst (leapfrog_stepR ic2)) = 
+  (1 - 0.5 * h ^ 2) * (fst ic1 - fst ic2) +  
+    h *(snd ic1 - snd ic2).
+Proof.
+intros. destruct ic1 as [x1 v1]. destruct ic2 as [x2 v2].
+unfold leapfrogR, leapfrog_stepR, F, fst, snd; field_simplify; nra.
+Qed.
+
+Lemma one_stepR_v_alt2:
+  forall ic1 ic2: R * R,
+  (snd (leapfrog_stepR ic1) - snd (leapfrog_stepR ic2)) = 
+  (1 - 0.5 * h ^ 2) * (snd ic1 - snd ic2) -  
+   0.5 * h * (2 - 0.5 * h^2) * (fst ic1 - fst ic2).
+Proof.
+intros. destruct ic1 as [x1 v1]. destruct ic2 as [x2 v2].
+unfold leapfrogR, leapfrog_stepR, F, fst, snd; field_simplify; nra.
+Qed.
+
+Lemma one_stepR_xn:
+  forall n : nat,
+  forall ic1 ic2: R * R,
+  (fst (leapfrogR ic1 (S n)) - fst (leapfrogR ic2 (S n))) = 
+  (1 - 0.5 * h ^ 2) * (fst (leapfrogR ic1 n) - fst (leapfrogR ic2 n)) +  
+   h *(snd (leapfrogR ic1 n) - snd (leapfrogR ic2 n)).
+Proof.
+intros. destruct ic1 as [x1 v1]. destruct ic2 as [x2 v2].
+match goal with |- context [?a - ?b = ?c] => 
+  let a' := constr:(fst (leapfrogR (x1, v1) n)) in
+  let b' := constr:(fst (leapfrogR (x2, v2) n)) in
+  replace (a - b) with  (a - a' - (b -b') + a' -b')
+end.
+repeat rewrite ?one_stepR_x; unfold F. all:  field_simplify; nra.
+Qed.
+
 Close Scope R_scope. 
