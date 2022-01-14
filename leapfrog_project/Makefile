@@ -28,6 +28,8 @@ verif_lfharm.vo: lfharm.vo lf_harm_float.vo lf_harm_lemmas.vo
 
 lf_harm_lemmas.vo: lf_harm_lemmas.v lf_harm_float.vo lf_harm_real.vo vcfloat.vo
 
+lf_harm_theorems.vo: lf_harm_theorems.v lf_harm_float.vo lf_harm_real.vo vcfloat.vo lf_harm_lemmas.vo 
+
 %.vo: %.v
 	coqc $(COQFLAGS) -I . $<
 
