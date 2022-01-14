@@ -8,7 +8,7 @@ Require Import vcfloat.FPLang.
 Require Import vcfloat.FPLangOpt.
 
 Definition SterbenzSub32 := Float32.sub.
-Definition SterbenzSub := Float.sub.
+Definition SterbenzSub   := Float.sub.
 
 Definition placeholder32: AST.ident -> float32. intro. apply Float32.zero. Qed.
 
@@ -68,9 +68,9 @@ Ltac reify_float_expr E :=
  | Bminus _ _ _ _ mode_NE ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
                                       constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
  | Bmult _ _ _ _ mode_NE ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
+                                      constr:(@Binop AST.ident (Rounded2 MULT None) a' b')
  | Bdiv _ _ _ _ mode_NE ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
-                                      constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
+                                      constr:(@Binop AST.ident (Rounded2 DIV None) a' b')
  | Bopp _ _ _ ?a => let a' := reify_float_expr a in 
                                       constr:(@Unop AST.ident (Exact1 Opp) a')
  | Babs _ _ _ ?a => let a' := reify_float_expr a in 
@@ -111,6 +111,7 @@ Ltac reify_float_expr E :=
                                       constr:(@Binop AST.ident (Rounded2 MINUS None) a' b')
  | SterbenzSub ?a ?b => let a' := reify_float_expr a in let b' := reify_float_expr b in 
                                       constr:(@Binop AST.ident SterbenzMinus a' b')
+                                  
  | Float.neg ?a => let a' := reify_float_expr a in
                                 constr:(@Unop AST.ident (Exact1 Opp) a')
  | Float.abs ?a => let a' := reify_float_expr a in
@@ -275,14 +276,25 @@ Ltac simplify_fcval :=
      match goal with |- ?out_of_focus _ => subst out_of_focus; cbv beta end
  end.
 
-Definition optimize {V: Type} {NANS: Nans} (e: expr) : expr :=
+Definition optimize_mul {V: Type} {NANS: Nans} (e: expr) : expr :=
   @fshift V NANS (@fcval V NANS e).
 
 Definition optimize_div {V: Type} {NANS: Nans} (e: expr) : expr :=
+  @fshift_div V NANS  (@fcval V NANS e).
+
+Definition optimize_shifts {V: Type} {NANS: Nans} (e: expr) : expr :=
   @fshift_div V NANS (@fshift V NANS (@fcval V NANS e)).
 
-Lemma optimize_div_type {V: Type} {NANS: Nans}:
-  forall e : expr, @type_of_expr V (optimize_div e) = 
+Lemma optimize_mul_type {V: Type}{NANS: Nans}: 
+   forall e: expr, @type_of_expr V (optimize_mul e) = @type_of_expr V e.
+Proof.
+intros.
+apply (eq_trans (fshift_type (fcval e)) (@fcval_type V NANS e)) .
+Defined.
+
+
+Lemma optimize_shifts_type {V: Type} {NANS: Nans}:
+  forall e : expr, @type_of_expr V (optimize_shifts e) = 
     @type_of_expr V e.
 Proof.
 intros;
@@ -290,13 +302,37 @@ apply (eq_trans (fshift_type_div (fshift (fcval e)))
       (eq_trans (fshift_type (fcval e)) (fcval_type e))).
 Defined.
 
-Lemma optimize_div_correct {V: Type} {NANS: Nans}:
+Lemma optimize_div_type {V: Type} {NANS: Nans}:
+  forall e : expr, @type_of_expr V (optimize_div e) = 
+    @type_of_expr V e.
+Proof.
+intros.
+apply (eq_trans (fshift_type_div (fcval e)) (@fcval_type V NANS e)) .
+Defined.
+
+Definition optimize_mul_correct {V: Type} {NANS: Nans}: 
+  forall env e,  (fval env (optimize_mul e)) = 
+  eq_rect_r ftype (fval env e) (@optimize_mul_type V NANS e).
+Proof.
+intros.
+unfold optimize_mul.
+rewrite fshift_correct.
+rewrite (@fcval_correct V NANS env).
+unfold eq_rect_r.
+rewrite rew_compose.
+f_equal.
+rewrite <- eq_trans_sym_distr.
+f_equal.
+Qed.
+
+
+Lemma optimize_shifts_correct {V: Type} {NANS: Nans}:
   forall env e,
     Binary.is_nan _ _ (fval env e) = false ->
-    fval env (optimize_div e) = 
-      eq_rect_r ftype (fval env e) (@optimize_div_type V NANS e).
+    fval env (optimize_shifts e) = 
+      eq_rect_r ftype (fval env e) (@optimize_shifts_type V NANS e).
 Proof.
-intros. unfold optimize_div.
+intros. unfold optimize_shifts.
 rewrite fshift_div_correct.
 { rewrite (@fshift_correct V NANS).
 rewrite (@fcval_correct V NANS).
@@ -328,6 +364,33 @@ all: destruct f; simpl in H1; try contradiction; try simpl; try reflexivity.
 } 
 Qed.
 
+Definition optimize_div_correct {V: Type} {NANS: Nans}: 
+  forall env e,
+    Binary.is_nan _ _ (fval env e) = false ->
+    fval env (optimize_div e) = 
+    eq_rect_r ftype (fval env e) (@optimize_div_type V NANS e).
+Proof.
+intros.
+unfold optimize_div.
+rewrite fshift_div_correct.
+rewrite (@fcval_correct V NANS env).
+unfold eq_rect_r.
+rewrite rew_compose.
+f_equal.
+rewrite <- eq_trans_sym_distr.
+f_equal.
+{
+pose proof fshift_div_correct' env (fcval e).
+rewrite (@fcval_correct V NANS env e) in H0.
+revert H0.
+generalize (fval env (fshift_div (fcval e))).
+try rewrite fshift_type_div. try rewrite (@fcval_type V NANS). intros.
+destruct (fval env e);try discriminate.
+all: destruct f; simpl in H; try contradiction; try simpl; try reflexivity.
+} 
+Qed.
+
+
 Definition optimize_div_correct' {V: Type} {NANS: Nans}:
   forall env e, 
     Binary.is_nan _ _ (fval env e) = false ->
@@ -342,9 +405,9 @@ Qed.
 
 Ltac simplify_shift_opt E :=
   match E with 
-  | optimize ?e' =>
+  | optimize_mul ?e' =>
     let e:= constr:(fshift (fcval e')) in change E with e;
-    match e with | @fshift ?x1 ?x2 ?a =>
+    match e with | @FPLangOpt.fshift ?x1 ?x2 ?a =>
         let a' := eval hnf in a in change a with a' ;
         cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
               FPLangOpt.option_pair_of_options];
@@ -353,12 +416,11 @@ Ltac simplify_shift_opt E :=
         vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
         pow2_compute; eqb_compute; cbv beta iota zeta 
    end
-  | _ => fail 100 "expr should be optimized"
 end.
 
-Ltac simplify_shift_div_opt E  :=
+Ltac simplify_shifts_opt E  :=
   match E with 
-    optimize_div ?e' =>
+    optimize_shifts ?e' =>
    let e:= constr:(fshift_div (fshift (fcval e'))) in change E with e;
    match e with | @FPLangOpt.fshift_div ?x1 ?x2 (@fshift ?x3 ?x4 ?a) =>
     let a' := eval hnf in a in change a with a' ;
@@ -375,6 +437,26 @@ Ltac simplify_shift_div_opt E  :=
   end
  end.
 
+Ltac simplify_shift_div_opt E  :=
+  match E with 
+    optimize_div ?e' =>
+   let e:= constr:(fshift_div (fcval e')) in change E with e;
+   match e with | @FPLangOpt.fshift_div ?x1 ?x2 ?a =>
+    let a' := eval hnf in a in change a with a' ;
+    cbv beta fix iota zeta delta [FPLangOpt.fcval FPLangOpt.fcval_nonrec 
+          FPLangOpt.option_pair_of_options];
+    vcfloat_compute;
+    cbv beta fix iota delta [FPLangOpt.fcval_nonrec ];
+    vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+    pow2_compute; eqb_compute; cbv beta iota zeta ;
+    cbv beta fix iota delta [FPLangOpt.fshift_div FPLangOpt.fcval_nonrec];
+    vcfloat_simplifications; eqb_compute; cbv beta iota zeta;
+    pow2_compute; vcfloat_simplifications;
+    exact_inv_compute; eqb_compute; cbv beta iota zeta
+  end
+ end.
+
+
 
 Module TESTING.
 
@@ -382,32 +464,43 @@ Local Close Scope R_scope.
 
 Local Open Scope float32_scope.
 
-Definition F (x : float32) : float32 := float32_of_Z(1) * x.
+Definition F (x : float32) : float32 := - x.
 
 (* Time step*)
 Definition h := float32_of_Z 1 / float32_of_Z 32.
 
+Definition half := float32_of_Z 1 / float32_of_Z 2.
+
 (* Single step of the integrator*)
-Definition leapfrog_step ( ic : float32 * float32) : float32 * float32 :=
+Definition leapfrog_step_test ( ic : float32 * float32) : float32 * float32 :=
   let x  := fst ic in let v:= snd ic in 
-  let x' := (x + h * v) + (h * h * F x) / float32_of_Z 2 in
-  let v' :=  v + (h*(F x + F x')/ float32_of_Z 2) in 
+  let x' := (x + h * v) + ((half) * (h * h)) * F x in
+  let v' :=  v +  (half * h) * (F x + F x') in 
   (x', v').
 
-Definition leapfrog_stepx := fun x v => fst (leapfrog_step (x,v)).
+Definition leapfrog_stepx_test := fun x v => fst (leapfrog_step_test (x,v)).
+Definition leapfrog_stepv_test := fun x v => snd (leapfrog_step_test (x,v)).
 Definition g := fun x => F x.
 
 Import ListNotations.
 Definition _x : AST.ident := 5%positive.
 Definition _v : AST.ident := 7%positive.
 
-Definition e1 := ltac:(let e' := HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx in exact e').
-Definition e :=  ltac:(let e' := reify_float_expr constr:( (float32_of_Z (-1))%F32 ) in exact e').
-Definition e2 := ltac:(let e' := HO_reify_float_expr constr:([_x]) F in exact e').
+Definition e1 := ltac:(let e' := 
+  HO_reify_float_expr constr:([_x; _v]) leapfrog_stepx_test in exact e').
+Definition e :=  ltac:(let e' := 
+  reify_float_expr constr:( (float32_of_Z (-1))%F32 ) in exact e').
+Definition e2 := ltac:(let e' := 
+  HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv_test in exact e').
 
 
-Goal optimize e1 = Var Tsingle _x.
-  simplify_shift_opt (optimize e1).
+
+Goal optimize_mul e2 = Var Tsingle _x.
+  simplify_shift_opt (optimize_mul e2).
+Abort.
+
+Goal optimize_div e2 = Var Tsingle _x.
+  simplify_shift_div_opt (optimize_div e2).
 Abort.
 
 Goal optimize_div e1 = Var Tsingle _x.
