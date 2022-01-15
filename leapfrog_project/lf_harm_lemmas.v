@@ -269,9 +269,11 @@ match goal with |- context [rval ?env ?e] =>
   unfold_reflect_rval e; cbv [id]
 end.
 unfold leapfrog_stepR, F, h, fst, snd; subst.
-replace (B2R (fprec Tsingle) (femax Tsingle) x) with (B2R 24 128 x) by auto.
-replace (B2R (fprec Tsingle) (femax Tsingle) v) with (B2R 24 128 v) by auto.
-all: repeat f_equal; simpl; unfold Defs.F2R; simpl; nra.
+replace (B2R (fprec Tsingle) (femax Tsingle) x) with 
+  (B2R 24 128 x) by auto.
+replace (B2R (fprec Tsingle) (femax Tsingle) v) with 
+  (B2R 24 128 v) by auto.
+simpl; unfold Defs.F2R; simpl; try nra.
 Qed.
 
 Lemma env_rval_reify_correct_leapfrog_stepv:
@@ -288,12 +290,13 @@ match goal with |- context [rval ?env ?e] =>
 end.
 match goal with |- context [rval ?env ?e] =>
   unfold_reflect_rval e; cbv [id]
-end.
-simpl; rewrite ?Z.pow_pos_fold. 
+end. 
 unfold leapfrog_stepR, F, h, fst; subst.  
-replace (B2R (fprec Tsingle) (femax Tsingle) x) with (B2R 24 128 x) by auto.
-replace (B2R (fprec Tsingle) (femax Tsingle) v) with (B2R 24 128 v) by auto.
-all: repeat f_equal; simpl; unfold Defs.F2R; simpl; nra.
+replace (B2R (fprec Tsingle) (femax Tsingle) x) with 
+  (B2R 24 128 x) by auto.
+replace (B2R (fprec Tsingle) (femax Tsingle) v) with 
+  (B2R 24 128 v) by auto.
+simpl; unfold Defs.F2R; simpl; try nra.
 Qed.
 
 
