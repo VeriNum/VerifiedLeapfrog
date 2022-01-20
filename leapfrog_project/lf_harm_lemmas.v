@@ -925,60 +925,186 @@ Lemma Rabs_triang_aux3 :
   Rabs a + Rabs b + Rabs c <= x + y +z.
 Proof. intros; nra. Qed.
 
-(*
-Lemma local_error_x :
-  forall x v : float32,
-  forall x1 v1 : R,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-  x1 = B2R _ _ x ->
-  v1 = B2R _ _ v -> 
-    Rle (Rabs (Rminus (fst(leapfrog_stepR (x1,v1))) 
-    (B2R _ _ (leapfrog_stepx x v)))) 
-    error_x.
+
+Lemma Rabs_triang_aux4 : 
+  forall x xp v vp : R,
+  Rabs ( x^2 + v^2 - (xp^2 + vp^2)) <=
+  Rabs ( x + xp) * Rabs ( x - xp) + 
+  Rabs ( v + vp) * Rabs ( v - vp). 
 Proof.
 intros.
-replace (fst (leapfrog_stepR (x1,v1))) with 
-  (rval (leapfrog_env x v) (optimize_div e1)).
-+ replace (B2R 24 128 (leapfrog_stepx x v)) with
-  (B2R _ _(fval (leapfrog_env x v) (optimize_div e1))).
-  - pose proof one_step_errorx x v H; apply H2.
-  - rewrite <- env_fval_reify_correct_leapfrog_step_x; 
-  pose proof optimize_div_correct' (leapfrog_env x v) e1 
-  (leapfrog_stepx_not_nan x v H);
-revert H2;
-generalize (fval (leapfrog_env x v) (optimize_div e1));
-rewrite optimize_div_type; intros;
-apply binary_float_eqb_eq in H2; subst; reflexivity.
-+ rewrite (@env_rval_reify_correct_leapfrog_stepx x v x1 v1); auto.
+replace (x ^ 2 + v ^ 2 - (xp ^ 2 + vp ^ 2))
+with ( (x ^ 2 - xp ^ 2) + (v ^ 2 - vp^2)) by nra.
+eapply Rle_trans.
++
+match goal with |- context[ Rabs (?a + ?b)<= _] =>
+apply Rabs_triang 
+end.
++
+repeat match goal with |- context[ (?a^2 - ?b^2) ] =>
+replace (a^2 - b^2) with ((a+b)*(a-b)) by nra
+end.
+repeat rewrite Rabs_mult. nra.
 Qed.
 
-Lemma local_error_v:
-  forall x v : float32,
-  forall x1 v1 : R,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
-  x1 = B2R _ _ x ->
-  v1 = B2R _ _ v -> 
-    Rle (Rabs (Rminus (snd(leapfrog_stepR (x1,v1))) 
-    (B2R _ _ (leapfrog_stepv x v)))) 
-    error_v.
+Lemma Rabs_le_aux: 
+  forall w x y z a b c d : R,
+  Rabs w <= a ->
+  Rabs x <= b ->
+  Rabs y <= c ->
+  Rabs z <= d -> 
+  Rabs w * Rabs x + Rabs y * Rabs z <= a * b + c * d.
 Proof.
 intros.
-replace (snd (leapfrog_stepR (x1,v1))) with 
-  (rval (leapfrog_env x v) (optimize_div e2)).
-+ replace (B2R 24 128 (leapfrog_stepv x v)) with
-  (B2R _ _(fval (leapfrog_env x v) (optimize_div e2))).
-  - pose proof one_step_errorv x v H. apply H2.
-  - rewrite <- env_fval_reify_correct_leapfrog_step_v; 
-  pose proof optimize_div_correct' (leapfrog_env x v) e2 
-  (leapfrog_stepv_not_nan x v H);
-revert H2;
-generalize (fval (leapfrog_env x v) (optimize_div e2));
-rewrite optimize_div_type; intros;
-apply binary_float_eqb_eq in H2; subst; reflexivity.
-+ rewrite (@env_rval_reify_correct_leapfrog_stepv x v x1 v1); auto.
+eapply Rle_trans.
+eapply Rplus_le_compat_r.
+eapply Rmult_le_compat_r. apply Rabs_pos. apply H. 
+eapply Rle_trans.
+eapply Rplus_le_compat_r.
+eapply Rmult_le_compat_l. 
+eapply Rle_trans. apply Rabs_pos. apply H. apply H0.
+eapply Rplus_le_compat_l.
+eapply Rle_trans.
+eapply Rmult_le_compat_l. 
+apply Rabs_pos. apply H2. 
+eapply Rmult_le_compat_r.
+eapply Rle_trans.
+apply Rabs_pos. apply H2. assumption. 
 Qed.
 
-*)
+(* lemma for energy error, for difference of squares on x *)
+Lemma one_step_sum_x:
+  forall x v : float32,
+    boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
+    Rle (Rabs (Rplus (rval (leapfrog_env  x v) (optimize_div x')) 
+   (B2R _ _ (fval (leapfrog_env  x v) (optimize_div x'))))) 
+         (4646536420130843 / 2251799813685248)%R.
+Proof.
+intros.
+set (bmap:= leapfrog_bmap) in *.
+hnf in bmap. simpl in bmap.
+match goal with |- context [ rval ?env ?e] =>
+simplify_shift_div_opt e
+end.
+(*unfold x'.*)
+match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_conds e
+end.
+(* introduce and prove validity conditions *)
+(* for optmize_div x', there are 4 conditions *) 
++ get_conds2;
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_cond2; 
+try interval).
++ match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_cond_correct e H0 H1 rndval s p;
+set (ty:= type_of_expr e) in *;
+simpl in ty;
+cbv [Datatypes.id] in ty;   
+repeat change (type_lub Tsingle Tsingle) with Tsingle in ty; 
+unfold ty in *; clear ty
+end.
+(* Populate hyps with some bounds on x and v*)
+fv_prepare_assumptions.
+(* turn rndval rexp to flt with eps delt *)
+rndval_replace.
+subst si2 s r;
+get_eps_delts.
+clear correct rndval H0 H1 H2 H3 e m H7.
+revert e0. reduce_abs_error. 
+(* env rewrite *)
+replace ((env_ (leapfrog_vmap val_x val_v))) 
+  with (leapfrog_env 
+  val_x val_v) in * by
+(apply lf_env_eq; apply BMD).
+(* var rewrites *)
+replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with 
+  val_x in * by 
+  (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
+replace (leapfrog_env 
+  val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
+(cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
+change (fprec Tsingle) with 24%Z in *; 
+change (femax Tsingle) with 128%Z in *.
+
+intros. rewrite <- e0; clear H e0.
+
+match goal with |- context [Rabs (?v) <= _] =>
+field_simplify v
+end.
+
+match goal with |- context [Rabs (?v) <= _] =>
+interval_intro (Rabs v)
+end.
+nra.
+
+Qed.
+
+(* lemma for energy error, for difference of squares on v *)
+Lemma one_step_sum_v:
+  forall x v : float32,
+    boundsmap_denote leapfrog_bmap (leapfrog_vmap x v)->
+    Rle (Rabs (Rplus (rval (leapfrog_env x v)  (optimize_div v')) 
+    (B2R _ _ (fval (leapfrog_env x v) (optimize_div v'))))) 
+         (4646570650113169 / 2251799813685248)%R.
+Proof.
+intros.
+set (bmap:= leapfrog_bmap) in *.
+hnf in bmap. simpl in bmap.
+match goal with |- context [ rval ?env ?e] =>
+simplify_shift_div_opt e
+end.
+match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_conds e
+end.
+(* introduce and prove validity conditions *)
+(* for optmize_div v', there are 7 conditions *) 
++ get_conds2;
+ repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_cond2; 
+try interval).
++ match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_cond_correct e H0 H1 rndval s p;
+set (ty:= type_of_expr e) in *;
+simpl in ty;
+cbv [Datatypes.id] in ty;   
+repeat change (type_lub Tsingle Tsingle) with Tsingle in ty; 
+unfold ty in *; clear ty
+end.
+(* Populate hyps with some bounds on x and v*)
+fv_prepare_assumptions.
+(* turn rndval rexp to flt with eps delt *)
+rndval_replace.
+subst si2 s r;
+get_eps_delts.
+clear correct rndval H0 H1 H2 H3 e m H7.
+revert e0. reduce_abs_error. 
+(* env rewrite *)
+replace ((env_ (leapfrog_vmap val_x val_v))) 
+  with (leapfrog_env 
+  val_x val_v) in * by
+(apply lf_env_eq; apply BMD).
+(* var rewrites *)
+replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with 
+  val_x in * by 
+  (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
+replace (leapfrog_env 
+  val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
+(cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
+change (fprec Tsingle) with 24%Z in *; 
+change (femax Tsingle) with 128%Z in *.
+
+intros. rewrite <- e0; clear H e0.
+
+match goal with |- context [Rabs (?v) <= _] =>
+field_simplify (v)
+end.
+
+match goal with |- context [Rabs (?v) <= _] =>
+interval_intro (Rabs v)
+end.
+nra.
+Qed.
 
 
 
