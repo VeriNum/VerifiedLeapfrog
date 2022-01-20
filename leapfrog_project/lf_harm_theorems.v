@@ -14,7 +14,76 @@ Import Interval.Tactic.
 Definition error_v := (5079915575529618 / 75557863725914323419136)%R.
 (* error_v = 6.723212283974809e-08 *)
 Definition error_x := (4716905030025237 / 37778931862957161709568)%R.
-(* error_x 1.2485543654690345e-07*)
+(* error_x = 1.2485543654690345e-07*)
+
+
+(* single step position error *)
+Theorem one_step_error_x:
+  forall x v : float32,
+    boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
+    Rle (Rabs (Rminus (rval (leapfrog_env  x v) (optimize_div x')) 
+   (B2R _ _ (fval (leapfrog_env  x v) (optimize_div x'))))) 
+         error_x.
+Proof.
+intros.
+set (bmap:= leapfrog_bmap) in *.
+hnf in bmap. simpl in bmap.
+match goal with |- context [ rval ?env ?e] =>
+simplify_shift_div_opt e
+end.
+(*unfold x'.*)
+match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_conds e
+end.
+(* introduce and prove validity conditions *)
+(* for optmize_div x', there are 4 conditions *) 
++ get_conds2;
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_cond2; 
+try interval).
++ match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_cond_correct e H0 H1 rndval s p;
+set (ty:= type_of_expr e) in *;
+simpl in ty;
+cbv [Datatypes.id] in ty;   
+repeat change (type_lub Tsingle Tsingle) with Tsingle in ty; 
+unfold ty in *; clear ty
+end.
+(* Populate hyps with some bounds on x and v*)
+fv_prepare_assumptions.
+(* turn rndval rexp to flt with eps delt *)
+rndval_replace.
+subst si2 s r;
+get_eps_delts.
+clear correct rndval H0 H1 H2 H3 e m H7.
+revert e0. reduce_abs_error. 
+(* env rewrite *)
+replace ((env_ (leapfrog_vmap val_x val_v))) 
+  with (leapfrog_env 
+  val_x val_v) in * by
+(apply lf_env_eq; apply BMD).
+(* var rewrites *)
+replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with 
+  val_x in * by 
+  (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
+replace (leapfrog_env 
+  val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
+(cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
+change (fprec Tsingle) with 24%Z in *; 
+change (femax Tsingle) with 128%Z in *.
+
+intros. rewrite <- e0; clear H e0.
+
+match goal with |- context [Rabs (?v) <= _] =>
+field_simplify v
+end.
+
+match goal with |- context [Rabs (?v) <= _] =>
+interval_intro (Rabs v)
+end.
+unfold error_x;  nra.
+Qed.
+
 
 (* single step velocity error *)
 Theorem one_step_error_v:
@@ -81,75 +150,6 @@ interval_intro (Rabs v)
 end.
 unfold error_v; nra.
 Qed.
-
-
-(* single step position error *)
-Theorem one_step_error_x:
-  forall x v : float32,
-    boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
-    Rle (Rabs (Rminus (rval (leapfrog_env  x v) (optimize_div x')) 
-   (B2R _ _ (fval (leapfrog_env  x v) (optimize_div x'))))) 
-         error_x.
-Proof.
-intros.
-set (bmap:= leapfrog_bmap) in *.
-hnf in bmap. simpl in bmap.
-match goal with |- context [ rval ?env ?e] =>
-simplify_shift_div_opt e
-end.
-(*unfold x'.*)
-match goal with |- context [ rval ?env ?e] =>
-get_rndval_with_conds e
-end.
-(* introduce and prove validity conditions *)
-(* for optmize_div x', there are 4 conditions *) 
-+ get_conds2;
-repeat (apply List.Forall_cons; try apply List.Forall_nil;
-try solve_one_cond2 ; 
-try interval).
-+ match goal with |- context [ rval ?env ?e] =>
-get_rndval_with_cond_correct e H0 H1 rndval s p;
-set (ty:= type_of_expr e) in *;
-simpl in ty;
-cbv [Datatypes.id] in ty;   
-repeat change (type_lub Tsingle Tsingle) with Tsingle in ty; 
-unfold ty in *; clear ty
-end.
-(* Populate hyps with some bounds on x and v*)
-fv_prepare_assumptions.
-(* turn rndval rexp to flt with eps delt *)
-rndval_replace.
-subst si2 s r;
-get_eps_delts.
-clear correct rndval H0 H1 H2 H3 e m H7.
-revert e0. reduce_abs_error. 
-(* env rewrite *)
-replace ((env_ (leapfrog_vmap val_x val_v))) 
-  with (leapfrog_env 
-  val_x val_v) in * by
-(apply lf_env_eq; apply BMD).
-(* var rewrites *)
-replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with 
-  val_x in * by 
-  (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
-replace (leapfrog_env 
-  val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
-(cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
-change (fprec Tsingle) with 24%Z in *; 
-change (femax Tsingle) with 128%Z in *.
-
-intros. rewrite <- e0; clear H e0.
-
-match goal with |- context [Rabs (?v) <= _] =>
-field_simplify v
-end.
-
-match goal with |- context [Rabs (?v) <= _] =>
-interval_intro (Rabs v)
-end.
-unfold error_x;  nra.
-Qed.
-
 
 
 Lemma local_error_x :
@@ -332,4 +332,114 @@ try interval with
 (i_bisect (INR n), i_depth 15).
 Qed.
 
+Definition RHamiltonian (x v : R): R := 
+  0.5%R * (powerRZ v 2 + powerRZ x 2) . 
+Definition FHamiltonian (x v : float32): float32:= 
+  (half  * (v * v + x * x) )%F32.
 
+Lemma local_potential_error : 
+  forall x v : float32,
+    boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
+    Rabs(
+    powerRZ (rval (leapfrog_env  x v) (optimize_div x')) 2 - 
+    powerRZ (B2R _ _ (fval (leapfrog_env  x v) (optimize_div x'))) 2 
+    ) 
+      <= 4859738761130154 / 18889465931478580854784.
+(* 2.572724278578773e-07 *)
+Proof.
+intros.
+set (bmap:= leapfrog_bmap) in *.
+hnf in bmap. simpl in bmap.
+match goal with |- context [ rval ?env ?e] =>
+simplify_shift_div_opt e
+end.
+(*unfold x'.*)
+match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_conds e
+end.
+(* introduce and prove validity conditions *)
+(* for optmize_div x', there are 4 conditions *) 
++ get_conds2;
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_cond2; 
+try interval).
++ match goal with |- context [ rval ?env ?e] =>
+get_rndval_with_cond_correct e H0 H1 rndval s p;
+set (ty:= type_of_expr e) in *;
+simpl in ty;
+cbv [Datatypes.id] in ty;   
+repeat change (type_lub Tsingle Tsingle) with Tsingle in ty; 
+unfold ty in *; clear ty
+end.
+(* Populate hyps with some bounds on x and v*)
+fv_prepare_assumptions.
+(* turn rndval rexp to flt with eps delt *)
+rndval_replace.
+subst si2 s r;
+get_eps_delts.
+clear correct rndval H0 H1 H2 H3 e m H7.
+revert e0. reduce_abs_error. 
+(* env rewrite *)
+replace ((env_ (leapfrog_vmap val_x val_v))) 
+  with (leapfrog_env 
+  val_x val_v) in * by
+(apply lf_env_eq; apply BMD).
+(* var rewrites *)
+replace (leapfrog_env val_x val_v Tsingle lf_harm_lemmas._x) with 
+  val_x in * by 
+  (cbv in Hval_x;inversion Hval_x; clear Hval_x; subst; auto).
+replace (leapfrog_env 
+  val_x val_v Tsingle lf_harm_lemmas._v) with val_v in * by 
+(cbv in Hval_v;inversion Hval_v; clear Hval_v; subst; auto).
+change (fprec Tsingle) with 24%Z in *; 
+change (femax Tsingle) with 128%Z in *.
+
+intros. rewrite <- e0; clear H e0.
+simpl.
+match goal with |- context [Rabs (?v) <= _] =>
+field_simplify v
+end.
+
+match goal with |- context [Rabs (?v) <= _] =>
+interval_intro (Rabs v)
+end.
+nra.
+Qed.
+
+Definition H_osc (x v :R) : R := x^ 2 + v^2. 
+
+Lemma local_energy_error: 
+  forall x v : float32,
+    boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
+    let xf2r := (B2R _ _ (fval (leapfrog_env  x v) (optimize_div x'))) in
+    let vf2r := (B2R _ _ (fval (leapfrog_env  x v) (optimize_div v'))) in
+    let xr := rval (leapfrog_env  x v) (optimize_div x') in
+    let vr := rval (leapfrog_env  x v) (optimize_div v') in
+    Rabs (H_osc xr vr - H_osc xf2r vf2r) <=  
+(5737052551188771447961625990175617189626654515220295204472916317044736 /
+     14474011154664524427946373126085988481658748083205070504932198000989141204992).
+(* 3.96369223e-7 *)
+Proof.
+intros.
+set (bmap:= leapfrog_bmap) in *.
+hnf in bmap. simpl in bmap.
+unfold H_osc.
+eapply Rle_trans.
++ apply Rabs_triang_aux4.
++ 
+pose proof one_step_error_x x v H.
+pose proof one_step_error_v x v H.
+pose proof one_step_sum_x x v H.
+pose proof one_step_sum_v x v H.
+unfold xr, vr, xf2r, vf2r in *.
+match goal with 
+  |- context [ Rabs (?a) * Rabs (?b) + Rabs (?c) *Rabs (?d) <= _] =>
+pose proof Rabs_le_aux 
+  a b c d 
+  (4646536420130843 / 2251799813685248) error_x (4646570650113169 / 2251799813685248) error_v
+  H2 H0 H3 H1
+end.
+unfold error_x, error_v in *.
+field_simplify in H4.
+nra. 
+Qed.
