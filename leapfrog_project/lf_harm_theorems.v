@@ -332,11 +332,6 @@ try interval with
 (i_bisect (INR n), i_depth 15).
 Qed.
 
-Definition RHamiltonian (x v : R): R := 
-  0.5%R * (powerRZ v 2 + powerRZ x 2) . 
-Definition FHamiltonian (x v : float32): float32:= 
-  (half  * (v * v + x * x) )%F32.
-
 Definition H_osc (x v :R) : R := x^ 2 + v^2. 
 
 Lemma local_energy_error: 
