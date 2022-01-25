@@ -323,6 +323,78 @@ try interval with
 (i_bisect (INR n), i_depth 15).
 Qed.
 
+Theorem global_error2:
+  forall x v : float32, 
+  (forall m: nat, 
+  forall x' v' : float32, 
+  (x',v') = (iternF m x%F32 v%F32) -> 
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x' v')) ->
+  forall n: nat, 
+  forall x1 v1 : R,
+  x1 = B2R _ _ x ->
+  v1 = B2R _ _ v -> 
+  INR n <= 0.5 * 1/lf_harm_real.h -> 
+  Rle (Rabs (Rminus (fst(iternR n x1%R v1%R)) (B2R _ _ (fst(iternF n x%F32 v%F32))))) 
+   (1.67 * error_x * INR n) /\
+  Rle (Rabs (Rminus (snd(iternR n x1%R v1%R)) (B2R _ _ (snd(iternF n x%F32 v%F32))))) 
+   (2.56 * error_v * INR n) .
+Proof.
+intros. 
+replace (0.5 * 1 / lf_harm_real.h) with 
+16 in H2 by (unfold lf_harm_real.h; nra).
+induction n.
+- unfold iternF ,iternR ,INR, leapfrog', leapfrogR, 
+leapfrog_stepx,lf_harm_real.h.
+unfold fst; unfold snd; subst.
+replace (B2R 24 128 x - B2R 24 128 x) with 0 by nra;
+replace (B2R 24 128 v - B2R 24 128 v) with 0 by nra.
+split. all: (rewrite ?sqrt_0; interval).
+- rewrite ?S_INR in H2.
+apply Rminus_plus_le_minus in H2; field_simplify in H2.
+assert (INR n <= 16) as Hn by nra.
+pose proof IHn Hn; clear IHn Hn;
+assert (INR n <= 15) as Hn by nra; clear H2.
+rewrite ?step_iternR; rewrite ?step_iternF. 
+try pose proof H n 
+  ((fst (iternF n x v))) ((snd (iternF n x v))); clear H. 
+destruct (iternR n x1 v1) as (xnr, vnr). 
+destruct (iternF n x v) as (xnf, vnf).
+unfold fst, snd in H2; pose proof H2 eq_refl; clear H2.
+unfold fst, snd in H3. 
+set (r_xnf:= B2R _ _ xnf ) in *; assert (r_xnf = B2R 24 128 xnf) by auto.
+set (r_vnf:= B2R _ _ vnf) in *;  assert (r_vnf = B2R 24 128 vnf) by auto.
+rewrite ?step_iternR; rewrite ?step_iternF. 
+set (a:=(1.67*error_x * INR n));
+set (b:=(2.56* error_v * INR n)).
+destruct H3 as (IHx & IHv); split.
+(* x case *)
++ pose proof global_error_x_aux 
+  xnf vnf r_xnf r_vnf xnr vnr a b H H2 H4 IHx IHv.
+eapply Rle_trans. 
+-- apply H3.
+-- rewrite ?S_INR.
+unfold a, b, error_x, error_v, lf_harm_real.h in *.
+pose proof pos_INR n.
+apply Rminus_le.
+(* depth is necessary for sqrt? *)
+field_simplify.
+try interval with  
+(i_bisect (INR n), i_prec 128).
+(* v case *)
++ pose proof global_error_v_aux 
+  xnf vnf r_xnf r_vnf xnr vnr a b H H2 H4 IHx IHv.
+eapply Rle_trans. 
+-- apply H3.
+-- rewrite ?S_INR.
+unfold a, b, error_x, error_v, lf_harm_real.h in *.
+pose proof pos_INR n.
+apply Rminus_le.
+(* depth is necessary for sqrt? *)
+field_simplify.
+try interval with  
+(i_bisect (INR n), i_prec 128).
+Qed.
+
 
 Definition global_error_val n := 
 (2*(pow lf_harm_real.h 3) * sqrt (INR n))%R.
