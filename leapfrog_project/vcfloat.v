@@ -145,34 +145,6 @@ destruct v; try exact f; exact Float.zero.
 exact (B754_zero (fprec ty) (femax ty) false).
 Defined.
 
-Ltac unfold_reflect E := 
-match goal with |- context [fval (list_to_env ?L) E] =>
- pattern (fval (list_to_env L) E);
- let HIDE := fresh "HIDE" in match goal with |- ?A _ => set (HIDE:=A) end;
- let m := fresh "m" in let m' := fresh "m'" in
- set (m := list_to_env L);
- hnf in m;
- set (m' := (Maps.PTree_Properties.of_list L)) in m;
- hnf in m'; simpl in m';
- let e' := eval hnf in E in change E with e';
- cbv [fval type_of_expr type_of_unop Datatypes.id];
- repeat change (type_lub _ _) with Tsingle;
- repeat change (type_lub _ _) with Tdouble;
- repeat change (cast_lub_l Tsingle Tsingle ?x) with x;
- repeat change (cast_lub_r Tsingle Tsingle ?x) with x;
- repeat change (cast_lub_l Tdouble Tdouble ?x) with x;
- repeat change (cast_lub_r Tdouble Tdouble ?x) with x;
- cbv [fop_of_unop fop_of_exact_unop fop_of_binop fop_of_rounded_binop];
- change (BOPP Tsingle) with Float32.neg;
- change (BPLUS Tsingle) with Float32.add;
- change (BMULT Tsingle) with Float32.mul;
- change (BDIV Tsingle) with Float32.div;
- repeat match goal with |- context [m ?t ?i] =>
-             let u := fresh "u" in set (u := m t i); hnf in u; subst u
- end;
- subst m' m;
- subst HIDE; cbv beta
-end.
 
 Ltac unfold_corresponding e :=
   (* This tactic is given a term (E1=E2), where E1 is an expression
@@ -270,24 +242,10 @@ repeat lazymatch goal with
  cbv beta delta [BPLUS BMINUS BMULT BDIV BOPP BINOP];
  change (fprec_gt_0 Tsingle) with (eq_refl Lt);
  change (fprec_lt_femax Tsingle) with (eq_refl Lt);
-(* change (Bplus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.add;
- change (Bminus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.sub;
- change (Bmult (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.mul;
- change (Bdiv (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float32.div; 
- change (Bopp (fprec Tsingle) (femax Tsingle) _) with Float32.neg;
- change (Bplus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.add;
- change (Bminus (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.sub;
- change (Bmult (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.mul;
- change (Bdiv (fprec Tsingle) (femax Tsingle) _ _ _ _) with Float.div; 
- change (Bopp (fprec Tsingle) (femax Tsingle) _) with Float.neg;
-*)
  subst HIDE; cbv beta
-(* lazymatch goal with |- ?a = ?b => 
-        let b' := unfold_corresponding constr:(a=b) in change (a=b')
-  end
-*)
 | |- context [fval ?env E] => let y := eval red in env in change env with y
 end.
+
 
 Ltac unfold_reflect_rval E := 
 match goal with |- context [rval (list_to_bound_env ?L1 ?L2) E] =>
