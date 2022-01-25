@@ -71,3 +71,15 @@ all: symmetry; apply lfstep_lfn.
 Qed.
 
 
+Definition iternF  (n:nat) (x v :float32) :=  leapfrog' (x%F32, v%F32) n.
+
+
+Lemma step_iternF : 
+  forall n : nat,
+  forall x v : float32,
+  (iternF (S n) x v) = leapfrog_step' (iternF n x v).
+Proof.
+intros; unfold iternF; 
+rewrite ?lfn_eq_lfstep; 
+congruence.
+Qed.

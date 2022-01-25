@@ -6,16 +6,16 @@ From Coquelicot Require Import Coquelicot.
 Open Scope R_scope.
 
 (* Linear forcing function *)
-Definition F (x :R) : R := (- 1 * x)%R.
+Definition F (x :R) : R := (- x)%R.
 
 (* Time step*)
 Definition h := 1 / 32.
 
 Definition leapfrog_stepR (ic : R * R) : R * R :=
-  (let x  := fst ic in let v:= snd ic in 
-  let x' := (x + h * v) + (h * h * F x) / 2 in
-  let v' :=  v + (h*(F x + F x')/2) in 
-  (x', v')).
+  let x  := fst ic in let v:= snd ic in 
+  let x' := (x + h * v) + ((1/2) * (h * h)) * F x in
+  let v' :=  v +  (1/2 * h) * (F x + F x') in 
+  (x', v').
 
 Fixpoint leapfrogR ( ic : R * R ) (n : nat) : R * R:=
   match n with
@@ -71,9 +71,20 @@ Lemma one_stepR_x_alt2:
   forall ic1 ic2: R * R,
   (fst (leapfrog_stepR ic1) - fst (leapfrog_stepR ic2)) = 
   (1 - 0.5 * h ^ 2) * (fst ic1 - fst ic2) +  
+
     h *(snd ic1 - snd ic2).
 Proof.
 intros. destruct ic1 as [x1 v1]. destruct ic2 as [x2 v2].
+unfold leapfrogR, leapfrog_stepR, F, fst, snd; field_simplify; nra.
+Qed.
+
+Lemma one_stepR_v_alt:
+  forall ic : R * R,
+  (snd (leapfrog_stepR ic) - (snd ic)) = 
+  (- 0.5 * h ^ 2) * (snd ic) -  
+   0.5 * h * (2 - 0.5 * h^2) * (fst ic).
+Proof.
+intros. destruct ic as [x v].
 unfold leapfrogR, leapfrog_stepR, F, fst, snd; field_simplify; nra.
 Qed.
 
@@ -101,6 +112,18 @@ match goal with |- context [?a - ?b = ?c] =>
   replace (a - b) with  (a - a' - (b -b') + a' -b')
 end.
 repeat rewrite ?one_stepR_x; unfold F. all:  field_simplify; nra.
+Qed.
+
+Definition iternR (n:nat) (x v :R) :=  leapfrogR (x,v) n .
+
+Lemma step_iternR : 
+  forall n : nat,
+  forall x v : R,
+  (iternR (S n) x v) = leapfrog_stepR (iternR n x v).
+Proof.
+intros; unfold iternR; 
+rewrite ?lfn_eq_lfstepR; 
+congruence.
 Qed.
 
 Close Scope R_scope. 
