@@ -173,4 +173,45 @@ intros.
 nra.
 Qed.
 
+Lemma Rabs_mult_le_l a b c :
+ 0<= a ->
+  Rabs b <= c -> 
+  Rabs(a*b) <= a * c.
+Proof.
+intros.
+assert (a * Rabs b <= a* c) by nra.
+assert (Rabs (a * b) <= a * Rabs b). 
+rewrite Rabs_mult. rewrite Rabs_pos_eq; nra.
+eapply Rle_trans. apply H2. auto.
+Qed.
+
+
+Lemma Rle_minus_l_2 : 
+  forall a b c : R, a - b <= c <-> a <= b + c . 
+Proof.
+intros. split. nra. nra. Qed.
+
+Lemma Rle_plus : 
+  forall a b  : R, 0<= a -> 0 <=b -> 0 <= a + b. 
+Proof.
+intros. nra. Qed.
+
+Lemma Rle_mult : 
+  forall a b  : R, 0<= a -> 0 <=b -> 0 <= a * b. 
+Proof.
+intros. nra. Qed.
+
+Lemma Rabs_le_minus_mul : 
+forall a b x y : R,
+0 <= a -> 0 <= b -> 
+Rabs x <= 1 -> Rabs y <= 1 ->
+Rabs(a * x - b * y) <= a + b.
+Proof.
+intros.
+eapply Rle_trans.
+eapply Rabs_triang.
+rewrite Rabs_Ropp.
+repeat (rewrite abs_mul; try auto).
+eapply Rplus_le_compat; nra.
+Qed.
 
