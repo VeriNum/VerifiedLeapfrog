@@ -23,7 +23,7 @@ real_lemmas.vo: real_lemmas.v
 
 lf_harm_float.vo: lf_harm_float.v float_lib.vo
 
-lf_harm_real.vo: lf_harm_real.v
+lf_harm_real.vo: lf_harm_real.v real_lemmas.vo
 
 lfharm.v: lfharm.c
 	$(CC_LOC)/clightgen -normalize $<
