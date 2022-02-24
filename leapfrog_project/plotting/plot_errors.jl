@@ -5,7 +5,7 @@ using Random, Distributions
 
 """
 Call as a jl script on any function in this file.
-e.g. julia -L plot_errors.jl -e 'main(args)'.
+e.g. julia -L plot_errors.jl -e 'plot_errors(args)'.
 
 Author: Ariel Kellison, 12/2021
 """
@@ -13,14 +13,10 @@ Author: Ariel Kellison, 12/2021
 fpath = @__DIR__
 
 
-# formally proven bounds 
-pbnd_x = 4719104053608481 / 37778931862957161709568 
-pbnd_v = 4934642575282197 / 75557863725914323419136
-
-function plot_errors(in_file::String, err_file::String, pos::Bool)
+function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int)
     """
     Args: (1) in_file contains the random inputs for integration
-          (2) err_file contains the errors
+          (2) err_file contains the ouput errors
     
     Outputs: two plot files to local dir.
           (1) "histo_errors.png", a histogram of errors 
@@ -35,48 +31,77 @@ function plot_errors(in_file::String, err_file::String, pos::Bool)
 
     # data to vec
 
-    vec_in   = [x::Float64 for x in in_rands]
-    vec_xv   = [x::Float64 for x in out_xv]
-    len      = convert(Int64,length(vec_xv)/2)
-    vec_in_x = [x for x in vec_in[1:len]]
-    vec_in_v = [v for v in vec_in[len+1:len*2]]
-    vec_x    = [x for x in out_xv[1:len]]
-    vec_v    = [v for v in out_xv[len+1:len*2]]
+    vec_in       = [x::Float64 for x in in_rands]
+    vec_xv       = [x::Float64 for x in out_xv]
+    len          = convert(Int64,length(vec_xv)/2)
+    in_dat_x     = [x for x in vec_in[1:len]]
+    in_dat_v     = [v for v in vec_in[len+1:len*2]]
+    out_dat_x    = [x for x in out_xv[1:len]]
+    out_dat_v    = [v for v in out_xv[len+1:len*2]]
 
-    max_x    = maximum(vec_x)
+    nsteps > 1 ? fstr2 = "multi-step (n = $nsteps)" : fstr2 = "single step"
 
-    # plot position or velocity
+    nsteps == 16 ? (pbnd_x = 1.7565e-06; pbnd_v = 1.6035e-06) : (pbnd_x = 1.2486e-7; pbnd_v = 6.7232e-8)
+    nsteps == 32 ? (pbnd_x = 3.1714e-06; pbnd_v = 3.8676e-06)  : (pbnd_x = 1.2486e-7; pbnd_v = 6.7232e-8)
+  	
 
-    pos ? fstr      = "position" : fstr      = "velocity"
-    pos ? pbnd      = pbnd_x     : pbnd      = pbnd_v
-    pos ? out_dat   = vec_x      : out_dat   = vec_v
-    pos ? in_dat    = vec_in_x   : in_dat    = vec_in_v
+    # plot histograms 
 
-    # plot histogram 
-
-    plot([pbnd for i in 1:len],seriestype="vline",label="formally proven bound=$pbnd",
-	left_margin = 15mm, right_margin = 15mm
-	 )
-    plota = histogram!(
-        out_dat, xlabel = "floating-point error",ylabel = "frequency",
-        label="empirical error",size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
-        legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12,
-        ytickfontsize = 12,
-        title = "Leapfrog integration: absolute $fstr error"
-    )
-    savefig(plota,fpath*"/histo_errors_$fstr.png")
+    if hist
+    	plot([pbnd_x for i in 1:len],seriestype="vline",label="VCFloat bound=$pbnd_x",
+		left_margin = 15mm, right_margin = 15mm
+	 	)
+    	plotx = histogram!(
+        	out_dat_x, xlabel = "floating-point error",ylabel = "frequency",
+        	label="empirical error",size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
+        	legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12,
+        	ytickfontsize = 12,
+        	title = "Leapfrog integration: $fstr2 absolute position error"
+    	)
+    	savefig(plotx,fpath*"/histo_errors_x.png")
     
-    # plot scatter
 
-    plot([pbnd for i in -1:1],seriestype="hline",label="formally proven bound=$pbnd",
-        left_margin = 15mm, right_margin = 15mm
-	 )
-    plotb = scatter!(
-        in_dat, out_dat, ylabel = "floating-point error",xlabel = "initial $fstr",
+   	plot([pbnd_v for i in 1:len],seriestype="vline",label="VCFloat bound=$pbnd_v",
+		left_margin = 15mm, right_margin = 15mm
+		 )
+    	plotv = histogram!(
+        	out_dat_v, xlabel = "floating-point error",ylabel = "frequency",
+        	label="empirical error",size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
+        	legendfontsize=12, yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12,
+        	ytickfontsize = 12,
+        	title = "Leapfrog integration: $fstr2 absolute momentum error"
+    	)
+    	savefig(plotv,fpath*"/histo_errors_v_$nsteps.png")
+    end
+
+    
+    plot([pbnd_x for i in -1:1],seriestype="hline",label="VCFloat bound=$pbnd_x",
+        left_margin = 15mm, right_margin = 15mm)
+
+    
+    plot([9.315409e-8 for i in -1:1],seriestype="hline",label="FPTaylor bound=9.3154e-8",
+        left_margin = 15mm, right_margin = 15mm)
+
+    plotx = scatter!(
+        in_dat_x, out_dat_x, ylabel = "floating-point error",xlabel = "initial position",
         size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
         yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
         label="empirical error",
-        xlims = (-1,1), title = "Leapfrog integration: absolute $fstr error"    
+        xlims = (-1,1), title = "Leapfrog integration: $fstr2 absolute position error"    
 	)
-    savefig(plotb,fpath*"/scatter_errors_$fstr.png")
+   
+    savefig(plotx,fpath*"/scatter_errors_x.png")
+    
+    plot([pbnd_v for i in -1:1],seriestype="hline",label="VCFloat bound=$pbnd_v",
+        left_margin = 15mm, right_margin = 15mm)
+    
+    plotv = scatter!(
+        in_dat_v, out_dat_v, ylabel = "floating-point error",xlabel = "initial momentum",
+        size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
+        yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
+        label="empirical error",
+        xlims = (-1,1), title = "Leapfrog integration: $fstr2 absolute momentum error"    
+	)
+    savefig(plotv,fpath*"/scatter_errors_v_$nsteps.png")
+
 end
