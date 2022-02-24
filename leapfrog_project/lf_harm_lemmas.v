@@ -1,3 +1,5 @@
+(* This file contains lemmas and tactics for proofs of the floating point properties *)
+
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
 Require Import float_lib lf_harm_float lf_harm_real vcfloat optimize real_lemmas.
