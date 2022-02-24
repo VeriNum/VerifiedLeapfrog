@@ -1,3 +1,6 @@
+(* this file containts lemmas and tactics for optimizing 
+VCFloat expressions *)
+
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
 
