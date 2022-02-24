@@ -215,3 +215,102 @@ repeat (rewrite abs_mul; try auto).
 eapply Rplus_le_compat; nra.
 Qed.
 
+
+Lemma sqr_plus_pos a b:  
+0 <= a ^ 2 + b ^ 2.
+Proof.
+nra.
+Qed.
+
+Lemma sqrt_plus_pos a b:  
+0 <= sqrt a  + sqrt b .
+Proof.
+apply Rle_plus; apply sqrt_pos. 
+Qed.
+
+Lemma sqrt_triang_ineq a b:
+0 <= a -> 
+0 <= b ->
+sqrt ( a + b ) <= sqrt(a) + sqrt(b).
+Proof.
+intros. 
+assert (a + b  <= (sqrt a + sqrt b)^2).
+simpl. field_simplify. 
+repeat rewrite pow2_sqrt; auto.
+rewrite Rplus_assoc.
+apply Rplus_le_compat_l.
+rewrite Rplus_comm. 
+apply Rle_minus_l_2. field_simplify.
+eapply Rle_trans.
+2: apply Rmult_le_compat_l.
+2: eapply Rle_trans.
+3: apply Rmult_le_compat_l; try nra; try auto.
+3: apply sqrt_pos; try nra.
+3: apply sqrt_pos; try nra.
+nra. nra.
+apply sqrt_le_1 in H1; try nra.
+rewrite sqrt_pow2 in H1; try nra.
+apply sqrt_plus_pos.
+Qed.
+
+
+Lemma square_pos x:
+0 <= x^2.
+Proof.
+pose proof Rle_0_sqr x.
+unfold Rsqr in H.
+unfold pow. rewrite Rmult_1_r.  
+apply H.
+Qed.
+
+
+
+Lemma Rmax_pos a b :
+0 <=a -> 
+0<= b ->
+0<= Rmax a b. 
+Proof.
+intros.
+eapply Rle_trans.
+apply H.
+apply Rmax_l.
+Qed.
+
+Lemma Rmax_sqr a b :
+0 <=a -> 
+0<= b ->
+a^2 + b^2<= 2 * Rmax a b ^2. 
+Proof.
+intros.
+cbv [Rmax]. destruct Rle_dec.
++ eapply Rle_trans.
+eapply Rplus_le_compat_r.
+assert ( a ^2 <= b ^2) by nra.
+apply H1. nra.
++ eapply Rle_trans.
+eapply Rplus_le_compat_l.
+assert ( b ^2 <= a ^2) by nra.
+apply H1. nra. 
+Qed.
+
+Lemma Rabs_pos_le a b:
+0 <= a -> 
+0 <= b -> 
+a <= b -> Rabs(a) <= Rabs(b).
+Proof.
+intros.
+apply Rabs_pos_eq in H0.
+apply Rabs_pos_eq in H.
+rewrite H, H0. 
+auto.
+Qed.
+
+Lemma Rabs_sqr_le a :
+Rabs(a ^ 2) = Rabs(a) ^2.
+Proof.
+intros.
+replace (a ^ 2) with ( a * a) by nra.
+rewrite Rabs_mult.
+nra.
+Qed.
+
