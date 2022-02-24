@@ -8,6 +8,9 @@ Require Import Interval.Tactic.
 
 Open Scope R_scope.
 
+(* This file contains the real properties proofs for the 
+leapfrog method *)
+
 
 (* the function f is k times differentiable in the interval [a,b] *)
 Definition k_differentiable f k a b:=
