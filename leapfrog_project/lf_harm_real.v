@@ -31,13 +31,14 @@ Fixpoint leapfrogR' (x v : R) (n : nat): R * R:=
     leapfrogR' x' v' n'
 end.
 
-
+(* assumes inputs of (p, w * q, w, n) *)
+(* output q' will therefore be scaled appropriately *)
 Fixpoint leapfrogR (p q w : R) (n : nat): R * R:=
   match n with
   | 0%nat => (p , q)
   | S n' =>
-    let q' := q + h * p - 0.5 * h^2 * w^2 * q in
-    let p' := p - 0.5 * h^2 * w^2 * p - 0.5 * h * w^2 * (2 - 0.5 * h^2 * w^2) * q in 
+    let q' := q + h * w * p - 0.5 * h^2 * w^2 * q in
+    let p' := p - 0.5 * h^2 * w^2 * p - 0.5 * h * w * (2 - 0.5 * h^2 * w^2) * q in 
   leapfrogR p' q' w n'
 end.
 
@@ -45,9 +46,9 @@ end.
 Lemma one_stepR_q_alt2:
   forall p1 q1 p2 q2: R,
   forall w : R, 
-  w * (snd (leapfrogR p1 q1 w 1)  - snd (leapfrogR p2 q2 w 1) ) = 
-   (w - 0.5 * w^3 * h ^ 2) * (q1-q2) +  
-    (h * w *  (p1 - p2)).
+   (snd (leapfrogR p1 (w * q1) w 1)  - snd (leapfrogR p2 (w * q2) w 1) ) = 
+   (1 - 0.5 * w^2 * h ^ 2) * w * (q1-q2) +
+    (h * w * (p1 - p2)).
 Proof.
 intros.
 unfold leapfrogR, fst, snd. 
@@ -60,7 +61,7 @@ Lemma one_stepR_p_alt2:
   forall w : R, 
   (fst (leapfrogR p1 q1 w 1) - fst (leapfrogR  p2 q2 w 1) ) = 
   (1 - 0.5 * h ^ 2 * w^2) * (p1-p2) -  
-   0.5 * h * w^2 * (2 - 0.5 * h^2 * w^2) * (q1-q2).
+   0.5 * h * w * (2 - 0.5 * h^2 * w^2) * (q1-q2).
 Proof.
 intros. 
 unfold leapfrogR, fst, snd.
