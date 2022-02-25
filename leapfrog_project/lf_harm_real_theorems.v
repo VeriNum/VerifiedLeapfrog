@@ -263,9 +263,9 @@ forall t0 : R,
 exists t1 t2: R,
 t0 < t1 < t0 + h /\
 t0 < t2 < t0 + h /\
- ((w * q (t0 + h) - (w * snd(leapfrogR (p t0) (q t0) w 1))) = 
+ ((w * q (t0 + h) - (snd(leapfrogR (p t0) (w * q t0) w 1))) = 
      (w * h^3 * (1 / INR (fact 3) * Derive_n q 3 t1))) /\
- ((p (t0 + h) - (fst(leapfrogR (p t0) (q t0) w 1))) = 
+ ((p (t0 + h) - (fst(leapfrogR (p t0) (w * q t0) w 1))) = 
     ( h^3 * (1 / INR (fact 3) * Derive_n p 3 t2 - w^4 * (1/4) * (q t0)))) . 
 Proof.
 intros.
@@ -326,7 +326,7 @@ exists t1 t2: R,
 t0 < t1 < t0 + h /\
 t0 < t2 < t0 + h /\
 Rprod_norm (Rprod_minus (p (t0 + h), w * q (t0 + h)) 
-  (fst(leapfrogR (p t0) (q t0) w 1), w * snd(leapfrogR (p t0) (q t0) w 1) ))
+  (fst(leapfrogR (p t0) (w * q t0) w 1), snd(leapfrogR (p t0) (w * q t0) w 1) ))
  <= Rprod_norm (
      ( (1 / INR (fact 3) * Derive_n p 3 t2 - 1 / 4 * w^4 * q t0)),
  w * (1 / INR (fact 3) * Derive_n q 3 t1)) * h^3.
@@ -366,7 +366,7 @@ k_differentiable p 3 t1 t2 /\
 k_differentiable q 3 t1 t2)  ->
 forall t0 : R,
 Rprod_norm (Rprod_minus (p (t0 + h), w * q (t0 + h)) 
-  (fst(leapfrogR (p t0) (q t0) w 1), w * snd(leapfrogR (p t0) (q t0) w 1) ))
+  (fst(leapfrogR (p t0) (w * q t0) w 1), snd(leapfrogR (p t0) (w * q t0) w 1) ))
  <= 
 sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3.
 Proof.
@@ -402,13 +402,81 @@ Definition method_norm h w :=
 Lemma global_error_aux: 
 forall p1 q1 p2 q2 w: R,
 Rprod_norm (Rprod_minus 
-  (fst(leapfrogR p1 q1 w 1), w * snd(leapfrogR p1 q1 w 1))  
-  (fst(leapfrogR p2 q2 w 1), w * snd(leapfrogR p2 q2 w 1))) <= 
+  (leapfrogR p1 (w * q1) w 1)  
+  (leapfrogR p2 (w * q2) w 1)) <= 
 method_norm h w * Rprod_norm (Rprod_minus (p1, w * q1) (p2, w *q2)) . 
 Proof.
 intros.
 unfold Rprod_norm, Rprod_minus, leapfrogR, F, fst, snd, method_norm.
 Admitted.
+
+
+Lemma sum_pow_mult_l:
+  forall a : R,
+  forall n : nat,
+  a * sum_f 0 n (fun m => a ^ m ) = 
+  sum_f 1 (S n) (fun m => a ^ m ).
+Proof.
+intros.
+replace (a * sum_f 0 n (fun m => a ^ m ) )
+with 
+( sum_f 0 n (fun m => a ^ m * a )).
++ replace (fun m : nat => a ^ m * a) with 
+(fun m : nat => a ^ (m+1)).
+induction n.
+++ unfold sum_f. simpl. nra.
+++ set (yy:=sum_f 0 (S n) (fun m : nat => a ^ (m + 1))).
+rewrite sum_f_n_Sm. rewrite <- IHn. subst yy.
+rewrite sum_f_n_Sm. repeat f_equal. ring. 
+admit. admit. (* ! *)
+++ admit.
++ 
+induction n.
+++ unfold sum_f. simpl. nra.
+++  rewrite sum_f_n_Sm. rewrite IHn.
+rewrite sum_f_n_Sm. field_simplify. nra. 
+admit. admit. (* ! *)
+Admitted.
+
+Lemma sum_pow_mult_r : 
+  forall a : R,
+  forall n : nat,
+  sum_f 0 n (fun m => a ^ m ) * a = 
+  sum_f 1 (S n) (fun m => a ^ m ).
+Proof.
+intros.
+rewrite Rmult_comm.
+apply sum_pow_mult_l.
+Qed.
+
+Lemma sum_pow_first :
+  forall a : R,
+  forall n : nat,
+  sum_f 0 (S n) (fun m => a ^ m ) = 
+  sum_f 1 (S n) (fun m => a ^ m ) + 1.
+Proof.
+intros.
+induction n. 
++ unfold sum_f. simpl. nra.
++ 
+match goal with |-context[?a = ?b]=>
+set (yy:= a)
+end.
+rewrite sum_f_n_Sm.
+rewrite Rplus_assoc.
+rewrite Rplus_comm.
+rewrite Rplus_comm in IHn.
+rewrite Rplus_assoc.
+rewrite <- IHn.
+subst yy.
+rewrite sum_f_n_Sm.
+rewrite IHn.
+field_simplify. nra.
+admit.
+admit.
+Admitted.
+
+
 
 Theorem global_truncation_error : 
 forall p q: R -> R,
@@ -420,9 +488,10 @@ k_differentiable q 3 t1 t2)  ->
 forall n : nat, 
 forall t0 : R,
 Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h)) 
-(fst(leapfrogR (p t0) (q t0) w n), w * snd(leapfrogR (p t0) (q t0) w n)))
+(leapfrogR (p t0) (w * q t0) w n))
  <= 
-sum_f_R0 (fun m => (method_norm h w) ^ m * sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3) n.
+(sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3) * 
+  sum_f 0 n (fun m => (method_norm h w) ^ m ).
 Proof.
 intros.
 induction n.
@@ -439,11 +508,10 @@ rewrite sqrt_0. admit. (*w positive*)
 + rewrite ?S_INR. rewrite nsteps_lem.
 replace ((t0 + (INR n + 1) * h)) with
 (t0 + (INR n)*h + h) by nra.
-set (phi1:= (fst(leapfrogR (p (t0 + INR n * h)) (q (t0 + INR n * h)) w 1),
-   w * snd(leapfrogR (p (t0 + INR n * h)) (q (t0 + INR n * h)) w 1))) in *.
+set (phi1:= leapfrogR (p (t0 + INR n * h)) (w * q (t0 + INR n * h)) w 1) in *.
 set (phi2:=  
-  (fst (leapfrogR (fst(leapfrogR (p t0) (q t0) w n)) (snd (leapfrogR (p t0) (q t0) w n)) w 1),
-  (w * snd(leapfrogR (fst(leapfrogR (p t0) (q t0) w n)) (snd (leapfrogR (p t0) (q t0) w n)) w 1)))).
+leapfrogR (fst(leapfrogR (p t0) (w * q t0) w n)) 
+  (snd (leapfrogR (p t0) (w * q t0) w n)) w 1).
 eapply Rle_trans.
 match goal with |- context[ ?a <= ?b] =>
   replace a with (Rprod_norm (Rprod_plus (Rprod_minus (p (t0 + INR n * h + h), w  * q (t0 + INR n * h + h)) phi1)
@@ -458,15 +526,33 @@ apply H0.
 eapply Rle_trans.
 eapply Rplus_le_compat_l.
 subst phi1 phi2.
-pose proof global_error_aux (p (t0 + INR n * h)) ( q (t0 + INR n * h)) (fst(leapfrogR (p t0) (q t0) w n)) 
-(snd(leapfrogR (p t0) (q t0) w n)) w.
+pose proof global_error_aux (p (t0 + INR n * h)) ( q (t0 + INR n * h)) 
+(fst(leapfrogR (p t0) (w * q t0) w n)) 
+(1/w *snd(leapfrogR (p t0) (w * q t0) w n)) w.
+replace 
+(w * (1 / w * snd (leapfrogR (p t0) (w * q t0) w n)))
+with 
+(snd (leapfrogR (p t0) (w * q t0) w n)) in H1.
 apply H1.
+field_simplify. nra.
+admit (* w positive *). 
 eapply Rle_trans.
 eapply Rplus_le_compat_l.
 eapply Rmult_le_compat_l; try (unfold h;nra).
 admit. (*method norm positive *)
 apply IHn. (*lemmas about sums*)
+set 
+  (aa:=sqrt 5 * 0.25 * w ^ 3 * 
+  Rprod_norm (p 0, w * q 0) * h ^ 3).
+rewrite Rmult_comm.
+rewrite Rmult_assoc.
+rewrite Rmult_comm.
+rewrite sum_pow_mult_r.
+rewrite sum_pow_first.
+field_simplify.
+nra.
 Admitted.
+
 
 Lemma linear_bound: 
 forall p q: R -> R,
