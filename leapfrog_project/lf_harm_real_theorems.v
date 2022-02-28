@@ -649,5 +649,32 @@ rewrite H0. nra.
 Admitted.
 
 
+Theorem global_error_linear:
+forall p q: R -> R,
+forall w : R,
+(forall t1 t2: R,
+Harmonic_osc_system p q w/\
+k_differentiable p 3 t1 t2 /\
+k_differentiable q 3 t1 t2)  ->
+forall n : nat,
+let x:= ((method_norm h w) ^2 - 1) in 
+INR n * x <= 1/10^2 -> 
+(method_norm2 h w)^n = (1 + INR n/2 * x) ->
+(method_norm2 h w)   = (1 + 1/2 * x) ->
+forall t0 : R,
+Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h)) 
+(leapfrogR (p t0) (w * q t0) w n))
+ <= 
+(sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3) * INR n.
+Proof.
+intros.
+eapply Rle_trans.
+apply global_truncation_error.
+apply  H.
+rewrite H1.
+rewrite H2.
+apply Req_le.
+Admitted.
+
 
 Close Scope R_scope. 
