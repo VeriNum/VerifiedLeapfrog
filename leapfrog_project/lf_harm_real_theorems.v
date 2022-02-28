@@ -326,7 +326,7 @@ exists t1 t2: R,
 t0 < t1 < t0 + h /\
 t0 < t2 < t0 + h /\
 Rprod_norm (Rprod_minus (p (t0 + h), w * q (t0 + h)) 
-  (fst(leapfrogR (p t0) (w * q t0) w 1), snd(leapfrogR (p t0) (w * q t0) w 1) ))
+  (leapfrogR (p t0) (w * q t0) w 1))
  <= Rprod_norm (
      ( (1 / INR (fact 3) * Derive_n p 3 t2 - 1 / 4 * w^4 * q t0)),
  w * (1 / INR (fact 3) * Derive_n q 3 t1)) * h^3.
@@ -338,7 +338,7 @@ exists t1, t2.
 split; auto.
 split; auto.
 unfold Rprod_norm, Rprod_minus.
-unfold fst at 1 2 3. unfold snd at 1 2 3 4.
+unfold fst at 1 2. unfold snd at 1 2.
 unfold fst at 2. unfold snd at 2.
 rewrite C, D.
 set (c:=((w * 1 / INR (fact 3) * Derive_n q 3 t1) ^ 2 +
@@ -366,7 +366,7 @@ k_differentiable p 3 t1 t2 /\
 k_differentiable q 3 t1 t2)  ->
 forall t0 : R,
 Rprod_norm (Rprod_minus (p (t0 + h), w * q (t0 + h)) 
-  (fst(leapfrogR (p t0) (w * q t0) w 1), snd(leapfrogR (p t0) (w * q t0) w 1) ))
+ (leapfrogR (p t0) (w * q t0) w 1))
  <= 
 sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3.
 Proof.
@@ -397,8 +397,40 @@ Definition method_norm h w :=
   let b := (h * w)^2 in
   sqrt(2*b^3 + 2*b*sqrt(b*(b+4))*sqrt(b^2-4*b+16) + 64)/8.
 
+Definition method_norm2 h w :=
+  let b := (h * w)^2 in
+  sqrt((2*b^3 + 2*b*sqrt(b*(b+4))*sqrt(b^2-4*b+16))/64 + 1).
 
-(* would follow from consistency of the matrix 2norm and vector 2norm*)
+Lemma method_norms_eq h w:
+method_norm2 h w = method_norm h w.
+Proof.
+intros.
+unfold method_norm, method_norm2.
+replace (8) with (sqrt (8^2)).
+rewrite <- sqrt_div_alt; try nra.
+f_equal. nra.
+rewrite <- sqrt_pow2; nra.
+Qed.
+
+
+Lemma global_error_aux1: 
+forall p1 q1 p2 q2 w: R,
+Rprod_norm (Rprod_minus 
+  (leapfrogR p1 (w * q1) w 1)  
+  (leapfrogR p2 (w * q2) w 1)) = 
+Rprod_norm (leapfrogR 
+    (fst(Rprod_minus (p1, (w * q1)) 
+      (p2,(w * q2))))
+    (snd(Rprod_minus (p1, (w * q1)) 
+      (p2,(w * q2)))) w 1).
+Proof.
+intros.
+unfold Rprod_norm, Rprod_minus, leapfrogR, F, 
+  fst, snd.  f_equal. 
+nra.
+Qed.
+
+
 Lemma global_error_aux: 
 forall p1 q1 p2 q2 w: R,
 Rprod_norm (Rprod_minus 
@@ -407,8 +439,19 @@ Rprod_norm (Rprod_minus
 method_norm h w * Rprod_norm (Rprod_minus (p1, w * q1) (p2, w *q2)) . 
 Proof.
 intros.
-unfold Rprod_norm, Rprod_minus, leapfrogR, F, fst, snd, method_norm.
+rewrite global_error_aux1.
+unfold Rprod_norm, method_norm. 
+unfold Rprod_minus, leapfrogR, F, 
+  fst, snd, method_norm.
+field_simplify.
+rewrite <- sqrt_mult_alt.
+match goal with |- context [?a <= sqrt(?b)/?c] =>
+replace (sqrt(b)/c) with (sqrt(b/c^2)) by admit
+end.
+apply sqrt_le_1_alt.
+assert ( h* w<= 1) by admit.
 Admitted.
+
 
 
 Lemma sum_pow_mult_l:
@@ -478,7 +521,7 @@ Admitted.
 
 
 
-Theorem global_truncation_error : 
+Theorem global_truncation_error_sum : 
 forall p q: R -> R,
 forall w : R,
 (forall t1 t2: R,
@@ -487,8 +530,8 @@ k_differentiable p 3 t1 t2 /\
 k_differentiable q 3 t1 t2)  ->
 forall n : nat, 
 forall t0 : R,
-Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h)) 
-(leapfrogR (p t0) (w * q t0) w n))
+Rprod_norm (Rprod_minus (p (t0 + INR (S n) * h), w * q (t0 + INR (S n) * h)) 
+(leapfrogR (p t0) (w * q t0) w (S n)))
  <= 
 (sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3) * 
   sum_f 0 n (fun m => (method_norm h w) ^ m ).
@@ -496,29 +539,27 @@ Proof.
 intros.
 induction n.
 + 
-rewrite ?Rmult_0_l. 
-rewrite ?Rplus_0_r. 
-unfold leapfrogR, Rprod_minus, Rprod_norm. simpl. 
-replace (w * q t0 - w * q t0) with 0; try nra. 
-replace (p t0 - p t0) with 0; try nra.
-rewrite ?Rmult_0_l. 
-rewrite ?Rplus_0_r. rewrite ?Rplus_0_l.
-field_simplify. rewrite ?Rmult_1_r. 
-rewrite sqrt_0. admit. (*w positive*)
-+ rewrite ?S_INR. rewrite nsteps_lem.
-replace ((t0 + (INR n + 1) * h)) with
-(t0 + (INR n)*h + h) by nra.
-set (phi1:= leapfrogR (p (t0 + INR n * h)) (w * q (t0 + INR n * h)) w 1) in *.
+replace (INR 1 * h) with h.
+pose proof local_truncation_error_norm p q w H t0.
+eapply Rle_trans.
+apply H0.
+apply Req_le. unfold sum_f; simpl; nra. admit.
++ set (yy:=(S n)).
+rewrite ?S_INR. subst yy. rewrite nsteps_lem.
+replace ((t0 + (INR (S n) + 1) * h)) with
+(t0 + (INR (S n))*h + h) by nra.
+set (phi1:= leapfrogR (p (t0 + INR (S n) * h)) (w * q (t0 + INR (S n) * h)) w 1) in *.
 set (phi2:=  
-leapfrogR (fst(leapfrogR (p t0) (w * q t0) w n)) 
-  (snd (leapfrogR (p t0) (w * q t0) w n)) w 1).
+leapfrogR (fst(leapfrogR (p t0) (w * q t0) w (S n))) 
+  (snd (leapfrogR (p t0) (w * q t0) w (S n))) w 1).
 eapply Rle_trans.
 match goal with |- context[ ?a <= ?b] =>
-  replace a with (Rprod_norm (Rprod_plus (Rprod_minus (p (t0 + INR n * h + h), w  * q (t0 + INR n * h + h)) phi1)
+  replace a with (Rprod_norm 
+  (Rprod_plus (Rprod_minus (p (t0 + INR (S n) * h + h), w  * q (t0 + INR (S n) * h + h)) phi1)
 (Rprod_minus phi1 phi2))) by (symmetry; apply Rprod_norm_plus_minus_eq)
 end.
 apply Rprod_triang_ineq.
-pose proof local_truncation_error_norm p q w H (t0 + INR n * h).
+pose proof local_truncation_error_norm p q w H (t0 + INR (S n) * h).
 fold phi1 in H0.
 eapply Rle_trans.
 eapply Rplus_le_compat_r.
@@ -526,13 +567,13 @@ apply H0.
 eapply Rle_trans.
 eapply Rplus_le_compat_l.
 subst phi1 phi2.
-pose proof global_error_aux (p (t0 + INR n * h)) ( q (t0 + INR n * h)) 
-(fst(leapfrogR (p t0) (w * q t0) w n)) 
-(1/w *snd(leapfrogR (p t0) (w * q t0) w n)) w.
+pose proof global_error_aux (p (t0 + INR (S n) * h)) ( q (t0 + INR (S n) * h)) 
+(fst(leapfrogR (p t0) (w * q t0) w (S n))) 
+(1/w *snd(leapfrogR (p t0) (w * q t0) w (S n))) w.
 replace 
-(w * (1 / w * snd (leapfrogR (p t0) (w * q t0) w n)))
+(w * (1 / w * snd (leapfrogR (p t0) (w * q t0) w (S n))))
 with 
-(snd (leapfrogR (p t0) (w * q t0) w n)) in H1.
+(snd (leapfrogR (p t0) (w * q t0) w (S n))) in H1.
 apply H1.
 field_simplify. nra.
 admit (* w positive *). 
@@ -553,17 +594,60 @@ field_simplify.
 nra.
 Admitted.
 
+Theorem geo_series_closed_form:
+forall r k ,
+r <> 1 ->
+sum_f 0 k (fun m => r ^ m ) = (1-(r^(S k)))/(1-r).
+Proof.
+intros.
+induction k.
++ unfold sum_f. simpl. field_simplify. nra. admit.
++ rewrite sum_f_n_Sm .
+++ rewrite IHk.
+match goal with|- context [?a/?aa + ?b = _] =>
+replace  b with 
+((r ^ S k)*(1-r)/(1-r))
+end.
+field_simplify; try nra.
+replace  (- r ^ S k * r) with
+(- r ^ S (S k) ) by admit.
+nra.
+field_simplify; try nra.
+Admitted.
 
-Lemma linear_bound: 
+Theorem global_truncation_error: 
 forall p q: R -> R,
 forall w : R,
-forall n : nat,
-(n <= 1024)%nat -> 
-sum_f_R0 (fun m => 
-  (method_norm h w) ^ m * sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3) n <= 
-  (sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3 * INR n).
+(forall t1 t2: R,
+Harmonic_osc_system p q w/\
+k_differentiable p 3 t1 t2 /\
+k_differentiable q 3 t1 t2)  ->
+forall n : nat, 
+forall t0 : R,
+Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h)) 
+(leapfrogR (p t0) (w * q t0) w n))
+ <= 
+(sqrt 5 * 0.25 * w^3 * Rprod_norm( p (0), w * q(0)) * h^3) * 
+  (1-(method_norm2 h w)^n)/(1- (method_norm2 h w)).
 Proof.
+intros.
+pose proof geo_series_closed_form (method_norm2 h w) (n-1).
+assert (method_norm2 h w <> 1) by admit.
+specialize (H0 H1); clear H1.
+replace 
+(sqrt 5 * 0.25 * w ^ 3 * Rprod_norm (p 0, w * q 0) * h ^ 3 *
+(1 - method_norm2 h w ^ n) / (1 - method_norm2 h w))
+with (
+sqrt 5 * 0.25 * w ^ 3 * Rprod_norm (p 0, w * q 0) * h ^ 3 *
+(sum_f 0 (n-1) (fun m : nat => method_norm2 h w ^ m))).
+rewrite method_norms_eq.
+pose proof global_truncation_error_sum p q w H (n-1) t0.
+replace ((S (n - 1))) with n in * by admit.
+apply H1.
+replace ((S (n - 1))) with n in * by admit.
+rewrite H0. nra.
 Admitted.
+
 
 
 Close Scope R_scope. 
