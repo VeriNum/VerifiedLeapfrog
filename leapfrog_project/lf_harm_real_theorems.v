@@ -18,61 +18,6 @@ forall x,
 a<= x <= b -> forall n:nat, (n<=k)%nat ->  ex_derive_n f n x.
 
 
-Definition Rprod_minus (x y : R * R) : R * R :=
-  (Rminus (fst x) (fst y), Rminus (snd x) (snd y)).
-
-Definition Rprod_plus (x y : R * R) : R * R :=
-  (Rplus (fst x) (fst y), Rplus (snd x) (snd y)).
-
-Definition Rprod_norm (x : R * R) : R  :=
-  sqrt ( (fst x) ^ 2 +  (snd x) ^ 2).
-
-Lemma Rprod_triang_ineq x y: 
-Rprod_norm ( Rprod_plus x y) <= Rprod_norm x + Rprod_norm y.
-Proof.
-destruct x, y.
-unfold Rprod_plus, Rprod_norm, fst, snd.
-assert ((r + r1) ^ 2 + (r0 + r2) ^ 2 <= 
-  (sqrt (r ^ 2 + r0 ^ 2) + sqrt (r1 ^ 2 + r2 ^ 2))^2).
-replace ((sqrt (r ^ 2 + r0 ^ 2) + sqrt (r1 ^ 2 + r2 ^ 2)) ^ 2)
-with (r^2 + r0^2 + r1^2 + r2^2 + 2 * sqrt (r ^ 2 + r0 ^ 2)* sqrt (r1 ^ 2 + r2 ^ 2))
-by 
-(simpl; field_simplify; 
-repeat rewrite pow2_sqrt; repeat nra).
-simpl. field_simplify.
-repeat rewrite Rplus_assoc.
-apply Rplus_le_compat_l.
-rewrite Rplus_comm.
-repeat rewrite Rplus_assoc.
-apply Rplus_le_compat_l.
-apply Rplus_le_compat_l.
-rewrite Rplus_comm.
-repeat rewrite Rplus_assoc.
-apply Rplus_le_compat_l.
-repeat rewrite Rmult_assoc.
-replace (2 * (r * r1) + 2 * (r0 * r2)) with
-(2 * ((r * r1) + (r0 * r2))) by nra.
-apply Rmult_le_compat_l; try nra.
-repeat rewrite Rmult_1_r. 
-apply sqrt_cauchy.
-apply sqrt_le_1 in H.
-rewrite sqrt_pow2 in H; auto.
-apply sqrt_plus_pos.
-apply sqr_plus_pos.  
-rewrite <- Rsqr_pow2.
-apply Rle_0_sqr.
-Qed.
-
-Lemma Rprod_norm_plus_minus_eq x y z:
-Rprod_norm ( Rprod_minus x y) = Rprod_norm ( Rprod_plus (Rprod_minus x z) (Rprod_minus z y)).
-Proof.
-intros.
-destruct x, y, z.
-unfold Rprod_plus, Rprod_minus, Rprod_norm, fst, snd.
-f_equal.
-nra.
-Qed.
-
 Definition Harmonic_osc_system p q w :=
 forall t,
 Derive_n q 1 t  = p t /\
@@ -80,12 +25,6 @@ Derive_n q 2 t = (fun y => F (q y) w) t /\
 Rprod_norm ( p(t), w * q(t)) <= Rprod_norm( p (0), w * q(0))
 .
 
-Lemma Rnorm_pos x:
-0 <= Rprod_norm x.
-Proof.
-unfold Rprod_norm.
-apply sqrt_pos.
-Qed.
 
 Lemma Harm_sys_derive_eq p q w: 
 Harmonic_osc_system p q w-> 
@@ -608,70 +547,8 @@ Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h))
 Proof.
 intros.
 induction n.
-+ (*
-replace (INR 1 * h) with h.
-pose proof local_truncation_error_norm p q w H H0 t0.
-eapply Rle_trans.
-apply H1.
-apply Req_le. unfold sum_f; simpl; nra. simpl; nra.
-unfold leapfrogR, error_sum. replace (t0 + INR 0 * h)
-with t0 by (simpl; nra).
-unfold Rprod_minus; simpl.
-replace (p t0 - p t0) with 0 by nra.
-replace (w * q t0 - w * q t0) with 0 by nra.
-unfold Rprod_norm; simpl. 
-rewrite Rmult_0_l. *)
-admit.
-+ (*set (yy:=(S n)).
-rewrite ?S_INR. subst yy. rewrite nsteps_lem.
-replace ((t0 + (INR (S n) + 1) * h)) with
-(t0 + (INR (S n))*h + h) by nra.
-set (phi1:= leapfrogR (p (t0 + INR (S n) * h)) (w * q (t0 + INR (S n) * h)) w 1) in *.
-set (phi2:=  
-leapfrogR (fst(leapfrogR (p t0) (w * q t0) w (S n))) 
-  (snd (leapfrogR (p t0) (w * q t0) w (S n))) w 1).
-eapply Rle_trans.
-match goal with |- context[ ?a <= ?b] =>
-  replace a with (Rprod_norm 
-  (Rprod_plus (Rprod_minus (p (t0 + INR (S n) * h + h), w  * q (t0 + INR (S n) * h + h)) phi1)
-(Rprod_minus phi1 phi2))) by (symmetry; apply Rprod_norm_plus_minus_eq)
-end.
-apply Rprod_triang_ineq.
-pose proof local_truncation_error_norm p q w H H0 (t0 + INR (S n) * h).
-fold phi1 in H1.
-eapply Rle_trans.
-eapply Rplus_le_compat_r.
-apply H1.
-eapply Rle_trans.
-eapply Rplus_le_compat_l.
-subst phi1 phi2.
-pose proof global_error_aux (p (t0 + INR (S n) * h)) ( q (t0 + INR (S n) * h)) 
-(fst(leapfrogR (p t0) (w * q t0) w (S n))) 
-(1/w *snd(leapfrogR (p t0) (w * q t0) w (S n))) w.
-replace 
-(w * (1 / w * snd (leapfrogR (p t0) (w * q t0) w (S n))))
-with 
-(snd (leapfrogR (p t0) (w * q t0) w (S n))) in H2.
-apply H2.
-field_simplify. nra.
-admit (* w positive *). 
-eapply Rle_trans.
-eapply Rplus_le_compat_l.
-eapply Rmult_le_compat_l; try (unfold h;nra).
-admit. (*method norm positive *)
-apply IHn. (*lemmas about sums*)
-set 
-  (aa:=sqrt 5 * 0.25 * w ^ 3 * 
-  Rprod_norm (p 0, w * q 0) * h ^ 3).
-rewrite Rmult_comm.
-rewrite Rmult_assoc.
-rewrite Rmult_comm.
-rewrite sum_pow_mult_r.
-rewrite sum_pow_first.
-field_simplify.
-nra.*)
-
-rewrite nsteps_lem.
++ admit.
++ rewrite nsteps_lem.
 set (phi1:= leapfrogR (p (t0 + INR ( n) * h)) (w * q (t0 + INR ( n) * h)) w 1) in *.
 set (phi2:=  
 leapfrogR (fst(leapfrogR (p t0) (w * q t0) w ( n))) 

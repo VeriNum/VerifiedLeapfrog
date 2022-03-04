@@ -13,26 +13,7 @@ Import Test.
 
 Import Interval.Tactic.
 
-
-Definition one_step_sum_bnd_x := (4646536420130942 / 2251799813685248)%R.
-Definition one_step_sum_bnd_v := (4646570650113373 / 2251799813685248)%R.
-
-Definition lf_bmap_init := (lf_bmap_n 0 0 0).
-
-Lemma lf_bmap_init_eq :
-forall x v : float32, 
-forall e1 e2 : R, 
-  boundsmap_denote (lf_bmap_init ) (leapfrog_vmap x v)=
-boundsmap_denote (lf_bmap_n e1 e2 0) (leapfrog_vmap x v).
-Proof.
-intros.
-f_equal; unfold lf_bmap_init, lf_bmap_n, lf_bmap_list_n.
-rewrite Rmult_0_r. 
-replace (INR 0 * e1) with 0 by (simpl; nra).
-replace (INR 0 * e2) with 0 by (simpl; nra).
-repeat f_equal.
-Qed.
-
+(*
 
 (* single step position error *)
 Theorem one_step_error_x:
@@ -129,35 +110,90 @@ Qed.
 Lemma leapfrog_step_is_finite:
 forall n: nat,
 forall x  v : float32,
-forall e1 e2: R,
-boundsmap_denote (lf_bmap_n e1 e2 n) 
-  (leapfrog_vmap (fst ( iternF ( n) x v)) (snd ( iternF ( n) x v))) ->
+boundsmap_denote (lf_bmap_n n) (leapfrog_vmap (fst ( iternF n x v)) (snd ( iternF n x v))) ->
 (n <= 1000)%nat ->
 is_finite _ _ (fst ( iternF (S n) x v)) = true/\
 is_finite _ _ (snd ( iternF (S n) x v)) = true.  
 Proof.
 Admitted.
+*)
 
 
-(*
+Lemma bounds_Sn: 
+  forall x v : float32, 
+  forall n: nat, 
+    boundsmap_denote (lf_bmap_n n) 
+      (leapfrog_vmap x v) -> 
+    boundsmap_denote (lf_bmap_n (S n)) 
+      (leapfrog_vmap (leapfrog_stepx x v) (leapfrog_stepv x v)).
+Proof.
+intros.
+unfold boundsmap_denote in *.
+intros.
+specialize (H i).
+pose proof bmd_Sn_bnds_le  n i.
+pose proof bmd_Sn_vars_eq   n i.
+destruct (Maps.PTree.get i (leapfrog_vmap x v)).
+destruct (
+Maps.PTree.get i (leapfrog_vmap (leapfrog_stepx x v) (leapfrog_stepv x v))).
++ destruct (Maps.PTree.get i (lf_bmap_n  n)); 
+  try contradiction.
+++ destruct (Maps.PTree.get i (lf_bmap_n (S n))).
++++ specialize (H0 v3 v2 eq_refl eq_refl).
+specialize (H1 v3 v2  eq_refl eq_refl).
+destruct v3; destruct v2. 
+destruct H as (xp & A & B & C & D).
+simpl in H0; simpl in H1. destruct H1. subst.
+exists xp; repeat split; auto.
+eapply Rle_trans. apply H0. apply D.
+eapply Rle_trans. apply D. apply H0.
++++ destruct H2; destruct H2. exists v1; auto. discriminate; auto.
++ destruct (Maps.PTree.get i (lf_bmap_n   ( n))).
+++  destruct v0; try contradiction.
+++ destruct (Maps.PTree.get i (lf_bmap_n   (S n))); auto.
+destruct H2; destruct H3. exists v0; auto. discriminate; auto.
+Qed.
+
+
+end.
+
 Theorem global_error:
   forall x v : float32, 
   forall n: nat, 
   (n <= 1000)%nat ->
-    (forall m: nat,
-    (m <= n)%nat ->
-    boundsmap_denote (lf_bmap_n e_x e_v m) 
-      (leapfrog_vmap (snd(iternF m x v)) (snd(iternF m x v)))) 
-
-(* incorrect assumption *)
-->
   forall x1 v1 : R,
   x1 = B2R _ _ x ->
-  v1 = B2R _ _ v -> 
-  Rle (Rabs (Rminus (fst(leapfrogR' x1 v1 (S n))) (B2R _ _ (fst(iternF (S n) x v))))) 
-   (delta_x e_x e_v n) /\
-  Rle (Rabs (Rminus (snd(leapfrogR' x1 v1 (S n))) (B2R _ _ (snd(iternF (S n) x v))))) 
-   (delta_v e_x e_v n) .
+  v1 = B2R _ _ v ->
+    boundsmap_denote (lf_bmap_n n) 
+      (leapfrog_vmap x v) /\
+Rprod_norm (Rprod_minus (leapfrogR x1 v1 1 n) 
+  ((B2R _ _ (fst(iternF n x v))), (B2R _ _ (snd(iternF n x v))))) <= 1
+.
+Proof.
+induction n.
+intros.
++ simpl. rewrite H0; rewrite H1.
+split. 
+++ admit.
+++ unfold Rprod_minus; simpl. admit.
++ intros.
+assert (Hn: (n <= 1000)%nat) by admit.
+specialize (IHn Hn x1 v1 H0 H1) as (A & B).
+rewrite step_iternF. rewrite nsteps_lem.
+destruct (leapfrogR x1 v1 1 n) as (xnr, vnr). 
+destruct (iternF n x v) as (xnf, vnf).
+simpl in A, B.
+split.
+++ 
+unfold boundsmap_denote in *.
+intros; specialize (A i).
+++
+unfold fst at 1. unfold snd at 1.
+
+
+end.
+
+
 Proof.
 Admitted.
 *)
