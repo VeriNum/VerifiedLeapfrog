@@ -111,11 +111,10 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
    apply leapfrog_step_is_finite; lia.
    forward.
    entailer!.
-   fold (Z.succ i); rewrite Zbits.Ziter_succ.
-   f_equal. apply Float32.add_commut. left; reflexivity.
-   lia.
-   fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ.
-   cancel. lia.
+   fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
+   rewrite Float32.add_commut; auto.
+   fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ by lia.
+   cancel.
 -
    forward.
 Qed.
