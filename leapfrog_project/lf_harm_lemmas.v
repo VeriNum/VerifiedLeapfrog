@@ -49,23 +49,23 @@ Definition leapfrog_env  := (fun x v => list_to_bound_env leapfrog_bmap_list (le
 Definition leapfrog_bmap :=  Maps.PTree_Properties.of_list leapfrog_bmap_list.
 Definition leapfrog_vmap (x v : float32) := Maps.PTree_Properties.of_list (leapfrog_vmap_list x v).
 
-Definition lf_bmap_list_n (erx erv: R) (n: nat) := 
-  mk_bounds_list [(_x, (Tsingle, (- 1 * (1 + INR n * erx ), 1 *( 1+  INR n * erx) ))); 
-                  (_v, (Tsingle, (-1 * (1 + INR n * erv ), 1* (1 + INR n * erv ))))].
-Definition lf_bmap_n (erx erv: R) (n: nat) :=  
-  Maps.PTree_Properties.of_list (lf_bmap_list_n erx erv n).
+Definition lf_bmap_list_n (n: nat) := 
+  mk_bounds_list [(_x, (Tsingle, (- 1 - INR n , 1 +  INR n) )); 
+                  (_v, (Tsingle, (-1 - INR n  , 1 + INR n ) ))].
+Definition lf_bmap_n  (n: nat) :=  
+  Maps.PTree_Properties.of_list (lf_bmap_list_n n).
 Definition lf_vmap := Maps.PTree_Properties.of_list (leapfrog_vmap_list x_init v_init).
-Definition lf_env_n  (x v : float32) (ex ev: R) (n: nat) := 
-  list_to_bound_env (lf_bmap_list_n ex ev n) (leapfrog_vmap_list x v). 
+Definition lf_env_n  (x v : float32) (n: nat) := 
+  list_to_bound_env (lf_bmap_list_n n) (leapfrog_vmap_list x v). 
+
 
 Lemma bmd_Sn_varinfo : 
-forall e1 e2 : R, 
 forall n: nat,
 forall i,
 forall v1 : varinfo,
-Maps.PTree.get i (lf_bmap_n e1 e2 ( n)) = Some v1 -> 
+Maps.PTree.get i (lf_bmap_n   ( n)) = Some v1 -> 
 exists v2 : varinfo,
-Maps.PTree.get i (lf_bmap_n e1 e2 (S n)) = Some v2.  
+Maps.PTree.get i (lf_bmap_n   (S n)) = Some v2.  
 Proof.
 intros.
 apply Maps.PTree.elements_correct in H.
@@ -74,8 +74,8 @@ destruct H.
 exists ({|
        var_type := Tsingle;
        var_name := _x;
-       var_lobound := -1 * (1 + INR (S n) * e1);
-       var_hibound := 1 * (1 + INR (S n) * e1)
+       var_lobound := -1 - INR (S n) ;
+       var_hibound := 1 + INR (S n) 
      |}).
 simpl; auto.
 + simpl in H. destruct H; try contradiction.
@@ -83,20 +83,19 @@ inversion H.
 exists ({|
        var_type := Tsingle;
        var_name := _v;
-       var_lobound := -1 * (1 + INR (S n) * e2);
-       var_hibound := 1 * (1 + INR (S n) * e2)
+       var_lobound := -1 - INR (S n) ;
+       var_hibound := 1 + INR (S n) 
      |}).
-simpl; auto. 
+simpl; auto.
 Qed.
 
 Lemma bmd_Sn_exists_iff : 
-forall e1 e2 : R, 
 forall n: nat,
 forall i,
 (exists v1 : varinfo,
-Maps.PTree.get i (lf_bmap_n e1 e2 ( n)) = Some v1) <-> 
+Maps.PTree.get i (lf_bmap_n  ( n)) = Some v1) <-> 
 (exists v2 : varinfo,
-Maps.PTree.get i (lf_bmap_n e1 e2 (S n)) = Some v2).  
+Maps.PTree.get i (lf_bmap_n  (S n)) = Some v2).  
 Proof.
 intros.
 split.
@@ -108,8 +107,8 @@ destruct H.
 exists ({|
        var_type := Tsingle;
        var_name := _x;
-       var_lobound := -1 * (1 + INR (n) * e1);
-       var_hibound := 1 * (1 + INR (n) * e1)
+       var_lobound := -1 - INR (n) ;
+       var_hibound := 1 + INR (n) 
      |}).
 simpl; auto.
 + simpl in H. destruct H; try contradiction.
@@ -117,20 +116,19 @@ inversion H.
 exists ({|
        var_type := Tsingle;
        var_name := _v;
-       var_lobound := -1 * (1 + INR ( n) * e2);
-       var_hibound := 1 * (1 + INR (n) * e2)
+       var_lobound := -1 - INR ( n)  ;
+       var_hibound := 1 + INR (n) 
      |}).
 simpl; auto. 
 Qed.
 
 
 Lemma bmd_Sn_vars_eq : 
-forall e1 e2 : R, 
 forall n: nat,
 forall i,
 forall v1 v2 : varinfo,
-Maps.PTree.get i (lf_bmap_n e1 e2 (S n)) = Some v1 -> 
-Maps.PTree.get i (lf_bmap_n e1 e2 ( n)) = Some v2 -> 
+Maps.PTree.get i (lf_bmap_n  (S n)) = Some v1 -> 
+Maps.PTree.get i (lf_bmap_n  ( n)) = Some v2 -> 
 v1.(var_name) = v2.(var_name) /\
 v1.(var_type) = v2.(var_type).
 Proof.
@@ -147,62 +145,56 @@ Qed.
 
 
 Lemma bmd_Sn_bnds_le : 
-forall e1 e2 : R, 
-   0<= e1 ->
-   0<= e2 ->
 forall n: nat,
 forall i,
 forall v1 v2 : varinfo,
-Maps.PTree.get i (lf_bmap_n e1 e2 (S n)) = Some v1-> 
-Maps.PTree.get i (lf_bmap_n e1 e2 ( n)) = Some v2 -> 
+Maps.PTree.get i (lf_bmap_n (S n)) = Some v1-> 
+Maps.PTree.get i (lf_bmap_n ( n)) = Some v2 -> 
 v1.(var_lobound) <= v2.(var_lobound) /\ 
 v2.(var_hibound) <= v1.(var_hibound). 
 Proof.
 intros.
-apply Maps.PTree.elements_correct in H1.
-inversion H1.
-+ set (yy:= INR (S n)) in H3. inversion H3. subst. clear H1. 
-simpl in H2. inversion H2. simpl. subst yy. rewrite ?S_INR.
+apply Maps.PTree.elements_correct in H.
+inversion H.
++ set (yy:= INR (S n)) in H1. inversion H1. subst.  
+simpl in H0. inversion H0. simpl. subst yy. rewrite ?S_INR.
 split. all : (field_simplify; try nra).
-+ set (yy:= INR (S n)) in H3. simpl in H3. destruct H3; try contradiction.
-inversion H3. subst. clear H1. 
-simpl in H2. inversion H2. simpl. subst yy. rewrite ?S_INR. 
++ set (yy:= INR (S n)) in H1. simpl in H1. destruct H1; try contradiction.
+inversion H1. subst. 
+simpl in H0. inversion H0. simpl. subst yy. rewrite ?S_INR. 
 split. all : (field_simplify; try nra).
 Qed.
 
 
 Lemma bmd_Sn : 
 forall x v : float32, 
-forall e1 e2 : R, 
-0<= e1  ->
-0<= e2  ->
 forall n: nat,
-boundsmap_denote (lf_bmap_n e1 e2 (n)) (leapfrog_vmap x v) ->
-boundsmap_denote (lf_bmap_n e1 e2 (S n)) (leapfrog_vmap x v).
+boundsmap_denote (lf_bmap_n   (n)) (leapfrog_vmap x v) ->
+boundsmap_denote (lf_bmap_n   (S n)) (leapfrog_vmap x v).
 Proof.
 intros.
 unfold boundsmap_denote.
 intros.
- specialize (H1 i).
-pose proof bmd_Sn_bnds_le e1 e2 H H0 n i.
-pose proof bmd_Sn_vars_eq e1 e2 n i.
-pose proof bmd_Sn_exists_iff  e1 e2 n i.
+ specialize (H i).
+pose proof bmd_Sn_bnds_le  n i.
+pose proof bmd_Sn_vars_eq   n i.
+pose proof bmd_Sn_exists_iff    n i.
 destruct (Maps.PTree.get i (leapfrog_vmap x v)).
-+ destruct (Maps.PTree.get i (lf_bmap_n e1 e2 ( n))); try contradiction.
-++ destruct (Maps.PTree.get i (lf_bmap_n e1 e2 (S n))).
-+++ specialize (H2 v2 v1 eq_refl eq_refl).
-specialize (H3 v2 v1  eq_refl eq_refl).
++ destruct (Maps.PTree.get i (lf_bmap_n  ( n))); try contradiction.
+++ destruct (Maps.PTree.get i (lf_bmap_n (S n))).
++++ specialize (H0 v2 v1 eq_refl eq_refl).
+specialize (H1 v2 v1  eq_refl eq_refl).
 destruct v1; destruct v2. 
-destruct H1 as (xp & A & B & C & D).
-simpl in H2; simpl in H3. destruct H3. subst.
+destruct H as (xp & A & B & C & D).
+simpl in H0; simpl in H1. destruct H1. subst.
 exists xp; repeat split; auto.
-eapply Rle_trans. apply H2. apply D.
-eapply Rle_trans. apply D. apply H2.
-+++ destruct H4; destruct H4. exists v1; auto. discriminate; auto.
-+ destruct (Maps.PTree.get i (lf_bmap_n e1 e2 ( n))).
+eapply Rle_trans. apply H0. apply D.
+eapply Rle_trans. apply D. apply H0.
++++ destruct H2; destruct H2. exists v1; auto. discriminate; auto.
++ destruct (Maps.PTree.get i (lf_bmap_n   ( n))).
 ++  destruct v0; try contradiction.
-++ destruct (Maps.PTree.get i (lf_bmap_n e1 e2 (S n))); auto.
-destruct H4; destruct H5. exists v0; auto. discriminate; auto.
+++ destruct (Maps.PTree.get i (lf_bmap_n   (S n))); auto.
+destruct H2; destruct H3. exists v0; auto. discriminate; auto.
 Qed.
 
 
@@ -222,9 +214,8 @@ Qed.
 
 Lemma env_n_fval_reify_correct_leapfrog_step_x:
   forall x v : float32,
-  forall e1 e2 : R,
   forall n : nat,
-  fval (lf_env_n x v e1 e2 n) x' = leapfrog_stepx x v.
+  fval (lf_env_n x v   n) x' = leapfrog_stepx x v.
 Proof.
 intros. 
 unfold_reflect' x'.  
@@ -246,9 +237,8 @@ Qed.
 Lemma env_n_fval_reify_correct_leapfrog_step_v:
   forall x v : float32,
   forall x v : float32,
-  forall e1 e2 : R,
   forall n : nat,
-  fval (lf_env_n x v e1 e2 n) v' = leapfrog_stepv x v.
+  fval (lf_env_n x v   n) v' = leapfrog_stepv x v.
 Proof.
 intros.
 unfold_reflect' v'.  
@@ -272,10 +262,9 @@ Qed.
 
 Lemma env_n_fval_reify_correct_leapfrog_step:
   forall x v : float32,
-  forall e1 e2 : R,
   forall n : nat,
-  fval (lf_env_n x v e1 e2 n) x' = leapfrog_stepx x v /\
-  fval (lf_env_n x v e1 e2 n) v' = leapfrog_stepv x v.
+  fval (lf_env_n x v   n) x' = leapfrog_stepx x v /\
+  fval (lf_env_n x v   n) v' = leapfrog_stepv x v.
 Proof.
 intros. 
 unfold leapfrog_env.
@@ -306,11 +295,10 @@ Qed.
 Lemma env_n_rval_reify_correct_leapfrog_stepx:
   forall x v : float32,
   forall x1 v1 : R,
-  forall e1 e2 : R,
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
   forall n : nat,
-  rval (lf_env_n x v e1 e2 n) (optimize_div x') = fst (leapfrog_stepR' (x1,v1)).
+  rval (lf_env_n x v  n) (optimize_div x') = fst (leapfrog_stepR' (x1,v1)).
 Proof.
 intros.
 unfold leapfrog_env.
@@ -346,11 +334,10 @@ Qed.
 Lemma env_n_rval_reify_correct_leapfrog_stepv:
   forall x v : float32,
   forall x1 v1 : R,
-  forall e1 e2 : R,
   x1 = B2R _ _ x ->
   v1 = B2R _ _ v -> 
   forall n : nat,
-  rval (lf_env_n x v e1 e2 n) (optimize_div v') = snd (leapfrog_stepR' (x1,v1)).
+  rval (lf_env_n x v   n) (optimize_div v') = snd (leapfrog_stepR' (x1,v1)).
 Proof.
 intros.
 unfold leapfrog_env.
@@ -387,18 +374,17 @@ Qed.
 Lemma lf_env_n_eq: 
 forall x v : float32, 
   forall n : nat,
-  forall e1 e2 : R, 
-boundsmap_denote (lf_bmap_n e1 e2 n)  (leapfrog_vmap x v) ->
-lf_env_n x v e1 e2 n  = env_ (leapfrog_vmap x v). 
+boundsmap_denote (lf_bmap_n   n)  (leapfrog_vmap x v) ->
+lf_env_n x v   n  = env_ (leapfrog_vmap x v). 
 Proof.
-intros. pose proof (env_mk_env (lf_bmap_n e1 e2 n)  (leapfrog_vmap x v) H). 
+intros. pose proof (env_mk_env (lf_bmap_n   n)  (leapfrog_vmap x v) H). 
 replace (env_ (leapfrog_vmap x v)) with 
-  (mk_env (lf_bmap_n e1 e2 n)  (leapfrog_vmap x v)). 
+  (mk_env (lf_bmap_n   n)  (leapfrog_vmap x v)). 
 unfold lf_env_n, list_to_bound_env, mk_env, lf_bmap_n, leapfrog_vmap.
 apply functional_extensionality_dep; intro ty.
 apply functional_extensionality; intro i.
  destruct (Maps.PTree.get i (Maps.PTree_Properties.of_list 
-    (lf_bmap_list_n e1 e2 n))) as [[t i' lo hi]|],
+    (lf_bmap_list_n   n))) as [[t i' lo hi]|],
     (Maps.PTree.get i (Maps.PTree_Properties.of_list (leapfrog_vmap_list x v))) 
     as [v'|]; try contradiction; auto.
 Qed.
@@ -430,68 +416,49 @@ Lemma conds2_hold_optx_n:
 forall x v : float32, 
   forall n : nat,
   (n <=1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-  boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
+  boundsmap_denote (lf_bmap_n   n) (leapfrog_vmap x v)->
  forall r si2 s p,
     rndval_with_cond 0 empty_shiftmap (optimize_div x') = ((r, (si2, s)), p)  ->
-list_forall (eval_cond2 (mk_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)) s) p.
+list_forall (eval_cond2 (mk_env (lf_bmap_n   n) (leapfrog_vmap x v)) s) p.
 Proof.
 intros.
-apply boundsmap_denote_e in H2.
-rewrite list_forall_Forall in H2.
+apply boundsmap_denote_e in H0.
+rewrite list_forall_Forall in H0.
 rewrite list_forall_Forall.
 rndval_inversion; subst.
 fold Tsingle ; fold Tdouble.
 prepare_assumptions_about_free_variables.
-clear H3.
-
-
-assert ( 1 * (1 + INR n * e1) <= 1001).
+clear H1.
+assert ( 1 + INR n <= 1001).
 eapply Rle_trans.
-eapply Rmult_le_compat_l; try nra.
 eapply Rplus_le_compat_l; try nra.
-eapply Rle_trans.
-eapply Rmult_le_compat_l. 
-apply pos_INR.
-apply H0. rewrite Rmult_1_r. 
 apply le_INR in H; apply H.
 try (simpl;nra).
 assert (-1001 <= FT2R Tsingle val_x).
-apply Ropp_le_contravar in H2; auto.
-rewrite Ropp_mult_distr_l in H2.
-eapply Rle_trans.
-apply H2. 
-eapply Rle_trans.
-apply Hrange_x. apply Rle_refl.
+apply Ropp_le_contravar in H0; auto.
+eapply Rle_trans. apply H0. 
+rewrite Ropp_plus_distr.
+apply Hrange_x. 
 assert (FT2R Tsingle val_x <= 1001).
 eapply Rle_trans.
 apply Hrange_x.
-apply H2.
-
-assert ( 1 * (1 + INR n * e2) <= 1001).
+apply H0.
+assert ( 1 + INR n  <= 1001).
 eapply Rle_trans.
-eapply Rmult_le_compat_l; try nra.
 eapply Rplus_le_compat_l; try nra.
-eapply Rle_trans.
-eapply Rmult_le_compat_l.
-apply pos_INR.
-apply H1. rewrite Rmult_1_r. 
 apply le_INR in H; apply H.
 try (simpl;nra).
 assert (-1001 <= FT2R Tsingle val_v).
-apply Ropp_le_contravar in H5; auto.
-rewrite Ropp_mult_distr_l in H5.
+apply Ropp_le_contravar in H3; auto.
+eapply Rle_trans. 
+apply H3. 
 eapply Rle_trans.
-apply H5. 
-eapply Rle_trans.
+rewrite Ropp_plus_distr.
 apply Hrange_v. apply Rle_refl.
 assert (FT2R Tsingle val_v <= 1001).
 eapply Rle_trans.
 apply Hrange_v.
-apply H5.
-
+apply H3.
 repeat (apply List.Forall_cons; try apply List.Forall_nil;
 try solve_one_eval_cond2; 
 try interval).
@@ -522,68 +489,49 @@ Lemma conds2_hold_optv_n:
 forall x v : float32, 
   forall n : nat,
   (n <=1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
+boundsmap_denote (lf_bmap_n   n) (leapfrog_vmap x v)->
  forall r si2 s p,
     rndval_with_cond 0 empty_shiftmap (optimize_div v') = ((r, (si2, s)), p)  ->
-list_forall (eval_cond2 (mk_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)) s) p.
+list_forall (eval_cond2 (mk_env (lf_bmap_n   n) (leapfrog_vmap x v)) s) p.
 Proof.
 intros.
-apply boundsmap_denote_e in H2.
-rewrite list_forall_Forall in H2.
+apply boundsmap_denote_e in H0.
+rewrite list_forall_Forall in H0.
 rewrite list_forall_Forall.
 rndval_inversion; subst.
 fold Tsingle ; fold Tdouble.
 prepare_assumptions_about_free_variables.
-clear H3.
-
-assert ( 1 * (1 + INR n * e1) <= 1001).
+clear H1.
+assert ( 1 + INR n <= 1001).
 eapply Rle_trans.
-eapply Rmult_le_compat_l; try nra.
 eapply Rplus_le_compat_l; try nra.
-eapply Rle_trans.
-eapply Rmult_le_compat_l.
-apply pos_INR.
-apply H0. rewrite Rmult_1_r. 
 apply le_INR in H; apply H.
 try (simpl;nra).
-try nra.
 assert (-1001 <= FT2R Tsingle val_x).
-apply Ropp_le_contravar in H2; auto.
-rewrite Ropp_mult_distr_l in H2.
-eapply Rle_trans.
-apply H2. 
-eapply Rle_trans.
-apply Hrange_x. apply Rle_refl.
+apply Ropp_le_contravar in H0; auto.
+eapply Rle_trans. apply H0. 
+rewrite Ropp_plus_distr.
+apply Hrange_x. 
 assert (FT2R Tsingle val_x <= 1001).
 eapply Rle_trans.
 apply Hrange_x.
-apply H2.
-
-assert ( 1 * (1 + INR n * e2) <= 1001).
+apply H0.
+assert ( 1 + INR n  <= 1001).
 eapply Rle_trans.
-eapply Rmult_le_compat_l; try nra.
 eapply Rplus_le_compat_l; try nra.
-eapply Rle_trans.
-eapply Rmult_le_compat_l; try nra.
-apply pos_INR.
-apply H1. rewrite Rmult_1_r.
 apply le_INR in H; apply H.
 try (simpl;nra).
 assert (-1001 <= FT2R Tsingle val_v).
-apply Ropp_le_contravar in H5; auto.
-rewrite Ropp_mult_distr_l in H5.
+apply Ropp_le_contravar in H3; auto.
+eapply Rle_trans. 
+apply H3. 
 eapply Rle_trans.
-apply H5. 
-eapply Rle_trans.
+rewrite Ropp_plus_distr.
 apply Hrange_v. apply Rle_refl.
 assert (FT2R Tsingle val_v <= 1001).
 eapply Rle_trans.
 apply Hrange_v.
-apply H5.
-
+apply H3.
 repeat (apply List.Forall_cons; try apply List.Forall_nil;
 try solve_one_eval_cond2; 
 try interval).
@@ -716,10 +664,7 @@ Lemma rndval_with_cond_correct_optx_n:
 forall x v : float32, 
   forall n : nat,
   (n <=1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
+boundsmap_denote (lf_bmap_n   n) (leapfrog_vmap x v)->
 forall r si2 s p,
     rndval_with_cond 0 empty_shiftmap (optimize_div x') = ((r, (si2, s)), p)  ->
 rndval_with_cond_result (env_ (leapfrog_vmap x v)) (optimize_div x') r si2 s
@@ -729,15 +674,15 @@ intros.
 assert
 (HFIN : 
   forall ty i, is_finite (fprec ty) (femax ty) (env_ (leapfrog_vmap x v) ty i) = true) by
-apply (finite_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v) H2).
+apply (finite_env (lf_bmap_n   n) (leapfrog_vmap x v) H0).
 assert 
 (lc2 : 
-  list_forall (eval_cond2 (mk_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)) s) p).
-eapply conds2_hold_optx_n; auto; apply H3.
+  list_forall (eval_cond2 (mk_env (lf_bmap_n   n) (leapfrog_vmap x v)) s) p).
+eapply conds2_hold_optx_n; auto; apply H1.
 assert (HVALID : expr_valid (optimize_div x') = true) by reflexivity.
 assert (listconds : forall i : cond, In i p -> eval_cond1 (env_ (leapfrog_vmap x v)) s i) by
            leapfrog_conds1_hold (optimize_div x') lc2.
-eapply rndval_with_cond_correct; auto; try apply H3.
+eapply rndval_with_cond_correct; auto; try apply H1.
 rewrite <- env_mk_env in lc2; auto.
 Qed.
 
@@ -746,10 +691,7 @@ Lemma rndval_with_cond_correct_optv_n:
 forall x v : float32, 
   forall n : nat,
   (n <=1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
+boundsmap_denote (lf_bmap_n   n) (leapfrog_vmap x v)->
 forall r si2 s p,
     rndval_with_cond 0 empty_shiftmap (optimize_div v') = ((r, (si2, s)), p)  ->
 rndval_with_cond_result (env_ (leapfrog_vmap x v)) (optimize_div v') r si2 s
@@ -759,15 +701,15 @@ intros.
 assert
 (HFIN : 
   forall ty i, is_finite (fprec ty) (femax ty) (env_ (leapfrog_vmap x v) ty i) = true) by
-apply (finite_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v) H2).
+apply (finite_env (lf_bmap_n   n) (leapfrog_vmap x v) H0).
 assert 
 (lc2 : 
-  list_forall (eval_cond2 (mk_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)) s) p).
-eapply conds2_hold_optv_n; auto; apply H3.
+  list_forall (eval_cond2 (mk_env (lf_bmap_n   n) (leapfrog_vmap x v)) s) p).
+eapply conds2_hold_optv_n; auto; apply H1.
 assert (HVALID : expr_valid (optimize_div v') = true) by reflexivity.
 assert (listconds : forall i : cond, In i p -> eval_cond1 (env_ (leapfrog_vmap x v)) s i) by
            leapfrog_conds1_hold (optimize_div x') lc2.
-eapply rndval_with_cond_correct; auto; try apply H3.
+eapply rndval_with_cond_correct; auto; try apply H1.
 rewrite <- env_mk_env in lc2; auto.
 Qed.
 
@@ -945,16 +887,13 @@ Lemma leapfrog_opt_stepx_is_finite_n:
 forall x v : float32, 
   forall n : nat,
   (n <=1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-  boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
-  Binary.is_finite _ _(fval (lf_env_n x v e1 e2 n) (optimize_div x')) = true.
+  boundsmap_denote (lf_bmap_n  n) (leapfrog_vmap x v)->
+  Binary.is_finite _ _(fval (lf_env_n x v   n) (optimize_div x')) = true.
 Proof.
 intros.
 (destruct (rndval_with_cond O (mempty  (Tsingle, Normal')) (optimize_div x')) 
   as [[r [si2 s]] p] eqn:rndval).
-pose proof (rndval_with_cond_correct_optx_n x v n H e1 e2 H0 H1 H2 r si2 s p rndval)
+pose proof (rndval_with_cond_correct_optx_n x v n H H0 r si2 s p rndval)
   as rndval_result. 
 unfold rndval_with_cond_result in rndval_result;
 set (Hty:= type_of_expr (optimize_div x')) in *.
@@ -962,7 +901,7 @@ repeat simpl in Hty.
 cbv [Datatypes.id] in Hty.   
 repeat change (type_lub Tsingle Tsingle) with Tsingle in Hty;
 unfold Hty in *; clear Hty.
-pose proof rndval_result (fval (lf_env_n x v e1 e2 n) x') as RESULT_A ;
+pose proof rndval_result (fval (lf_env_n x v  n) x') as RESULT_A ;
 rewrite ?lf_env_eq in RESULT_A; auto.
  pose proof RESULT_A eq_refl as RESULT; clear RESULT_A ;
 clear rndval_result; 
@@ -974,16 +913,13 @@ Lemma leapfrog_opt_stepv_is_finite_n:
 forall x v : float32, 
   forall n : nat,
   (n <=1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-  boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
-  Binary.is_finite _ _(fval (lf_env_n x v e1 e2 n) (optimize_div v')) = true.
+  boundsmap_denote (lf_bmap_n  n) (leapfrog_vmap x v)->
+  Binary.is_finite _ _(fval (lf_env_n x v   n) (optimize_div v')) = true.
 Proof.
 intros.
 (destruct (rndval_with_cond O (mempty  (Tsingle, Normal')) (optimize_div v')) 
   as [[r [si2 s]] p] eqn:rndval).
-pose proof (rndval_with_cond_correct_optv_n x v n H e1 e2 H0 H1 H2 r si2 s p rndval)
+pose proof (rndval_with_cond_correct_optv_n x v n H  H0 r si2 s p rndval)
   as rndval_result. 
 unfold rndval_with_cond_result in rndval_result;
 set (Hty:= type_of_expr (optimize_div v')) in *.
@@ -991,7 +927,7 @@ repeat simpl in Hty.
 cbv [Datatypes.id] in Hty.   
 repeat change (type_lub Tsingle Tsingle) with Tsingle in Hty;
 unfold Hty in *; clear Hty.
-pose proof rndval_result (fval (lf_env_n x v e1 e2 n) v') as RESULT_A ;
+pose proof rndval_result (fval (lf_env_n x v   n) v') as RESULT_A ;
 rewrite ?lf_env_eq in RESULT_A; auto.
  pose proof RESULT_A eq_refl as RESULT; clear RESULT_A ;
 clear rndval_result; 
@@ -1004,11 +940,8 @@ Lemma leapfrog_stepx_not_nan_n:
 forall x v : float32, 
   forall n : nat,
   (n <= 1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-  boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
-  Binary.is_nan _ _(fval (lf_env_n x v e1 e2 n) x') = false.
+  boundsmap_denote (lf_bmap_n   n) (leapfrog_vmap x v)->
+  Binary.is_nan _ _(fval (lf_env_n x v   n) x') = false.
 Proof. 
 intros; subst;
 apply is_finite_not_is_nan.
@@ -1019,14 +952,10 @@ Lemma leapfrog_stepv_not_nan_n:
 forall x v : float32, 
   forall n : nat,
   (n <= 1000)%nat ->
-  forall e1 e2 : R, 
-   0<= e1 <= 1 ->
-   0<= e2 <= 1 ->
-  boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
-  Binary.is_nan _ _(fval (lf_env_n x v e1 e2 n) v') = false.
+  boundsmap_denote (lf_bmap_n   n) (leapfrog_vmap x v)->
+  Binary.is_nan _ _(fval (lf_env_n x v   n) v') = false.
 Proof. 
 intros; subst;
 apply is_finite_not_is_nan.
 eapply leapfrog_opt_stepv_is_finite_n; auto.
 Qed.
-

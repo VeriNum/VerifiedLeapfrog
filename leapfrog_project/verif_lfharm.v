@@ -7,6 +7,7 @@ Open Scope logic.
 
 Require Import float_lib lf_harm_float lf_harm_lemmas.
 Import IEEE754_extra.
+Import Float32_Notation.
 
 Definition force_spec :=
  DECLARE _force
@@ -67,14 +68,14 @@ Qed.
 
 Lemma leapfrog_step_x:
  forall x v, Binary.is_finite 24 128 x = true ->
-  fst (leapfrog_step (x,v)) = (x + h*v +half*((h*h)*(F x)))%F32.
+  fst (leapfrog_step (x,v)) = (x + h*v +0.5*((h*h)*(F x)))%F32.
 Proof.
  intros.
  cbv [leapfrog_step F fst snd].
   f_equal.
-   rewrite (Float32.div_mul_inverse _ _ half)
-     by apply exact_inverse_two.
-  rewrite (Float32.mul_commut half) by (left; reflexivity).
+   rewrite (Float32.div_mul_inverse 1 2 0.5%F32)
+     by prove_float_constants_equal.
+  rewrite (Float32.mul_commut 0.5%F32) by (left; reflexivity).
   auto.
 Qed.
 
