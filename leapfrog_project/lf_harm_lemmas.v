@@ -685,7 +685,7 @@ eapply conds2_hold_optx_n; auto; apply H1.
 assert (HVALID : expr_valid (optimize_div x') = true) by reflexivity.
 assert (listconds : forall i : cond, In i p -> eval_cond1 (env_ (leapfrog_vmap x v)) s i) by
            leapfrog_conds1_hold (optimize_div x') lc2.
-eapply rndval_with_cond_correct; auto; try apply H3.
+eapply rndval_with_cond_correct; auto; try apply H1.
 rewrite <- env_mk_env in lc2; auto.
 Qed.
 
@@ -704,15 +704,15 @@ intros.
 assert
 (HFIN : 
   forall ty i, is_finite (fprec ty) (femax ty) (env_ (leapfrog_vmap x v) ty i) = true) by
-apply (finite_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v) H2).
+apply (finite_env (lf_bmap_n   n) (leapfrog_vmap x v) H0).
 assert 
 (lc2 : 
-  list_forall (eval_cond2 (mk_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)) s) p).
-eapply conds2_hold_optv_n; auto; apply H3.
+  list_forall (eval_cond2 (mk_env (lf_bmap_n   n) (leapfrog_vmap x v)) s) p).
+eapply conds2_hold_optv_n; auto; apply H1.
 assert (HVALID : expr_valid (optimize_div v') = true) by reflexivity.
 assert (listconds : forall i : cond, In i p -> eval_cond1 (env_ (leapfrog_vmap x v)) s i) by
            leapfrog_conds1_hold (optimize_div x') lc2.
-eapply rndval_with_cond_correct; auto; try apply H3.
+eapply rndval_with_cond_correct; auto; try apply H1.
 rewrite <- env_mk_env in lc2; auto.
 Qed.
 
