@@ -8,13 +8,13 @@ Open Scope logic.
 Require Import float_lib lf_harm_float lf_harm_lemmas.
 Import IEEE754_extra.
 Import Float32_Notation.
+Set Bullet Behavior "Strict Subproofs". 
 
 Definition force_spec :=
  DECLARE _force
- WITH xp: val, x : float32
- PRE [ tptr tfloat ] PROP() PARAMS(xp) SEP(data_at Tsh tfloat (Vsingle x) xp)
- POST [ tfloat ] PROP() RETURN (Vsingle (F x)) 
-                        SEP(data_at Tsh tfloat (Vsingle x) xp).
+ WITH  x : float32
+ PRE [ tfloat ] PROP() PARAMS(Vsingle x) SEP()
+ POST [ tfloat ] PROP() RETURN (Vsingle (F x)) SEP().
 
 Definition lfstep_spec := 
   DECLARE _lfstep
@@ -58,52 +58,15 @@ Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
 start_function.
 forward.
-forward.
-entailer!.
-f_equal.
-unfold F.
-f_equal.
-prove_float_constants_equal.
-Qed.
-
-Lemma leapfrog_step_x:
- forall x v, Binary.is_finite 24 128 x = true ->
-  fst (leapfrog_step (x,v)) = (x + h*v +0.5*((h*h)*(F x)))%F32.
-Proof.
- intros.
- cbv [leapfrog_step F fst snd].
-  f_equal.
-   rewrite (Float32.div_mul_inverse 1 2 0.5%F32)
-     by prove_float_constants_equal.
-  rewrite (Float32.mul_commut 0.5%F32) by (left; reflexivity).
-  auto.
-Qed.
-
-Lemma leapfrog_step_v:
- forall x v, Binary.is_finite 24 128 x = true ->
-  snd (leapfrog_step (x,v)) = 
-  (v + half * (h * (F (x+h*v+half*((h*h)*(F x))) + F x)))%F32.
-Proof.
- intros.
- cbv [leapfrog_step F fst snd].
- f_equal.
- rewrite !mul_minusone_negate by auto.
- rewrite !(Float32.div_mul_inverse _ _ half)
-     by apply exact_inverse_two.
- rewrite Float32.mul_commut by (right; reflexivity).
- f_equal. f_equal.
- rewrite (Float32.add_commut) 
-   by (left; apply is_finite_not_is_nan; apply is_finite_negate; auto).
- f_equal. f_equal. f_equal.
- rewrite Float32.mul_commut by (right; reflexivity).
- f_equal.
 Qed.
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
 Proof.
 start_function.
+forward.
 forward_call.
-forward_call.
+forward.
+forward.
 forward.
 forward.
 forward.
@@ -111,12 +74,15 @@ forward_call.
 forward.
 forward.
 entailer!.
-clear - H.
-rewrite half_repr.
-rewrite leapfrog_step_x by auto.
-rewrite leapfrog_step_v by auto.
-cancel.
+replace (Float32.of_bits (Int.repr 1056964608)) with (1%Z/2%Z)%F32
+   by prove_float_constants_equal.
+apply derives_refl.
 Qed.
+
+Lemma leapfrog_step_is_finite:
+ forall i,  0 <= i < 100 ->
+  Binary.is_finite 24 128 (fst (Z.iter i leapfrog_step (initial_x, initial_v))) = true.
+Admitted.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
 Proof.
@@ -126,22 +92,18 @@ forward.
 forward.
 forward.
 forward.
-replace (Vsingle (Float32.of_bits (Int.repr 1065353216))) with (Vsingle initial_x)
-  by (f_equal; prove_float_constants_equal).
- change (data_at Tsh tfloat (Vsingle (Float32.of_bits (Int.repr 0))) vp)
-      with (data_at Tsh tfloat (Vsingle initial_v) vp).
- change (Float32.of_bits (Int.repr 0)) with Float32.zero.
- replace (Float32.of_bits (Int.repr 1065353216)) with (1:float32)
-  by (prove_float_constants_equal).
- replace (Float32.div _ _) with h
-  by (prove_float_constants_equal).
+replace (Float32.div _ _) with h
+    by prove_float_constants_equal.
+replace (Float32.of_bits (Int.repr 1065353216)) with (1:float32)
+    by prove_float_constants_equal.
+change (Float32.of_bits (Int.repr 0)) with (0:float32).
 pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
  forward_for_simple_bound 100 (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);
                    temp _max_step (Vint (Int.repr 100));
                    temp _t (Vsingle (Z.iter n (Float32.add h) (0:float32))); 
-                   temp _x xp; temp _v vp)
+                   temp lfharm._x xp; temp lfharm._v vp)
    SEP (data_at Tsh tfloat (Vsingle (fst (step n))) xp;
           data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.
 - 
@@ -163,10 +125,10 @@ Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
 forward_call.
-forget (leapfrog (initial_x, initial_v) 100) as final_xv.
 forward.
 cancel.
 Qed.
+
 
 
 

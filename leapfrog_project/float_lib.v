@@ -63,18 +63,63 @@ Ltac eq_hnf :=
     set (x:=B); hnf in x; subst x
  end.
  
+Ltac unfold_Float_ops := 
+ change Float32.of_bits with (fun b : int => Bits.b32_of_bits (Int.unsigned b));
+change Float32.div with (Binary.Bdiv 24 128 eq_refl eq_refl Float32.binop_nan Binary.mode_NE);
+change Float32.mul with (Binary.Bmult 24 128 eq_refl eq_refl Float32.binop_nan Binary.mode_NE);
+change Float32.add with (Binary.Bplus 24 128 eq_refl eq_refl Float32.binop_nan Binary.mode_NE);
+change Float32.sub with (Binary.Bminus 24 128 eq_refl eq_refl Float32.binop_nan Binary.mode_NE);
+change Float32.neg with (Binary.Bopp 24 128 Float32.neg_nan);
+change Float.of_bits with (fun b : int64 => Bits.b64_of_bits (Int64.unsigned b));
+change Float.div with (Binary.Bdiv 53 1024 eq_refl eq_refl Float.binop_nan Binary.mode_NE);
+change Float.mul with (Binary.Bmult 53 1024 eq_refl eq_refl Float.binop_nan Binary.mode_NE);
+change Float.add with (Binary.Bplus 53 1024 eq_refl eq_refl Float.binop_nan Binary.mode_NE);
+change Float.sub with (Binary.Bminus 53 1024 eq_refl eq_refl Float.binop_nan Binary.mode_NE);
+change Float.neg with (Binary.Bopp 53 1024 Float.neg_nan).
+
+Lemma f_equal_Some: forall {A} (x y: A),  x = y -> Some x = Some y.
+Proof. congruence. Qed.
+
+Axiom prop_ext: ClassicalFacts.prop_extensionality.
+Arguments prop_ext [A B] _.
+
+Lemma proof_irr: ClassicalFacts.proof_irrelevance.
+Proof.
+  exact (ClassicalFacts.ext_prop_dep_proof_irrel_cic prop_ext).
+Qed.
+Arguments proof_irr [A] _ _.
+
+Lemma B754_finite_ext:
+  forall prec emax s m e p1 p2,
+    Binary.B754_finite prec emax s m e p1 = Binary.B754_finite prec emax s m e p2.
+Proof.
+intros.
+f_equal.
+apply proof_irr.
+Qed.
+
+Lemma B754_zero_ext:
+  forall prec emax s,
+    Binary.B754_zero prec emax s = Binary.B754_zero prec emax s.
+Proof.
+intros.
+f_equal.
+Qed.
+
 Ltac prove_float_constants_equal :=
  lazymatch goal with
  | |- @eq ?t ?A ?B =>
    let y := eval hnf in t in 
    lazymatch y with
-   | option ?u => let u' := eval hnf in u in match u' with binary_float _ _ => idtac end
-   | binary_float _ _ => idtac
+   | option ?u => let u' := eval hnf in u in match u' with Binary.binary_float _ _ => idtac end
+   | Binary.binary_float _ _ => idtac
    | _ => fail "prove_float_constants_equal is meant to be used on equality goals at type (binary_float _ _) but this goal is an equality at type" t
    end;
     eq_hnf;
-    match t with option _ => f_equal | _ => idtac end;
-    apply B2FF_inj; reflexivity
+    unfold_Float_ops;
+    try apply f_equal_Some;
+    try apply B754_zero_ext;
+    apply B754_finite_ext
   | _ => fail "prove_float_constants_equal is meant to be used on equality goals at type (binary_float _ _)"
   end.
 
