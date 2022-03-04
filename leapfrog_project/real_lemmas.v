@@ -314,3 +314,67 @@ rewrite Rabs_mult.
 nra.
 Qed.
 
+
+Definition Rprod_minus (x y : R * R) : R * R :=
+  (Rminus (fst x) (fst y), Rminus (snd x) (snd y)).
+
+Definition Rprod_plus (x y : R * R) : R * R :=
+  (Rplus (fst x) (fst y), Rplus (snd x) (snd y)).
+
+Definition Rprod_norm (x : R * R) : R  :=
+  sqrt ( (fst x) ^ 2 +  (snd x) ^ 2).
+
+Lemma Rprod_triang_ineq x y: 
+Rprod_norm ( Rprod_plus x y) <= Rprod_norm x + Rprod_norm y.
+Proof.
+destruct x, y.
+unfold Rprod_plus, Rprod_norm, fst, snd.
+assert ((r + r1) ^ 2 + (r0 + r2) ^ 2 <= 
+  (sqrt (r ^ 2 + r0 ^ 2) + sqrt (r1 ^ 2 + r2 ^ 2))^2).
+replace ((sqrt (r ^ 2 + r0 ^ 2) + sqrt (r1 ^ 2 + r2 ^ 2)) ^ 2)
+with (r^2 + r0^2 + r1^2 + r2^2 + 2 * sqrt (r ^ 2 + r0 ^ 2)* sqrt (r1 ^ 2 + r2 ^ 2))
+by 
+(simpl; field_simplify; 
+repeat rewrite pow2_sqrt; repeat nra).
+simpl. field_simplify.
+repeat rewrite Rplus_assoc.
+apply Rplus_le_compat_l.
+rewrite Rplus_comm.
+repeat rewrite Rplus_assoc.
+apply Rplus_le_compat_l.
+apply Rplus_le_compat_l.
+rewrite Rplus_comm.
+repeat rewrite Rplus_assoc.
+apply Rplus_le_compat_l.
+repeat rewrite Rmult_assoc.
+replace (2 * (r * r1) + 2 * (r0 * r2)) with
+(2 * ((r * r1) + (r0 * r2))) by nra.
+apply Rmult_le_compat_l; try nra.
+repeat rewrite Rmult_1_r. 
+apply sqrt_cauchy.
+apply sqrt_le_1 in H.
+rewrite sqrt_pow2 in H; auto.
+apply sqrt_plus_pos.
+apply sqr_plus_pos.  
+rewrite <- Rsqr_pow2.
+apply Rle_0_sqr.
+Qed.
+
+Lemma Rprod_norm_plus_minus_eq x y z:
+Rprod_norm ( Rprod_minus x y) = Rprod_norm ( Rprod_plus (Rprod_minus x z) (Rprod_minus z y)).
+Proof.
+intros.
+destruct x, y, z.
+unfold Rprod_plus, Rprod_minus, Rprod_norm, fst, snd.
+f_equal.
+nra.
+Qed.
+
+
+Lemma Rnorm_pos x:
+0 <= Rprod_norm x.
+Proof.
+unfold Rprod_norm.
+apply sqrt_pos.
+Qed.
+
