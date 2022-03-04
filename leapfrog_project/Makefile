@@ -13,7 +13,7 @@ all: _CoqProject verif_lfharm.vo
 _CoqProject: Makefile
 	echo $(COQFLAGS) >_CoqProject
 
-float_lib.vo: float_lib.v float_notations.vo
+float_lib.vo: float_lib.v float_notations2.vo
 
 vcfloat.vo: vcfloat.v float_lib.vo
 

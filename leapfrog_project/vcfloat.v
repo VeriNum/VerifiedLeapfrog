@@ -97,6 +97,8 @@ Ltac reify_float_expr E :=
                                       constr:(@Unop AST.ident (Exact1 Opp) a')
  | Float32.abs ?a => let a' := reify_float_expr a in
                                       constr:(@Unop AST.ident (Exact1 Abs) a')
+ | b32_B754_finite _ _ _ _ => constr:(@Const AST.ident Tsingle E)
+ | b64_B754_finite _ _ _ _ => constr:(@Const AST.ident Tdouble E)
  | float_of_Z ?n => constr:(@Const AST.ident Tsingle (float_of_Z n))
  | Float.of_int ?i => constr:(@Const AST.ident Tsingle (float_of_Z (Int.signed i)))
  | Float.of_intu ?i => constr:(@Const AST.ident Tsingle (float_of_Z (Int.unsigned i)))

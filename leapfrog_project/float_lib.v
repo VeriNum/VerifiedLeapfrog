@@ -1,6 +1,6 @@
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
-Require Export float_notations.
+Require Export float_notations2.
 (* MUST DO THE IMPORTS IN THIS ORDER
    because "float" is defined in two different modules
    and we want to end up with compcert.lib.Floats.float.
@@ -167,5 +167,71 @@ Proof.
 (* Almost certainly true, but a royal pain to prove. *)
 Abort.
 
+Ltac ground_pos p := 
+ match p with
+ | xH => idtac
+ | xI ?p' => ground_pos p' 
+ | xO ?p' => ground_pos p' 
+ end.
+
+Ltac ground_Z x :=
+ match x with Z0 => idtac | Zpos ?y => ground_pos y | Zneg ?y => ground_pos y end.
+
+
+Ltac canonicalize_float_constant x :=
+match x with
+| Float32.of_bits (Int.repr ?a) =>
+  ground_Z a;
+  let x' := constr:(Bits.b32_of_bits a) in
+  let y := eval compute in x' in
+ match y with
+   | Binary.B754_finite _ _ ?s ?m ?e _ =>
+     let z := constr:(b32_B754_finite s m e (@eq_refl bool true))
+      in change x with x'; 
+        replace x' with z by (apply B754_finite_ext; reflexivity)
+   | Binary.B754_zero _ _ ?s => 
+       let z := constr:(b32_B754_zero s) in
+       change x with z        
+  end
+| Float.of_bits (Int64.repr ?a) =>
+  ground_Z a;
+  let x' := constr:(Bits.b64_of_bits a) in
+  let y := eval compute in x' in
+ match y with
+   | Binary.B754_finite _ _ ?s ?m ?e _ =>
+     let z := constr:(b64_B754_finite s m e (@eq_refl bool true))
+      in change x with x'; 
+        replace x' with z by (apply B754_finite_ext; reflexivity)
+   | Binary.B754_zero _ _ ?s => 
+       let z := constr:(b64_B754_zero s) in
+       change x with z        
+  end
+end.
+
+Ltac canonicalize_float_constants := 
+(*match goal with
+| MORE_COMMANDS := @abbreviate statement _ |- _ =>
+    revert MORE_COMMANDS; canonicalize_float_constants; 
+     intro MORE_COMMANDS
+| _ => 
+*)
+  repeat
+    match goal with
+    | |- context [Binary.B754_finite 24 128 ?s ?m ?e ?p] =>
+         let x := constr:(Binary.B754_finite 24 128 s m e p) in
+         let e' := eval compute in e in
+         let z := constr:(b32_B754_finite s m e' (@eq_refl bool true)) in
+         replace x with z by (apply B754_finite_ext; reflexivity)
+    | |- context [Binary.B754_finite 53 1024 ?s ?m ?e ?p] =>
+         let x := constr:(Binary.B754_finite 53 1024 s m e p) in
+         let e' := eval compute in e in
+         let z := constr:(b64_B754_finite s m e' (@eq_refl bool true)) in
+         replace x with z by (apply B754_finite_ext; reflexivity)
+    | |- context [Float32.of_bits (Int.repr ?a)] =>
+     canonicalize_float_constant constr:(Float32.of_bits (Int.repr a))
+    | |- context [Float.of_bits (Int64.repr ?a)] =>
+     canonicalize_float_constant constr:(Float.of_bits (Int64.repr a))
+    end.
+(*end. *)
 
 

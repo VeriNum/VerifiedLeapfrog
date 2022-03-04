@@ -7,8 +7,9 @@ Open Scope logic.
 
 Require Import float_lib lf_harm_float lf_harm_lemmas.
 Import IEEE754_extra.
-Import Float32_Notation.
+
 Set Bullet Behavior "Strict Subproofs". 
+
 
 Definition force_spec :=
  DECLARE _force
@@ -29,8 +30,8 @@ Definition lfstep_spec :=
     SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_step (x,v)))) xp; 
           data_at Tsh tfloat (Vsingle (snd(leapfrog_step (x,v)))) vp ).
 
-Definition initial_x := (1:float32).
-Definition initial_v := (0:float32).
+Definition initial_x := 1%F32.
+Definition initial_v := 0%F32.
 
 Definition integrate_spec := 
   DECLARE _integrate
@@ -56,13 +57,15 @@ Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec; main_sp
 
 Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
+canonicalize_float_constants.
 start_function.
 forward.
 Qed.
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
 Proof.
-start_function.
+start_function. 
+subst MORE_COMMANDS; unfold abbreviate; canonicalize_float_constants.
 forward.
 forward_call.
 forward.
@@ -74,31 +77,27 @@ forward_call.
 forward.
 forward.
 entailer!.
-replace (Float32.of_bits (Int.repr 1056964608)) with (1%Z/2%Z)%F32
-   by prove_float_constants_equal.
-apply derives_refl.
+simpl.
+replace (1/2)%F32 with 0.5%F32 by prove_float_constants_equal.
+auto.
 Qed.
 
 Lemma leapfrog_step_is_finite:
- forall i,  0 <= i < 100 ->
+ forall i,  (0 <= i < 100)%Z ->
   Binary.is_finite 24 128 (fst (Z.iter i leapfrog_step (initial_x, initial_v))) = true.
 Admitted.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
 Proof.
 start_function.
+subst MORE_COMMANDS; unfold abbreviate; canonicalize_float_constants.
 forward.
 forward.
 forward.
 forward.
 forward.
-replace (Float32.div _ _) with h
-    by prove_float_constants_equal.
-replace (Float32.of_bits (Int.repr 1065353216)) with (1:float32)
-    by prove_float_constants_equal.
-change (Float32.of_bits (Int.repr 0)) with (0:float32).
 pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
- forward_for_simple_bound 100 (EX n:Z,
+ forward_for_simple_bound 100%Z (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);
                    temp _max_step (Vint (Int.repr 100));
@@ -109,14 +108,13 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
 - 
   entailer!.
 - forward_call.
-   apply leapfrog_step_is_finite; auto.
+   apply leapfrog_step_is_finite; lia.
    forward.
    entailer!.
-   fold (Z.succ i); rewrite Zbits.Ziter_succ.
-   f_equal. apply Float32.add_commut. left; reflexivity.
-   lia.
-   fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ.
-   cancel. lia.
+   fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
+   rewrite Float32.add_commut; auto.
+   fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ by lia.
+   cancel.
 -
    forward.
 Qed.
