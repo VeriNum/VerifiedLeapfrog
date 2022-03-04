@@ -28,6 +28,9 @@ Definition lfstep_spec :=
     SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_step (x,v)))) xp; 
           data_at Tsh tfloat (Vsingle (snd(leapfrog_step (x,v)))) vp ).
 
+Definition initial_x := (1:float32).
+Definition initial_v := (0:float32).
+
 Definition integrate_spec := 
   DECLARE _integrate
   WITH xp: val, vp: val
@@ -38,8 +41,8 @@ Definition integrate_spec :=
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog (initial_x,initial_v) 100))) xp; 
-          data_at Tsh tfloat (Vsingle (snd(leapfrog (initial_x,initial_v) 100))) vp ).
+    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog' (initial_x,initial_v) 100))) xp; 
+          data_at Tsh tfloat (Vsingle (snd(leapfrog' (initial_x,initial_v) 100))) vp ).
 
 Definition main_spec :=
  DECLARE _main

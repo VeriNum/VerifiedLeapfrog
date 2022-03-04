@@ -482,10 +482,13 @@ Notation float32xx := (binary_float 24 128) (only parsing).
   fails with the message,
   "float32xx is bound to a notation that does not denote a reference."
   Coq issue #14806 explains what the bug is. 
- *)
+ 
+Commenting out this "Fail" command because in Coq 8.15 it no longer fails.
+Perhaps bug 14806 is fixed.
+
 Fail Number Notation float32xx number_to_float32  float32_to_number
     :float32_scope.   (* It is a bug that this fails *)
-
+*)
 (* Coq issue report #14806 proposes a workaround,
   which is to replace the constants 24 and 128 by definitions,
   as follows: *)

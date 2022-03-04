@@ -23,6 +23,7 @@ Definition _v : AST.ident := 1117%positive.
 Definition x_init := float32_of_Z 0.
 Definition v_init := float32_of_Z 1.
 
+Import vcfloat.Float_lemmas.
 Import FPLangOpt. 
 Import FPLang.
 Import FPSolve.
@@ -405,12 +406,11 @@ Qed.
 
 Import Interval.Tactic.
 
-
 Lemma conds2_hold_optx:
   forall x v : float32,
 boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
  forall r si2 s p,
-    rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div x') = ((r, (si2, s)), p)  ->
+    rndval_with_cond 0 empty_shiftmap (optimize_div x') = ((r, (si2, s)), p)  ->
 list_forall (eval_cond2 (mk_env (leapfrog_bmap ) (leapfrog_vmap x v)) s) p.
 Proof.
 intros.
@@ -435,7 +435,7 @@ forall x v : float32,
    0<= e2 <= 1 ->
   boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
  forall r si2 s p,
-    rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div x') = ((r, (si2, s)), p)  ->
+    rndval_with_cond 0 empty_shiftmap (optimize_div x') = ((r, (si2, s)), p)  ->
 list_forall (eval_cond2 (mk_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)) s) p.
 Proof.
 intros.
@@ -502,7 +502,7 @@ Lemma conds2_hold_optv:
   forall x v : float32,
 boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
  forall r si2 s p,
-    rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div v') = ((r, (si2, s)), p)  ->
+    rndval_with_cond 0 empty_shiftmap (optimize_div v') = ((r, (si2, s)), p)  ->
 list_forall (eval_cond2 (mk_env (leapfrog_bmap ) (leapfrog_vmap x v)) s) p.
 Proof.
 intros.
@@ -527,7 +527,7 @@ forall x v : float32,
    0<= e2 <= 1 ->
 boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
  forall r si2 s p,
-    rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div v') = ((r, (si2, s)), p)  ->
+    rndval_with_cond 0 empty_shiftmap (optimize_div v') = ((r, (si2, s)), p)  ->
 list_forall (eval_cond2 (mk_env (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)) s) p.
 Proof.
 intros.
@@ -651,9 +651,6 @@ destruct H0 as (ed & B & H0);
                 | Denormal => let e := fresh "eps" in
                               rename
                               ed into e
-                | uNormal => let e := fresh "eps" in
-                              rename
-                              ed into e
                 end
              end;
 unfold error_bound in B; simpl in B;
@@ -675,7 +672,7 @@ Lemma rndval_with_cond_correct_optx:
   forall x v : float32,
     boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
 forall r si2 s p,
-rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div x') = ((r, (si2, s)), p) ->
+rndval_with_cond 0 empty_shiftmap (optimize_div x') = ((r, (si2, s)), p) ->
 rndval_with_cond_result (env_ (leapfrog_vmap x v)) (optimize_div x') r si2 s
 .
 Proof.
@@ -697,7 +694,7 @@ Lemma rndval_with_cond_correct_optv:
   forall x v : float32,
     boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
 forall r si2 s p,
-rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div v') = ((r, (si2, s)), p) ->
+rndval_with_cond 0 empty_shiftmap (optimize_div v') = ((r, (si2, s)), p) ->
 rndval_with_cond_result (env_ (leapfrog_vmap x v)) (optimize_div v') r si2 s
 .
 Proof.
@@ -724,7 +721,7 @@ forall x v : float32,
    0<= e2 <= 1 ->
 boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
 forall r si2 s p,
-    rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div x') = ((r, (si2, s)), p)  ->
+    rndval_with_cond 0 empty_shiftmap (optimize_div x') = ((r, (si2, s)), p)  ->
 rndval_with_cond_result (env_ (leapfrog_vmap x v)) (optimize_div x') r si2 s
 .
 Proof.
@@ -754,7 +751,7 @@ forall x v : float32,
    0<= e2 <= 1 ->
 boundsmap_denote (lf_bmap_n e1 e2 n) (leapfrog_vmap x v)->
 forall r si2 s p,
-    rndval_with_cond 0 (mempty (Tsingle, Normal)) (optimize_div v') = ((r, (si2, s)), p)  ->
+    rndval_with_cond 0 empty_shiftmap (optimize_div v') = ((r, (si2, s)), p)  ->
 rndval_with_cond_result (env_ (leapfrog_vmap x v)) (optimize_div v') r si2 s
 .
 Proof.
@@ -880,7 +877,7 @@ Lemma leapfrog_opt_stepx_is_finite:
   Binary.is_finite _ _(fval (leapfrog_env x v) (optimize_div x')) = true.
 Proof.
 intros.
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) (optimize_div x')) 
+(destruct (rndval_with_cond O (mempty  (Tsingle, Normal')) (optimize_div x')) 
   as [[r [si2 s]] p] eqn:rndval).
 pose proof (rndval_with_cond_correct_optx x v H r si2 s p rndval)
   as rndval_result. 
@@ -904,7 +901,7 @@ Lemma leapfrog_opt_stepv_is_finite:
   Binary.is_finite _ _(fval (leapfrog_env  x v) (optimize_div v')) = true.
 Proof. 
 intros.
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) (optimize_div v')) 
+(destruct (rndval_with_cond O (mempty  (Tsingle, Normal')) (optimize_div v')) 
   as [[r [si2 s]] p] eqn:rndval).
 pose proof (rndval_with_cond_correct_optv x v H r si2 s p rndval)
   as rndval_result. 
@@ -955,7 +952,7 @@ forall x v : float32,
   Binary.is_finite _ _(fval (lf_env_n x v e1 e2 n) (optimize_div x')) = true.
 Proof.
 intros.
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) (optimize_div x')) 
+(destruct (rndval_with_cond O (mempty  (Tsingle, Normal')) (optimize_div x')) 
   as [[r [si2 s]] p] eqn:rndval).
 pose proof (rndval_with_cond_correct_optx_n x v n H e1 e2 H0 H1 H2 r si2 s p rndval)
   as rndval_result. 
@@ -984,7 +981,7 @@ forall x v : float32,
   Binary.is_finite _ _(fval (lf_env_n x v e1 e2 n) (optimize_div v')) = true.
 Proof.
 intros.
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) (optimize_div v')) 
+(destruct (rndval_with_cond O (mempty  (Tsingle, Normal')) (optimize_div v')) 
   as [[r [si2 s]] p] eqn:rndval).
 pose proof (rndval_with_cond_correct_optv_n x v n H e1 e2 H0 H1 H2 r si2 s p rndval)
   as rndval_result. 
