@@ -16,6 +16,9 @@ Local Transparent Float32.sub.
 Definition leapfrog_stepx x v := fst (leapfrog_step' (x,v)).
 Definition leapfrog_stepv x v := snd (leapfrog_step' (x,v)).
 
+Definition leapfrog_step_q p q := snd (leapfrogF p q 1).
+Definition leapfrog_step_p p q := fst (leapfrogF p q 1).
+
 Import ListNotations.
 Definition _x : AST.ident := 1121%positive.
 Definition _v : AST.ident := 1117%positive.
@@ -35,6 +38,11 @@ Definition x' := ltac:(let e' :=
 Definition v' := ltac:(let e' := 
   HO_reify_float_expr constr:([_x; _v]) leapfrog_stepv in exact e').
 
+Definition q' := ltac:(let e' := 
+  HO_reify_float_expr constr:([_v; _x]) leapfrog_step_q in exact e').
+Definition p' := ltac:(let e' := 
+  HO_reify_float_expr constr:([_v; _x]) leapfrog_step_p in exact e').
+
 
 Fixpoint mk_bounds_list (id_list: list  (AST.ident * (type * (R * R)))) : ( list  (AST.ident * Test.varinfo))  :=
   match id_list with
@@ -43,7 +51,7 @@ Fixpoint mk_bounds_list (id_list: list  (AST.ident * (type * (R * R)))) : ( list
   | nil => []
 end.
 
-Definition leapfrog_bmap_list := mk_bounds_list [(_x, (Tsingle, (-1,1))); (_v, (Tsingle, (-1,1)))].
+Definition leapfrog_bmap_list := mk_bounds_list [(_x, (Tsingle, (-100,100))); (_v, (Tsingle, (-100,100)))].
 Definition leapfrog_vmap_list (x v : float32) := [(_x, Values.Vsingle x);(_v, Values.Vsingle v)].
 Definition leapfrog_env  := (fun x v => list_to_bound_env leapfrog_bmap_list (leapfrog_vmap_list x v)). 
 Definition leapfrog_bmap :=  Maps.PTree_Properties.of_list leapfrog_bmap_list.
@@ -180,7 +188,8 @@ pose proof bmd_Sn_bnds_le  n i.
 pose proof bmd_Sn_vars_eq   n i.
 pose proof bmd_Sn_exists_iff    n i.
 destruct (Maps.PTree.get i (leapfrog_vmap x v)).
-+ destruct (Maps.PTree.get i (lf_bmap_n  ( n))); try contradiction.
++ destruct (Maps.PTree.get i (lf_bmap_n  n)); 
+  try contradiction.
 ++ destruct (Maps.PTree.get i (lf_bmap_n (S n))).
 +++ specialize (H0 v2 v1 eq_refl eq_refl).
 specialize (H1 v2 v1  eq_refl eq_refl).
@@ -412,6 +421,28 @@ try interval).
 Qed.
 
 
+
+Lemma conds2_hold_opt_q:
+  forall p q : float32,
+boundsmap_denote (leapfrog_bmap) (leapfrog_vmap q p)->
+ forall r si2 s P,
+    rndval_with_cond 0 empty_shiftmap (optimize_div q') = ((r, (si2, s)), P)  ->
+list_forall (eval_cond2 (mk_env (leapfrog_bmap ) (leapfrog_vmap q p)) s) P.
+Proof.
+intros.
+apply boundsmap_denote_e in H.
+rewrite list_forall_Forall in H.
+rewrite list_forall_Forall.
+rndval_inversion; subst.
+fold Tsingle ; fold Tdouble.
+prepare_assumptions_about_free_variables;
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_eval_cond2; 
+try interval).
+Qed.
+
+
+
 Lemma conds2_hold_optx_n:
 forall x v : float32, 
   forall n : nat,
@@ -471,6 +502,25 @@ boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap x v)->
  forall r si2 s p,
     rndval_with_cond 0 empty_shiftmap (optimize_div v') = ((r, (si2, s)), p)  ->
 list_forall (eval_cond2 (mk_env (leapfrog_bmap ) (leapfrog_vmap x v)) s) p.
+Proof.
+intros.
+apply boundsmap_denote_e in H.
+rewrite list_forall_Forall in H.
+rewrite list_forall_Forall.
+rndval_inversion; subst.
+fold Tsingle ; fold Tdouble.
+prepare_assumptions_about_free_variables;
+repeat (apply List.Forall_cons; try apply List.Forall_nil;
+try solve_one_eval_cond2; 
+try interval).
+Qed. 
+
+Lemma conds2_hold_opt_p:
+  forall p q : float32,
+boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap q p)->
+ forall r si2 s P,
+    rndval_with_cond 0 empty_shiftmap (optimize_div p') = ((r, (si2, s)), P)  ->
+list_forall (eval_cond2 (mk_env (leapfrog_bmap ) (leapfrog_vmap q p)) s) P.
 Proof.
 intros.
 apply boundsmap_denote_e in H.
@@ -593,10 +643,10 @@ destruct H0 as (ed & B & H0);
             match type of B with
             | context [ error_bound _ ?a ] =>
                 match a with
-                | Normal => let d := fresh "del" in
+                | Normal' => let d := fresh "del" in
                             rename
                             ed into d
-                | Denormal => let e := fresh "eps" in
+                | Denormal' => let e := fresh "eps" in
                               rename
                               ed into e
                 end
@@ -637,6 +687,27 @@ eapply rndval_with_cond_correct; auto; try apply H0.
 rewrite <- env_mk_env in lc2; auto.
 Qed.
 
+Lemma rndval_with_cond_correct_opt_q:
+  forall p q : float32,
+    boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap q p)->
+forall r si2 s P,
+rndval_with_cond 0 empty_shiftmap (optimize_div q') = ((r, (si2, s)), P) ->
+rndval_with_cond_result (env_ (leapfrog_vmap q p)) (optimize_div q') r si2 s
+.
+Proof.
+intros.
+assert
+(HFIN : forall ty i, is_finite (fprec ty) (femax ty) (env_ (leapfrog_vmap q p) ty i) = true) by
+apply (finite_env (leapfrog_bmap ) (leapfrog_vmap q p) H).
+assert (lc2 : list_forall (eval_cond2 (mk_env (leapfrog_bmap ) (leapfrog_vmap q p)) s) P).
+eapply conds2_hold_opt_q; auto; apply H0.
+assert (HVALID : expr_valid (optimize_div q') = true) by reflexivity.
+assert (listconds : forall i : cond, In i P -> eval_cond1 (env_ (leapfrog_vmap q p)) s i) by
+           leapfrog_conds1_hold (optimize_div q') lc2.
+eapply rndval_with_cond_correct; auto; try apply H0.
+rewrite <- env_mk_env in lc2; auto.
+Qed.
+
 
 Lemma rndval_with_cond_correct_optv:
   forall x v : float32,
@@ -660,11 +731,33 @@ rewrite <- env_mk_env in lc2; auto.
 Qed.
 
 
+Lemma rndval_with_cond_correct_opt_p:
+  forall p q : float32,
+    boundsmap_denote (leapfrog_bmap ) (leapfrog_vmap q p)->
+forall r si2 s P,
+rndval_with_cond 0 empty_shiftmap (optimize_div p') = ((r, (si2, s)), P) ->
+rndval_with_cond_result (env_ (leapfrog_vmap q p)) (optimize_div p') r si2 s
+.
+Proof.
+intros.
+assert
+(HFIN : forall ty i, is_finite (fprec ty) (femax ty) (env_ (leapfrog_vmap q p) ty i) = true) by
+apply (finite_env (leapfrog_bmap ) (leapfrog_vmap q p) H).
+assert (lc2 : list_forall (eval_cond2 (mk_env (leapfrog_bmap ) (leapfrog_vmap q p)) s) P).
+eapply conds2_hold_opt_p; auto; apply H0.
+assert (HVALID : expr_valid (optimize_div p') = true) by reflexivity.
+assert (listconds : forall i : cond, In i P -> eval_cond1 (env_ (leapfrog_vmap q p)) s i) by
+           leapfrog_conds1_hold (optimize_div p') lc2.
+eapply rndval_with_cond_correct; auto; try apply H0.
+rewrite <- env_mk_env in lc2; auto.
+Qed.
+
+
 Lemma rndval_with_cond_correct_optx_n:
 forall x v : float32, 
   forall n : nat,
   (n <=1000)%nat ->
-boundsmap_denote (lf_bmap_n   n) (leapfrog_vmap x v)->
+boundsmap_denote (lf_bmap_n n) (leapfrog_vmap x v)->
 forall r si2 s p,
     rndval_with_cond 0 empty_shiftmap (optimize_div x') = ((r, (si2, s)), p)  ->
 rndval_with_cond_result (env_ (leapfrog_vmap x v)) (optimize_div x') r si2 s
@@ -685,6 +778,8 @@ assert (listconds : forall i : cond, In i p -> eval_cond1 (env_ (leapfrog_vmap x
 eapply rndval_with_cond_correct; auto; try apply H1.
 rewrite <- env_mk_env in lc2; auto.
 Qed.
+
+
 
 
 Lemma rndval_with_cond_correct_optv_n:
