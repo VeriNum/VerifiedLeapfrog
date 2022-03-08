@@ -53,6 +53,17 @@ Fixpoint leapfrog' ( ic : float32 * float32) (n : nat) : float32 * float32:=
     leapfrog' ic' n'
   end.
 
+(* assumes inputs of (p, w * q, w, n) *)
+(* output q' will therefore be scaled appropriately *)
+Fixpoint leapfrogF (p q : float32) (n : nat): float32 * float32:=
+  match n with
+  | 0%nat => (p , q)
+  | S n' =>
+    let q' := (1 - half_pow2_h) * q + (h * p) in
+    let p' := (1 - half_pow2_h) * p - (half_h * (2 - half_pow2_h)) * q in 
+  leapfrogF p' q' n'
+end.
+
 Lemma lfstep_lfn:
   forall n ic ,
   leapfrog_step' (leapfrog' ic n) = leapfrog' (leapfrog_step' ic) n.
