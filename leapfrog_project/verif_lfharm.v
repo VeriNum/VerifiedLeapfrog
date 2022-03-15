@@ -5,28 +5,23 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
 Open Scope logic.
 
-Require Import float_lib lf_harm_float.
+Require Import float_lib lf_harm_float lf_harm_lemmas.
 Import IEEE754_extra.
-Import FloatLiteralNotation.
 
-Definition initial_x : float32 := 1.
-Definition initial_v : float32 := 0.
-Definition initial_t : float32 := 0.
+Set Bullet Behavior "Strict Subproofs". 
 
-Definition half := Float32.div 1 2.
 
 Definition force_spec :=
  DECLARE _force
- WITH xp: val, x : float32
- PRE [ tptr tfloat ] PROP() PARAMS(xp) SEP(data_at Tsh tfloat (Vsingle x) xp)
- POST [ tfloat ] PROP() RETURN (Vsingle (F x)) 
-                        SEP(data_at Tsh tfloat (Vsingle x) xp).
+ WITH  x : float32
+ PRE [ tfloat ] PROP() PARAMS(Vsingle x) SEP()
+ POST [ tfloat ] PROP() RETURN (Vsingle (F x)) SEP().
 
 Definition lfstep_spec := 
   DECLARE _lfstep
   WITH xp: val, x: float32, vp: val, v: float32
   PRE [ tptr tfloat , tptr tfloat , tfloat ]
-    PROP()
+    PROP(Binary.is_finite 24 128 x = true)
     PARAMS (xp; vp; Vsingle h)
     SEP(data_at Tsh tfloat (Vsingle x) xp; data_at Tsh tfloat (Vsingle v) vp )
   POST [ tvoid ]
@@ -34,6 +29,9 @@ Definition lfstep_spec :=
     RETURN()
     SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_step (x,v)))) xp; 
           data_at Tsh tfloat (Vsingle (snd(leapfrog_step (x,v)))) vp ).
+
+Definition initial_x := 1%F32.
+Definition initial_v := 0%F32.
 
 Definition integrate_spec := 
   DECLARE _integrate
@@ -45,8 +43,8 @@ Definition integrate_spec :=
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog (initial_x,initial_v) 100))) xp; 
-          data_at Tsh tfloat (Vsingle (snd(leapfrog (initial_x,initial_v) 100))) vp ).
+    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog' (initial_x,initial_v) 100))) xp; 
+          data_at Tsh tfloat (Vsingle (snd(leapfrog' (initial_x,initial_v) 100))) vp ).
 
 Definition main_spec :=
  DECLARE _main
@@ -57,26 +55,21 @@ Definition main_spec :=
 
 Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec; main_spec].
 
-Hint Rewrite float_const_rewrite "0.5f" : float_const.
-Hint Rewrite float_const_rewrite "1f" : float_const.
-Hint Rewrite float_const_rewrite "0f" : float_const.
-Hint Rewrite float_const_rewrite "32f" : float_const.
-
 Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
+canonicalize_float_constants.
 start_function.
 forward.
-forward.
-entailer!.
-autorewrite with float_const.
-reflexivity.
 Qed.
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
 Proof.
-start_function.
+start_function. 
+subst MORE_COMMANDS; unfold abbreviate; canonicalize_float_constants.
+forward.
 forward_call.
-forward_call.
+forward.
+forward.
 forward.
 forward.
 forward.
@@ -84,58 +77,42 @@ forward_call.
 forward.
 forward.
 entailer!.
-clear.
-autorewrite with float_const.
-replace (f_lit "0.5f") with half by prove_float_constants_equal.
-apply derives_refl'.
-f_equal; f_equal; f_equal.
-- (* x component *)
- cbv [leapfrog_step F fst snd].
-  f_equal.
-  rewrite (Float32.div_mul_inverse _ _ half)
-     by prove_float_constants_equal.
-  rewrite (Float32.mul_commut half) by (left; reflexivity).
-  auto.
-- (* v component *)
- cbv [leapfrog_step F fst snd].
- f_equal.
- rewrite !(Float32.div_mul_inverse _ _ half)
-     by prove_float_constants_equal.
- rewrite (Float32.mul_commut half) by (left; reflexivity).
- f_equal. f_equal. f_equal. f_equal. f_equal.
- rewrite Float32.mul_commut by (left; reflexivity).
- f_equal.
+simpl.
+replace (1/2)%F32 with 0.5%F32 by prove_float_constants_equal.
+auto.
 Qed.
+
+Lemma leapfrog_step_is_finite:
+ forall i,  (0 <= i < 100)%Z ->
+  Binary.is_finite 24 128 (fst (Z.iter i leapfrog_step (initial_x, initial_v))) = true.
+Admitted.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
 Proof.
 start_function.
+subst MORE_COMMANDS; unfold abbreviate; canonicalize_float_constants.
 forward.
 forward.
 forward.
 forward.
 forward.
-autorewrite with float_const.
-change (Vsingle (f_lit "1f")) with (Vsingle initial_x).
-change (data_at Tsh tfloat (Vsingle (f_lit "0f")) vp)
-      with (data_at Tsh tfloat (Vsingle initial_v) vp).
-change (f_lit "1f" / f_lit "32f")%F32 with h.
 pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
- forward_for_simple_bound 100 (EX n:Z,
+ forward_for_simple_bound 100%Z (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);
                    temp _max_step (Vint (Int.repr 100));
                    temp _t (Vsingle (Z.iter n (Float32.add h) (0:float32))); 
-                   temp _x xp; temp _v vp)
+                   temp lfharm._x xp; temp lfharm._v vp)
    SEP (data_at Tsh tfloat (Vsingle (fst (step n))) xp;
           data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.
 - 
   entailer!.
 - forward_call.
+   apply leapfrog_step_is_finite; lia.
    forward.
    entailer!.
    fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
-   f_equal. apply Float32.add_commut. left; reflexivity.
+   rewrite Float32.add_commut; auto.
    fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ by lia.
    cancel.
 -
@@ -146,10 +123,15 @@ Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
 forward_call.
-forget (leapfrog (initial_x, initial_v) 100) as final_xv.
 forward.
 cancel.
 Qed.
+
+
+
+
+
+
 
 
 

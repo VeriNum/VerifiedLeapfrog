@@ -8,9 +8,9 @@
  * FORCE: compute force for harmonic oscillator, unity mass.
  */
 
-float force(float *x)
+float force(float x)
 {
-  return -1.0f * *x;
+  return - /* 1.0f * */ x;
 }
 
 /*
@@ -21,9 +21,9 @@ void lfstep(float *x, float *v, float h)
 {
   float a;
 
-  a = force(x);
-  *x = *x + h * *v + 0.5f * ((h * h) * force(x));		/* position step */
-  *v = *v + 0.5f * (h * (a + force(x)));		/* velocity step */
+  a = force(*x);
+  *x = *x + h * *v + (0.5f * (h * h)) * a;		/* position step */
+  *v = *v + (0.5f * h) * (a + force(*x));		/* velocity step */
 }
 
 void integrate(float *x, float *v) {
