@@ -3,23 +3,27 @@ Require Import lfharm.
 Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
+Require vcfloat.FPSolve.
+
+Existing Instance FPSolve.nans.
+
 Open Scope logic.
 
+Require Import vcfloat.
 Require Import float_lib lf_harm_float lf_harm_lemmas.
 Import IEEE754_extra.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-
 Definition force_spec :=
  DECLARE _force
- WITH  x : float32
+ WITH  x : ftype Tsingle
  PRE [ tfloat ] PROP() PARAMS(Vsingle x) SEP()
  POST [ tfloat ] PROP() RETURN (Vsingle (F x)) SEP().
 
 Definition lfstep_spec := 
   DECLARE _lfstep
-  WITH xp: val, x: float32, vp: val, v: float32
+  WITH xp: val, x: ftype Tsingle, vp: val, v: ftype Tsingle
   PRE [ tptr tfloat , tptr tfloat , tfloat ]
     PROP(Binary.is_finite 24 128 x = true)
     PARAMS (xp; vp; Vsingle h)
@@ -77,7 +81,9 @@ forward_call.
 forward.
 forward.
 entailer!.
-simpl.
+change Float32.add with (BPLUS Tsingle) in *.
+change Float32.mul with (BMULT Tsingle) in *.
+unfold leapfrog_step, fst, snd.
 replace (1/2)%F32 with 0.5%F32 by prove_float_constants_equal.
 auto.
 Qed.
@@ -101,7 +107,7 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
        PROP() 
        LOCAL (temp _h (Vsingle h);
                    temp _max_step (Vint (Int.repr 100));
-                   temp _t (Vsingle (Z.iter n (Float32.add h) (0:float32))); 
+                   temp _t (Vsingle (Z.iter n (Float32.add h) (0%F32))); 
                    temp lfharm._x xp; temp lfharm._v vp)
    SEP (data_at Tsh tfloat (Vsingle (fst (step n))) xp;
           data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.

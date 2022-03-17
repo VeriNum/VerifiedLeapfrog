@@ -2,14 +2,19 @@
    program.  *)
 
 From Flocq Require Import Binary Bits Core.
-From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
+From compcert.lib Require Import IEEE754_extra
+ (* Coqlib Floats Zbits Integers*).
 
-Require Import float_lib.
+Require Import vcfloat.FPCore vcfloat.Reify vcfloat.Float_notations.
 
 Local Open Scope float32_scope.
 
+Section WITHNANS.
+Context {NANS: Nans}.
+
+
 (* Linear forcing function *)
-Definition F (x : float32) : float32 := -x.
+Definition F (x : ftype Tsingle) : ftype Tsingle := -x.
 
 (* Time step*)
 Definition h := 1 / 32.
@@ -19,7 +24,7 @@ Definition half_pow2_h := 1/2048.
 
 
 (* Single step of integration*)
-Definition leapfrog_step' ( ic : float32 * float32) : float32 * float32 :=
+Definition leapfrog_step' ( ic : ftype Tsingle * ftype Tsingle) : ftype Tsingle * ftype Tsingle :=
   let x  := fst ic in let v:= snd ic in 
   let x' := x + h * v + half_pow2_h * F x in
   let v' :=  v +  half_h * (F x + F x')  in 
@@ -27,14 +32,14 @@ Definition leapfrog_step' ( ic : float32 * float32) : float32 * float32 :=
 
 
 (* Single step of integration*)
-Definition leapfrog_step ( ic : float32 * float32) : float32 * float32 :=
+Definition leapfrog_step ( ic : ftype Tsingle * ftype Tsingle) : ftype Tsingle * ftype Tsingle :=
   let x  := fst ic in let v:= snd ic in 
   let x' := (x + h * v) + ((1/2) * (h * h)) * F x in
   let v' :=  v +  (1/2 * h) * (F x + F x') in 
   (x', v').
 
 
-Lemma lf_funs_eq ( ic : float32 * float32):
+Lemma lf_funs_eq ( ic : ftype Tsingle * ftype Tsingle):
 leapfrog_step' ic = leapfrog_step ic.
 Proof.
 unfold leapfrog_step', leapfrog_step, F, half_pow2_h, h, half_h.
@@ -45,7 +50,7 @@ Qed.
 
 
 (* Main *)
-Fixpoint leapfrog' ( ic : float32 * float32) (n : nat) : float32 * float32:=
+Fixpoint leapfrog' ( ic : ftype Tsingle * ftype Tsingle) (n : nat) : ftype Tsingle * ftype Tsingle:=
   match n with
   | 0%nat => ic
   | S n' =>
@@ -55,7 +60,7 @@ Fixpoint leapfrog' ( ic : float32 * float32) (n : nat) : float32 * float32:=
 
 (* assumes inputs of (p, w * q, w, n) *)
 (* output q' will therefore be scaled appropriately *)
-Fixpoint leapfrogF (p q : float32) (n : nat): float32 * float32:=
+Fixpoint leapfrogF (p q : ftype Tsingle) (n : nat): ftype Tsingle * ftype Tsingle:=
   match n with
   | 0%nat => (p , q)
   | S n' =>
@@ -85,15 +90,18 @@ all: symmetry; apply lfstep_lfn.
 Qed.
 
 
-Definition iternF  (n:nat) (x v :float32) :=  leapfrog' (x%F32, v%F32) n.
+Definition iternF  (n:nat) (x v :ftype Tsingle) :=  leapfrog' (x%F32, v%F32) n.
 
 
 Lemma step_iternF : 
   forall n : nat,
-  forall x v : float32,
+  forall x v : ftype Tsingle,
   (iternF (S n) x v) = leapfrog_step' (iternF n x v).
 Proof.
 intros; unfold iternF; 
 rewrite ?lfn_eq_lfstep; 
 congruence.
 Qed.
+
+End WITHNANS.
+

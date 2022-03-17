@@ -13,11 +13,9 @@ all: _CoqProject verif_lfharm.vo
 _CoqProject: Makefile
 	echo $(COQFLAGS) >_CoqProject
 
-float_lib.vo: float_lib.v float_notations2.vo
+float_lib.vo: float_lib.v
 
 vcfloat.vo: vcfloat.v float_lib.vo
-
-optimize.vo: optimize.v float_lib.vo vcfloat.vo
 
 real_lemmas.vo: real_lemmas.v 
 
@@ -32,9 +30,9 @@ lfharm.v: lfharm.c
 
 verif_lfharm.vo: lfharm.vo lf_harm_float.vo lf_harm_lemmas.vo
 
-lf_harm_lemmas.vo: lf_harm_lemmas.v lf_harm_float.vo lf_harm_real.vo vcfloat.vo optimize.vo real_lemmas.vo
+lf_harm_lemmas.vo: lf_harm_lemmas.v lf_harm_float.vo lf_harm_real.vo vcfloat.vo real_lemmas.vo
 
-lf_harm_theorems.vo: lf_harm_theorems.v lf_harm_float.vo lf_harm_real.vo vcfloat.vo optimize.vo real_lemmas.vo lf_harm_lemmas.vo  
+lf_harm_theorems.vo: lf_harm_theorems.v lf_harm_float.vo lf_harm_real.vo vcfloat.vo  real_lemmas.vo lf_harm_lemmas.vo  
 
 %.vo: %.v
 	coqc $(COQFLAGS) -I . $<

@@ -1,6 +1,7 @@
 From Flocq Require Import Binary Bits Core.
+From vcfloat Require Import FPCore FPLang FPLangOpt Rounding Automate Reify Float_notations.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
-Require Export float_notations2.
+
 (* MUST DO THE IMPORTS IN THIS ORDER
    because "float" is defined in two different modules
    and we want to end up with compcert.lib.Floats.float.
@@ -23,38 +24,6 @@ Declare Scope float32_scope.
 Delimit Scope float32_scope with F32.
 Declare Scope float64_scope.
 Delimit Scope float64_scope with F64.
-
-Notation "x + y" := (Float32.add x y) (at level 50, left associativity) : float32_scope.
-Notation "x - y"  := (Float32.sub x y) (at level 50, left associativity) : float32_scope.
-Notation "x * y"  := (Float32.mul x y) (at level 40, left associativity) : float32_scope.
-Notation "x / y"  := (Float32.div x y) (at level 40, left associativity) : float32_scope.
-Notation "- x" := (Float32.neg x) (at level 35, right associativity) : float32_scope.
-
-Notation "x <= y" := (Float32.cmp Cle x y = true) (at level 70, no associativity) : float32_scope.
-Notation "x < y" := (Float32.cmp Clt x y = true) (at level 70, no associativity) : float32_scope.
-Notation "x >= y" := (Float32.cmp Cge x y = true) (at level 70, no associativity) : float32_scope.
-Notation "x > y" := (Float32.cmp Cgt x y = true) (at level 70, no associativity) : float32_scope.
-
-Notation "x <= y <= z" := (x <= y /\ y <= z)%F32 (at level 70, y at next level) : float32_scope.
-Notation "x <= y < z" := (x <= y /\ y < z)%F32 (at level 70, y at next level) : float32_scope.
-Notation "x < y < z" := (x < y /\ y < z)%F32 (at level 70, y at next level) : float32_scope.
-Notation "x < y <= z" := (x < y /\ y <= z)%F32 (at level 70, y at next level) : float32_scope.
-
-Notation "x + y" := (Float.add x y) (at level 50, left associativity) : float64_scope.
-Notation "x - y"  := (Float.sub x y) (at level 50, left associativity) : float64_scope.
-Notation "x * y"  := (Float.mul x y) (at level 40, left associativity) : float64_scope.
-Notation "x / y"  := (Float.div x y) (at level 40, left associativity) : float64_scope.
-Notation "- x" := (Float.neg x) (at level 35, right associativity) : float64_scope.
-
-Notation "x <= y" := (Float.cmp Cle x y = true) (at level 70, no associativity) : float64_scope.
-Notation "x < y" := (Float.cmp Clt x y = true) (at level 70, no associativity) : float64_scope.
-Notation "x >= y" := (Float.cmp Cge x y = true) (at level 70, no associativity) : float64_scope.
-Notation "x > y" := (Float.cmp Cgt x y = true) (at level 70, no associativity) : float64_scope.
-
-Notation "x <= y <= z" := (x <= y /\ y <= z)%F64 (at level 70, y at next level) : float64_scope.
-Notation "x <= y < z" := (x <= y /\ y < z)%F64 (at level 70, y at next level) : float64_scope.
-Notation "x < y < z" := (x < y /\ y < z)%F64 (at level 70, y at next level) : float64_scope.
-Notation "x < y <= z" := (x < y /\ y <= z)%F64 (at level 70, y at next level) : float64_scope.
 
 Ltac eq_hnf := 
  lazymatch goal with |- ?A = ?B =>
