@@ -322,7 +322,7 @@ Definition Rprod_plus (x y : R * R) : R * R :=
   (Rplus (fst x) (fst y), Rplus (snd x) (snd y)).
 
 Definition Rprod_norm (x : R * R) : R  :=
-  sqrt ( (fst x) ^ 2 +  (snd x) ^ 2).
+  sqrt ( fst x ^ 2 +  snd x ^ 2).
 
 Lemma Rprod_triang_ineq x y: 
 Rprod_norm ( Rprod_plus x y) <= Rprod_norm x + Rprod_norm y.
@@ -377,4 +377,27 @@ Proof.
 unfold Rprod_norm.
 apply sqrt_pos.
 Qed.
+
+Lemma Rprod_plus_assoc :
+forall a b c, 
+Rprod_plus (Rprod_plus a b) c = 
+Rprod_plus a (Rprod_plus b c).
+Proof.
+intros.
+unfold Rprod_plus.
+simpl. f_equal; nra.
+Qed.
+
+Lemma Rprod_plus_sym :
+forall a b, 
+Rprod_plus a b  = 
+Rprod_plus b a.
+Proof.
+intros.
+unfold Rprod_plus.
+f_equal; nra.
+Qed.
+
+
+
 

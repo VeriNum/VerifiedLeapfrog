@@ -12,22 +12,24 @@ Open Scope R_scope.
 leapfrog method *)
 
 
+
+
 (* the function f is k times differentiable in the interval [a,b] *)
 Definition k_differentiable f k a b:=
 forall x,
 a<= x <= b -> forall n:nat, (n<=k)%nat ->  ex_derive_n f n x.
 
 
-Definition Harmonic_osc_system p q w :=
+Definition Harmonic_osc_system p q w t0:=
 forall t,
 Derive_n q 1 t  = p t /\
 Derive_n q 2 t = (fun y => F (q y) w) t /\
-Rprod_norm ( p(t), w * q(t)) <= Rprod_norm( p (0), w * q(0))
+Rprod_norm ( p t , w * q t ) <= Rprod_norm( p t0, w * q t0)
 .
 
 
-Lemma Harm_sys_derive_eq p q w: 
-Harmonic_osc_system p q w-> 
+Lemma Harm_sys_derive_eq p q w t0: 
+Harmonic_osc_system p q w t0-> 
 forall t,
 Derive_n q 3 t  = - w ^2 * p t /\
 Derive_n p 2 t  = Derive_n q 3 t /\ 
@@ -79,25 +81,25 @@ replace (Derive_n p 4 t) with
 rewrite <- Derive_n_scal_l.
 apply Derive_n_ext.
 intros.
-replace (w ^ 4 * q t0) with 
-(- w ^ 2 * Derive_n q 2 t0).
+replace (w ^ 4 * q t1) with 
+(- w ^ 2 * Derive_n q 2 t1).
 rewrite <- Derive_n_scal_l.
 rewrite  Coquelicot.Derive_nS. 
 apply Derive_n_ext.
 intros.
-replace (- w ^ 2 * q t1) with
-( Derive_n q 2 t1).
+replace (- w ^ 2 * q t2) with
+( Derive_n q 2 t2).
 rewrite  Coquelicot.Derive_nS.
  replace (Derive p) with (Derive_n p 1); auto.
 apply Derive_n_ext.
 intros.
-specialize (H t2).
-symmetry; replace (Derive q t2) with (Derive_n q 1 t2) by auto.
+specialize (H t3).
+symmetry; replace (Derive q t3) with (Derive_n q 1 t3) by auto.
 apply H.
-specialize (H t1).
+specialize (H t2).
 destruct H as (_ & B1 & _).
 rewrite B1. unfold F; auto.
-specialize (H t0).
+specialize (H t1).
 destruct H as (_ & B1 & _).
 rewrite B1. unfold F; nra.
 Qed.
@@ -253,32 +255,33 @@ end;
 try nra
 .
 
+
 Lemma Harm_sys_norm_bound p q:
-forall t1 t2 t3,
-forall w,
+forall t0 t1 t2 t3,
+forall w h,
 0 < w ->
-0<= h * w <= 2 ->
-Harmonic_osc_system p q w-> 
+0 < h  /\ 0 <= h  * w <= 2->
+Harmonic_osc_system p q w t0-> 
 Rprod_norm (h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * w ^ 4 * q t3, h^3 / INR (fact 3) * w * Derive_n q 3 t1 ) <= 
- (h * w) ^ 3 * Rprod_norm( p (0), w * q(0)).
+ (h * w) ^ 3 * Rprod_norm( p t0, w * q t0).
 Proof.
 intros.
 unfold Harmonic_osc_system in H.
-pose proof Harm_sys_derive_eq p q w H1 t1 as (A & _ & _ & _).
-pose proof Harm_sys_derive_eq p q w H1 t2 as (_ & _ & _ & C2).
+pose proof Harm_sys_derive_eq p q w t0 H1 t1 as (A & _ & _ & _).
+pose proof Harm_sys_derive_eq p q w t0 H1 t2 as (_ & _ & _ & C2).
 rewrite A, C2. clear A C2.
 pose proof (H1 t1) as A1; destruct A1 as (_ & _ &C).
 pose proof (H1 t2) as A1; destruct A1 as (_ & _ &C2).
 specialize (H1 t3). destruct H1 as (_ & _ & C3).
-unfold Rprod_norm, fst, snd in *.
+unfold Rprod_norm, fst, snd in *. cbv [prod_norm fst snd].
 apply sqrt_le_0 in C, C2, C3; try nra.
-assert (p t1 ^ 2  <= w ^2 * q 0 ^ 2 + p 0 ^ 2) by nra; 
+assert (p t1 ^ 2  <= w ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
   clear C.
-assert (p t2 ^ 2  <= w ^2 * q 0 ^ 2 + p 0 ^ 2) by nra; 
+assert (p t2 ^ 2  <= w ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
   clear C2.
-assert (w ^2 * q t3 ^ 2 <= w ^2 * q 0 ^ 2 + p 0 ^ 2) by nra; 
+assert (w ^2 * q t3 ^ 2 <= w ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
   clear C3.
-set (y:=w ^ 2 * q 0 ^ 2 + p 0 ^ 2) in *. 
+set (y:=w ^ 2 * q t0 ^ 2 + p t0 ^ 2) in *. 
 match goal with |- context[(?a - ?aa) ^2 ] =>
 replace ((a - aa) ^2) with
   (a^2 + aa^2 -2*a*aa) by nra
@@ -383,14 +386,14 @@ apply Rmult_le_compat_r; try nra.
 replace ((h ^ 4 / INR (fact 4)) ^ 2 * (w ^ 4) ^ 2)
 with ((h ^ 4 / INR (fact 4) * (w ^ 4)) ^ 2) by nra.
 apply pow_incr.
-split. unfold h. simpl. nra.
+split. simpl. nra.
 apply H5.
 apply Rplus_le_compat_l.
 apply Rmult_le_compat_r; try nra.
 replace ((h ^ 3 / 12) ^ 2 * (w ^ 3) ^ 2)
 with ((h ^ 3 / 12 * w ^ 3) ^ 2) by nra.
 apply pow_incr.
-split. unfold h. simpl. nra.
+split. apply Rle_mult; try nra.
 apply H4.
 
 
@@ -408,13 +411,14 @@ apply Rmult_le_compat_l; try nra.
 apply H5.
 rewrite Rmult_assoc.
 rewrite Rmult_assoc.
-apply Rmult_le_compat_l; try (simpl; unfold h;nra).
+apply Rmult_le_compat_l.
+repeat (apply Rle_mult; simpl; try nra).
 rewrite <- Rmult_assoc.
 apply H4.
 
 match goal with |- context [?a <= ?b] =>
 replace a with ( 5 * (h ^ 3 / INR (fact 3)) ^ 2 * (w ^ 3) ^ 2 * y);
-replace b with  ((h ^3)^2 * (w ^ 3)^2 * (w^2 * q 0 ^2 + p 0 ^ 2))
+replace b with  ((h ^3)^2 * (w ^ 3)^2 * (w^2 * q t0 ^2 + p t0 ^ 2))
 end.
 subst y.
 apply Rmult_le_compat_r; try (simpl; nra).
@@ -475,88 +479,86 @@ Qed.
 
 Theorem local_truncation_error_aux:
 forall p q: R -> R,
-forall w : R,
+forall t0 tn: R,
 (forall t1 t2: R,
-Harmonic_osc_system p q w/\
+Harmonic_osc_system p q 1 t0 /\
 k_differentiable p 4 t1 t2 /\
 k_differentiable q 3 t1 t2)  ->
-forall t0 : R,
 exists t1 t2: R,
-t0 < t1 < t0 + h /\
-t0 < t2 < t0 + h /\
- w * q (t0 + h) - snd(leapfrogR (p t0) (w * q t0) w 1) = 
-    w * h^3 / INR (fact 3) * Derive_n q 3 t1 /\
- p (t0 + h) - fst(leapfrogR (p t0) (w * q t0) w 1) = 
-    h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * w^4 * q t0 . 
+tn < t1 < tn + h /\
+tn < t2 < tn + h /\
+ q (tn + h) - snd(leapfrog_stepR (p tn, q tn)) = 
+    h^3 / INR (fact 3) * Derive_n q 3 t1 /\
+ p (tn + h) - fst(leapfrog_stepR (p tn,  q tn)) = 
+    h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * q tn . 
 Proof.
 intros.
-assert (t0 < t0 + h) as LT by (unfold h; nra).
-specialize (H  t0 (t0 +h)).
+assert (tn < tn + h) as LT by (unfold h; nra).
+specialize (H  tn (tn +h)).
 destruct H as (HSY & KP & KQ); unfold k_differentiable in *.
-pose proof Taylor_Lagrange q 2 t0 (t0 + h) LT KQ as TLRq. 
-pose proof Taylor_Lagrange p 3 t0 (t0 + h) LT KP as TLRp.
+pose proof Taylor_Lagrange q 2 tn (tn + h) LT KQ as TLRq. 
+pose proof Taylor_Lagrange p 3 tn (tn + h) LT KP as TLRp.
 destruct TLRq as (t1 & A & B). 
 destruct TLRp as (t2 & C & D).
-replace (t0 + h - t0) with h in * by nra.
+replace (tn + h - tn) with h in * by nra.
 
-pose proof Harm_sys_derive_eq p q w HSY t0 as (HD1 & HD2 & HD3 & HD4).
+pose proof Harm_sys_derive_eq p q 1 t0 HSY tn as (HD1 & HD2 & HD3 & HD4).
 
 unfold Harmonic_osc_system in HSY.
 exists t1, t2. 
 repeat split; try apply A; try apply C.
 +  
 rewrite B. cbv [sum_f_R0].
-specialize (HSY t0). destruct HSY as (Hxd1 & Hxd2 & _ ).
+specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2 & _ ).
 rewrite Hxd1, Hxd2. 
 unfold Derive_n at 1. unfold F.
-unfold leapfrogR, fst, snd.
+unfold leapfrog_stepR, fst, snd.
 unfold_factorials. 
 +  
 rewrite D. cbv [sum_f_R0].
-replace (Derive_n p 2 t0) with 
-(Derive_n (fun y : R => F (q y) w) 1 t0). 
+replace (Derive_n p 2 tn) with 
+(Derive_n (fun y : R => F (q y) 1) 1 tn). 
 2: {
-replace (Derive_n (fun y : R => F (q y) w) 1 t0) with 
-(Derive_n (Derive_n q 1) 2 t0 ). 
+replace (Derive_n (fun y : R => F (q y) 1) 1 tn) with 
+(Derive_n (Derive_n q 1) 2 tn ). 
 (apply Derive_n_ext; apply HSY).
-replace (Derive_n (Derive_n q 1) 2 t0) with
-(Derive_n (Derive_n q 2) 1 t0) by auto.
+replace (Derive_n (Derive_n q 1) 2 tn) with
+(Derive_n (Derive_n q 2) 1 tn) by auto.
 apply Derive_n_ext.
 apply HSY.
 }
 unfold F. 
 rewrite Derive_n_scal_l.
-replace (Derive_n p 1 t0) with 
-(Derive_n q 2 t0) by (
-replace (Derive_n q 2 t0) with
-(Derive_n (Derive_n q 1) 1 t0) by auto;
+replace (Derive_n p 1 tn) with 
+(Derive_n q 2 tn) by (
+replace (Derive_n q 2 tn) with
+(Derive_n (Derive_n q 1) 1 tn) by auto;
 apply Derive_n_ext; apply HSY).
-specialize (HSY t0). destruct HSY as (Hxd1 & Hxd2 & _).
+specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2 & _).
 rewrite Hxd2. rewrite Hxd1. unfold Derive_n at 1.
 rewrite HD3. 
-unfold leapfrogR, F, fst, snd.
+unfold leapfrog_stepR, F, fst, snd.
 unfold_factorials.
 Qed.
 
 
 Theorem local_truncation_error_norm_aux:
 forall p q: R -> R,
-forall w : R,
+forall t0 tn: R,
 (forall t1 t2: R,
-Harmonic_osc_system p q w /\
+Harmonic_osc_system p q 1 t0 /\
 k_differentiable p 4 t1 t2 /\
 k_differentiable q 3 t1 t2)  ->
-forall t0 : R,
 exists t1 t2: R,
-t0 < t1 < t0 + h /\
-t0 < t2 < t0 + h /\
-Rprod_norm (Rprod_minus (p (t0 + h), w * q (t0 + h)) 
-  (leapfrogR (p t0) (w * q t0) w 1))
- <= Rprod_norm (h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * w^4 * q t0,
- w * h^3 / INR (fact 3) * Derive_n q 3 t1).
+tn < t1 < tn + h /\
+tn < t2 < tn + h /\
+Rprod_norm (Rprod_minus (p (tn + h), q (tn + h)) 
+  (leapfrog_stepR (p tn, q tn) ))
+ <= Rprod_norm (h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * q tn,
+ h^3 / INR (fact 3) * Derive_n q 3 t1).
 Proof.
 intros.
-pose proof local_truncation_error_aux p q w H t0 as LTE.
+pose proof local_truncation_error_aux p q t0 tn H as LTE.
 destruct LTE as [t1 [t2 [A [B [ C D ] ] ] ]].
 exists t1, t2.
 split; auto.
@@ -565,36 +567,35 @@ unfold Rprod_norm, Rprod_minus.
 unfold fst at 1 2. unfold snd at 1 2.
 unfold fst at 2. unfold snd at 2.
 rewrite C, D.
-set (c:= ( w * h^3  / INR (fact 3) * Derive_n q 3 t1) ^ 2 +
-   (h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * w^4 * q t0) ^ 2).
 apply Req_le.
 nra.
 Qed.
 
 Theorem local_truncation_error_norm:
 forall p q: R -> R,
-forall w : R,
-0 < w ->
-0 <= h * w <= 2 ->
+forall t0 tn,
 (forall t1 t2: R,
-Harmonic_osc_system p q w /\
+Harmonic_osc_system p q 1 t0 /\
 k_differentiable p 4 t1 t2 /\
 k_differentiable q 3 t1 t2)  ->
-forall t0 : R,
-Rprod_norm (Rprod_minus (p (t0 + h), w * q (t0 + h)) 
- (leapfrogR (p t0) (w * q t0) w 1))
- <=  (h * w)^3 * Rprod_norm( p (0), w * q(0)).
+Rprod_norm (Rprod_minus (p (tn + h), q (tn + h)) 
+ (leapfrog_stepR (p tn, q tn) ))
+ <=  h ^3 * Rprod_norm( p t0,  q t0).
 Proof.
 intros.
 pose proof local_truncation_error_norm_aux 
-  p q w H1 t0 as (t1 & t2 & A & B & C).
+  p q t0 tn H as (t1 & t2 & A & B & C).
 eapply Rle_trans.
 apply C.
-specialize (H1 t1 t2) as (D & E).
+specialize (H t1 t2) as (D & E).
 eapply Rle_trans.
-replace (w * h ^ 3 / INR (fact 3) * Derive_n q 3 t1)
-with (h ^ 3 / INR (fact 3) * w * Derive_n q 3 t1) by nra.
-apply Harm_sys_norm_bound; try nra; auto. 
+assert (0 < 1) by nra.
+assert (0 < h /\ 0 <= h * 1 <= 2) by (unfold h; split; nra).
+pose proof (Harm_sys_norm_bound p q t0 t1 t2 tn 1 h H H0 D).
+rewrite pow1 in H1. 
+repeat rewrite Rmult_1_r in H1.
+apply H1. 
+rewrite Rmult_1_l.
 apply Req_le. auto. 
 Qed.
 
@@ -621,48 +622,79 @@ f_equal. nra.
 rewrite <- sqrt_pow2; nra.
 Qed.
 
+Lemma method_norm2_sep_aux h w : 
+method_norm2 h w = 1 ->
+h  * w = 0.
+Proof.
+intros.
+unfold method_norm2 in H.
+rewrite <- sqrt_1 in H at 2.
+apply sqrt_inj in H; try nra; auto.
+rewrite Rplus_comm in H.
+apply Rplus_0_r_uniq in H.
+assert (2 * ((h * w) ^ 2) * ( (h * w)^4 + sqrt ((h * w) ^ 2 * ((h * w) ^ 2 + 4)) *
+     sqrt (((h * w) ^ 2) ^ 2 - 4 * (h * w) ^ 2 + 16)) = 0) by nra.
+clear H.
+apply Rmult_integral in H0.
+destruct H0.
++ apply Rmult_integral in H.
+destruct H. lra.
+replace ((h * w) ^ 2) with ((h*w) * (h*w)) in H by nra.
+apply Rmult_integral in H; destruct H; auto.
++  apply Rplus_opp_r_uniq in H.
+match goal with [H : sqrt ?a * sqrt ?b = ?c  |- _] => 
+pose proof sqrt_pos a as Ha; pose proof sqrt_pos b as Hb;
+pose proof Rle_mult (sqrt a) (sqrt b) Ha Hb;
+clear Ha Hb;
+assert (0 <= c) by nra
+end.
+apply Ropp_0_le_ge_contravar in H1.
+rewrite Ropp_involutive in H1. 
+apply Rge_le in H1.
+assert (0 <= (h * w) ^ 4).
+apply Private.IT1.IT.TM.TMI.ZEven_pow_le. 
+  simpl. hnf. exists 2%Z. lia.
+Admitted.
+
+Lemma method_norm2_sep h w : 
+0 < w -> 
+0 < h ->
+method_norm2 h w <> 1.
+Proof.
+intros.
+hnf; intros.
+pose proof method_norm2_sep_aux h w H1.
+nra.
+Qed.
 
 
 Definition method_norm3 h w :=  (1 + h * w - 0.5 * h^2 * w^2).
 
+(*
+Axiom method_norm2_subordinate :  forall p1 q1 p2 q2 w h: R,
+Rprod_norm (Rprod_minus 
+  (leapfrogR p1 (w * q1) w h 1)  
+  (leapfrogR p2 (w * q2) w h 1)) <= 
+method_norm2 h w * Rprod_norm (Rprod_minus (p1, w * q1) (p2, w *q2)).
+
 
 Lemma global_error_aux1: 
-forall p1 q1 p2 q2 w: R,
+forall p1 q1 p2 q2 w h: R,
 Rprod_norm (Rprod_minus 
-  (leapfrogR p1 (w * q1) w 1)  
-  (leapfrogR p2 (w * q2) w 1)) = 
+  (leapfrogR p1 (w * q1) w h 1)  
+  (leapfrogR p2 (w * q2) w h 1)) = 
 Rprod_norm (leapfrogR 
     (fst(Rprod_minus (p1, (w * q1)) 
       (p2,(w * q2))))
     (snd(Rprod_minus (p1, (w * q1)) 
-      (p2,(w * q2)))) w 1).
+      (p2,(w * q2)))) w h 1).
 Proof.
 intros.
 unfold Rprod_norm, Rprod_minus, leapfrogR, F, 
   fst, snd.  f_equal. 
 nra.
 Qed.
-
-
-Lemma subordinate_norm3: 
-forall p1 q1 p2 q2 w: R,
-Rprod_norm (Rprod_minus 
-  (leapfrogR p1 (w * q1) w 1)  
-  (leapfrogR p2 (w * q2) w 1)) <= 
-method_norm3 h w * Rprod_norm (Rprod_minus (p1, w * q1) (p2, w *q2)) . 
-Proof.
-intros.
-rewrite global_error_aux1.
-unfold Rprod_norm, method_norm. 
-unfold Rprod_minus, leapfrogR, F, 
-  fst, snd, method_norm3.
-match goal with |- context[?a <= ?b * sqrt(?x)] =>
-replace (b * sqrt x) with (sqrt(b^2 * x)) 
-end.
-apply sqrt_le_1_alt.
-set (p:=(p1 - p2)).
-set (q:=(w * q1 - w * q2) ).
-Admitted.
+*)
 
 Import Coq.Logic.FunctionalExtensionality.
 
@@ -737,15 +769,15 @@ apply Nat.le_0_l.
 Qed.
 
 
-Definition error_sum n h w: R:=
+Definition error_sum error n: R:=
  match n with 
   | 0 => 0
-  | S n' => sum_f 0 n' (fun m => (method_norm3 h w) ^ m )
+  | S n' => sum_f 0 n' (fun m => error ^ m )
 end
 .
 
-Lemma error_sum_aux n h w:
-  error_sum n h w + (method_norm3 h w)^n = error_sum (S n) h w.
+Lemma error_sum_aux n (er: R):
+  error_sum er n + er ^ n = error_sum er (S n).
 Proof.
 intros.
 induction n. 
@@ -755,8 +787,8 @@ rewrite sum_f_n_Sm; auto.
 apply Nat.le_0_l.
 Qed.
 
-Lemma error_sum_aux2 n h w:
-  method_norm3 h w * error_sum n h w + 1  = error_sum (S n) h w.
+Lemma error_sum_aux2 er n:
+  er * error_sum er n + 1  = error_sum er (S n).
 Proof.
 intros.
 induction n. 
@@ -768,68 +800,174 @@ rewrite sum_pow_first.
 nra.
 Qed.
 
+Definition Rabs_prod A := (Rabs (fst A) , Rabs (snd A)).
 
-Theorem global_truncation_error_sum : 
-forall p q: R -> R,
-forall w : R,
-0 < w ->
-0 <= h * w <= 2 ->
-(forall t1 t2: R,
-Harmonic_osc_system p q w/\
-k_differentiable p 4 t1 t2 /\
-k_differentiable q 3 t1 t2)  ->
-forall n : nat, 
-forall t0 : R,
-Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h)) 
-(leapfrogR (p t0) (w * q t0) w n))
- <=   h^3 * w^3 * Rprod_norm( p 0, w * q 0) * error_sum n h w.
+Fixpoint Rprod_sum (f:nat -> R * R) (n:nat) : R * R :=
+  match n with
+    | O => f 0%nat
+    | S i => Rprod_plus (Rprod_sum f i) (f (S i))
+  end.
+
+Definition Rprod_error (f:nat -> R * R) (n:nat) : R * R :=
+  match n with
+    | O => (0,0)
+    | S i => Rprod_sum f i
+  end.
+
+Lemma Rprod_sum_Sn : 
+forall n ic, 
+Rprod_sum (fun m : nat => iternR ic m) (S n) = 
+Rprod_plus(
+Rprod_sum (fun m : nat => iternR ic m) n) (iternR ic (S n)).
 Proof.
 intros.
 induction n.
-+ unfold Rprod_minus, Rprod_norm, leapfrogR, fst, snd, error_sum.
-replace (t0 + INR 0 * h) with t0 by (simpl; nra).
-rewrite Rmult_0_r.
-match goal with |-context[sqrt ?a <= _] =>
-replace a with 0 by nra
-end.
-rewrite sqrt_0; nra.
-+ rewrite nsteps_lem.
-set (phi1:= leapfrogR (p (t0 + INR ( n) * h)) (w * q (t0 + INR ( n) * h)) w 1) in *.
++ simpl. auto.
++ unfold Rprod_sum.
+fold Rprod_sum. auto.
+Qed.
+
+
+Lemma Rprod_error_Sn : 
+forall n ic, 
+Rprod_plus (Rprod_error (fun m : nat => iternR ic m) n)
+  (iternR ic n ) = 
+    (Rprod_error (fun m : nat => iternR ic m) (S n)).
+Proof.
+intros.
+induction n.
++ destruct ic. unfold Rprod_error, iternR, 
+  Rprod_sum, leapfrogR, leapfrog_stepR, Rprod_plus, fst, snd;
+  f_equal; nra.
++ unfold Rprod_error. unfold Rprod_sum.
+fold Rprod_sum. auto.
+Qed. 
+
+Lemma leapfrog_stepR_sum :
+forall ic n,
+Rprod_plus (leapfrog_stepR (Rprod_error (fun m : nat => iternR ic m) n)) ic = 
+(Rprod_sum (fun m : nat => iternR ic m)  n).
+Proof.
+intros.
+induction n.
++ destruct ic. unfold Rprod_error, iternR, Rprod_sum, leapfrogR, leapfrog_stepR, Rprod_plus, fst, snd.
+f_equal; nra.
++ rewrite  <-  Rprod_error_Sn.
+rewrite Rprod_sum_Sn.
+rewrite <- IHn.
+replace ((iternR ic (S n))) with
+(leapfrog_stepR (iternR ic n)).
+rewrite <- leapfrog_plus_args.
+rewrite Rprod_plus_assoc.
+rewrite Rprod_plus_assoc.
+f_equal.
+rewrite Rprod_plus_sym.
+auto.
+destruct ic.
+rewrite step_iternR; auto.
+Qed. 
+
+
+Theorem global_truncation_error_sum_aux: 
+forall p q: R -> R,
+forall t0 : R,
+(forall t1 t2: R,
+Harmonic_osc_system p q 1 t0 /\
+k_differentiable p 4 t1 t2 /\
+k_differentiable q 3 t1 t2)  ->
+forall n : nat, 
+ Rprod_minus (p (t0 + INR n * h),  q (t0 + INR n * h)) 
+(iternR (p t0, q t0) n)
+= Rprod_error (fun m => (iternR (p t0, q t0) m)) n.
+Proof.
+intros. 
+induction n.
++ unfold Rprod_sum, Rprod_minus. simpl. rewrite Rmult_0_l. 
+rewrite Rplus_0_r. f_equal; nra.
++ rewrite step_iternR.
+set (phi1:= leapfrog_stepR (p (t0 + INR  n * h), q (t0 + INR  n * h))) in *.
 set (phi2:=  
-leapfrogR (fst(leapfrogR (p t0) (w * q t0) w ( n))) 
-  (snd (leapfrogR (p t0) (w * q t0) w ( n))) w 1).
+leapfrog_stepR (iternR (p t0, q t0) n)).
+match goal with |- context[ ?a = ?b] =>
+  replace a with 
+  (Rprod_plus (Rprod_minus (p (t0 + INR (S n) * h ),  q (t0 + INR (S n) * h)) phi1)
+(Rprod_minus phi1 phi2)) by (unfold Rprod_minus, fst at 1, snd at 1; unfold fst at 4, snd at 4, Rprod_plus;
+unfold fst at 1, fst at 2, snd at 1, snd at 2; f_equal; nra)
+end.
+subst phi1; subst phi2.
+rewrite leapfrog_minus_args.
+rewrite IHn.
+pose proof leapfrog_stepR_sum (p t0, q t0) n.
+replace (leapfrog_stepR
+     (Rprod_error (fun m : nat => iternR (p t0, q t0) m)  n))
+with 
+(Rprod_minus (Rprod_sum 
+  (fun m : nat => iternR (p t0, q t0) m) n) (p t0, q t0)).
+unfold Rprod_error.
+ 
+
+
+Admitted. 
+
+
+Theorem global_truncation_error_sum : 
+forall p q: R -> R,
+forall t0 : R,
+(forall t1 t2: R,
+Harmonic_osc_system p q 1 t0 /\
+k_differentiable p 4 t1 t2 /\
+k_differentiable q 3 t1 t2)  ->
+forall C : R,
+(forall p0 q0 : R, 
+forall m : nat, Rprod_norm(iternR (p0,q0) m) <= C *  Rprod_norm(p0,q0)) ->
+forall n : nat, 
+Rprod_norm (Rprod_minus (p (t0 + INR n * h),  q (t0 + INR  n * h)) 
+(iternR (p t0, q t0) n))
+ <=   h^3 * C ^2 * Rprod_norm(p t0,q t0) * INR n.
+Proof.
+intros. 
+induction n.
++ simpl. 
+rewrite Rmult_0_l. rewrite Rmult_0_r.
+rewrite Rplus_0_r. unfold Rprod_minus, Rprod_norm, fst, snd.
+repeat rewrite Rminus_eq_0. rewrite pow_i. rewrite Rplus_0_r.
+rewrite sqrt_0. nra. lia.
++ rewrite step_iternR.
+set (phi1:= leapfrog_stepR (p (t0 + INR  n * h), q (t0 + INR  n * h))) in *.
+set (phi2:=  
+leapfrog_stepR (iternR (p t0, q t0) n)).
 eapply Rle_trans.
 match goal with |- context[ ?a <= ?b] =>
   replace a with (Rprod_norm 
-  (Rprod_plus (Rprod_minus (p (t0 + INR (S n) * h ), w  * q (t0 + INR (S n) * h)) phi1)
+  (Rprod_plus (Rprod_minus (p (t0 + INR (S n) * h ),  q (t0 + INR (S n) * h)) phi1)
 (Rprod_minus phi1 phi2))) by (symmetry; apply Rprod_norm_plus_minus_eq)
 end.
 apply Rprod_triang_ineq.
-pose proof local_truncation_error_norm p q w H H0 H1 (t0 + INR n * h).
-fold phi1 in H2.
+pose proof local_truncation_error_norm p q t0 (t0 + INR n * h) H.
+fold phi1 in H1.
 eapply Rle_trans.
 eapply Rplus_le_compat_r.
 rewrite S_INR.
 replace (t0 + (INR n + 1) * h) with (t0 + INR n * h + h) by nra.
-apply H2.
+apply H1.
 eapply Rle_trans.
 eapply Rplus_le_compat_l.
 subst phi1 phi2.
-pose proof subordinate_norm3 (p (t0 + INR ( n) * h)) ( q (t0 + INR ( n) * h)) 
-(fst(leapfrogR (p t0) (w * q t0) w ( n))) 
-(1/w *snd(leapfrogR (p t0) (w * q t0) w ( n))) w.
+pose proof method_norm2_subordinate (p (t0 + INR ( n) * h)) ( q (t0 + INR n * h)) 
+(fst(leapfrogR (p t0) (w * q t0) w h n)) 
+(1/w *snd(leapfrogR (p t0) (w * q t0) w h n)) w h.
 replace 
-(w * (1 / w * snd (leapfrogR (p t0) (w * q t0) w ( n))))
+(w * (1 / w * snd (leapfrogR (p t0) (w * q t0) w h n)))
 with 
-(snd (leapfrogR (p t0) (w * q t0) w ( n))) in H3.
-apply H3.
+(snd (leapfrogR (p t0) (w * q t0) w h n)) in H4.
+apply H4.
 field_simplify. nra.
 nra.
 eapply Rle_trans.
 eapply Rplus_le_compat_l.
 eapply Rmult_le_compat_l; try (unfold h;nra).
 
-unfold method_norm3; nra.
+unfold method_norm2. apply sqrt_pos.
 
 apply IHn. (*lemmas about sums*)
 set 
@@ -839,6 +977,7 @@ rewrite <- error_sum_aux2.
 nra.
 Qed.
 
+(* apparently this is already covered by Constant Coq.Reals.PartSum.tech3*)
 Theorem geo_series_closed_form:
 forall r k ,
 r <> 1 ->
@@ -864,8 +1003,9 @@ Qed.
 
 Theorem global_truncation_error: 
 forall p q: R -> R,
-forall w : R,
+forall w h : R,
 0 < w ->
+0 < h ->
 0 < h * w < 2 ->
 (forall t1 t2: R,
 Harmonic_osc_system p q w/\
@@ -874,13 +1014,13 @@ k_differentiable q 3 t1 t2)  ->
 forall n : nat, 
 forall t0 : R,
 Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h)) 
-(leapfrogR (p t0) (w * q t0) w ( n)))
+(leapfrogR (p t0) (w * q t0) w h n))
  <= 
-h ^ 3 * w ^ 3 * Rprod_norm( p (0), w * q(0)) * (1-(method_norm3 h w)^ n)/(1- (method_norm3 h w)).
+h ^ 3 * w ^ 3 * Rprod_norm( p (0), w * q(0)) * (1-(method_norm2 h w)^ n)/(1- (method_norm2 h w)).
 Proof.
 intros.
-assert (method_norm3 h w <> 1).
-+ unfold method_norm3. nra.
+assert (method_norm2 h w <> 1).
++ apply method_norm2_sep; auto.
 + induction n.
 ++ unfold Rprod_minus, Rprod_norm. simpl.
 rewrite Rmult_0_l. rewrite Rplus_0_r. 
@@ -890,14 +1030,14 @@ replace (w * q t0 - w * q t0) with 0 by nra.
 field_simplify. rewrite Rmult_0_l. 
 replace (0+0) with 0 by nra.
 rewrite sqrt_0. nra. nra.
-++  pose proof geo_series_closed_form (method_norm3 h w) n.
-specialize (H3 H2); clear H2.
+++  pose proof geo_series_closed_form (method_norm2 h w) n.
+specialize (H4 H3); clear H3.
 assert (BND: 0 <= h * w <= 2) by nra.
 pose proof 
-  global_truncation_error_sum p q w H BND H1 (S n) t0.
-eapply Rle_trans. apply H2.
+  global_truncation_error_sum p q w h H H0 BND H2 (S n) t0.
+eapply Rle_trans. apply H3.
 unfold error_sum.
-rewrite H3. 
+rewrite H4. 
 apply Req_le.
 nra.
 Qed.
@@ -910,7 +1050,6 @@ forall n x t,
       ex_derive_n (fun x : R =>  (1 + x) ^ n) k t.
 Proof.
 intros.
-Search (ex_derive_n).
 set (g:= fun z : R => z ^ n).
 pose proof ex_derive_n_comp_trans g k t 1.
 pose proof ex_derive_n_pow k n (t+1).
@@ -925,88 +1064,94 @@ intros; rewrite Rplus_comm; auto.
 rewrite <- H3; auto.
 Qed.
 
+Lemma ex_derive_n_sqrt k (t: R): 
+0 < t ->
+ex_derive_n sqrt k t.
+Proof.
+intros.
+assert (ex_derive (Derive_n sqrt k) t).
+apply ex_derive_Reals_1.
+pose proof Coquelicot.is_derive_n_sqrt k t H.
+apply is_derive_n_unique in H0.
+Admitted.
+
+
+Lemma binomial_approx_sqrt_aux: 
+forall n x t,
+  0 <= t <= x ->
+  forall k : nat, (k <= 2)%nat -> 
+      ex_derive_n (fun x : R =>  sqrt(1 + x) ^ n) k t.
+Admitted.
+
 
 Lemma t_exp_norm_A w n: 
   0 < w -> 
-  0 < h * w < 2 ->
-  let x:= h * w * (1 - 0.5 * h * w) in 
-  exists n1,
+  let x:= ((method_norm2 h w) ^2 - 1) in   
+  exists n1 n2,
   0 < n1 < x /\
-  (method_norm3 h w )^n = 
-  1 +  INR n * x + 0.5 * INR n * (INR (n -1)) * x^2 * (1 +  n1)^(n-2).
+  0 < n2 < x /\
+  (method_norm2 h w )^n = 
+  1 + 0.5 * INR n * x - (1/8) * x^2 * INR n * (INR n -2) * sqrt(1 +  n1)^(n-4) /\ 
+  method_norm2 h w = 
+  1 + 0.5 * x - (1/8) * x^2 * sqrt(1 +  n2)^3.
 Proof. 
 intros.
+
+assert (0 <=
+(2 * ((h * w) ^ 2) ^ 3 +
+ 2 * (h * w) ^ 2 * sqrt ((h * w) ^ 2 * ((h * w) ^ 2 + 4)) *
+ sqrt (((h * w) ^ 2) ^ 2 - 4 * (h * w) ^ 2 + 16)) / 64 + 1).
+
+
+apply Rle_plus; try nra.
+repeat (apply Rle_mult; try nra). 
+apply Rle_plus; try nra.
+repeat (apply Rle_mult; try nra). 
+apply sqrt_pos.
+apply sqrt_pos.
+
 assert (Hx: 0 < x).
-+ unfold x. nra.
-+ pose proof  binomial_approx_aux n x as P. 
-pose proof Taylor_Lagrange (fun x =>  (1+x)^n ) 1 0  x Hx P 
+
++ unfold x, method_norm2.
+match goal with |- context [0 < sqrt (?b/64 + 1)^2 - _] =>
+assert (0 <= b)
+end. 
+
+
+apply Rle_plus; try nra.
+repeat (apply Rle_mult; try nra). 
+apply sqrt_pos.
+apply sqrt_pos.
+rewrite pow2_sqrt.
+++ field_simplify. 
+apply RIneq.Rdiv_lt_0_compat; try nra.
+apply Rplus_lt_0_compat; try nra.
+repeat (apply Rmult_lt_0_compat; try nra).
+repeat (apply Rmult_lt_0_compat; try nra).
+apply sqrt_lt_R0.
+repeat (apply Rmult_lt_0_compat; try nra).
+apply sqrt_lt_R0. nra. 
+++ apply Rle_plus; try nra.
++ pose proof  binomial_approx_sqrt_aux n x as P. 
+pose proof  binomial_approx_sqrt_aux 1 x as P1. 
+pose proof Taylor_Lagrange (fun x => sqrt (1+x)^n ) 1 0  x Hx P 
   as (zeta & B & C).
-exists zeta.
-repeat (split; try apply B).
-replace ((method_norm3 h w)^n) with 
-  ( (1+x)^n ). rewrite C. unfold sum_f_R0.
-rewrite Rminus_0_r.
-f_equal. f_equal.
-simpl. field_simplify. 
-rewrite Rplus_0_r.
-apply pow1.
-simpl. 
-repeat match goal with |- context [Derive (?f) ?var] =>
-auto_derive_fun f; unfold F;
-assert True as TR by auto;
-let H := fresh "H" in
-          intro H;
-let H1 := fresh "H" in
-pose proof (H var TR) as H1; clear TR; clear H ;
-apply is_derive_unique in H1;  rewrite H1; clear H1
-end.
-field_simplify.
-rewrite Rplus_0_r.
-rewrite pow1. nra.
-
-unfold Derive_n.
-replace ((fun x0 : R => Derive (fun x1 : R => (1 + x1) ^ n) x0))
-with ((fun x0 : R => INR n * (1+x0)^Init.Nat.pred n)).
-repeat match goal with |- context [Derive (?f) ?var] =>
-auto_derive_fun f; unfold F;
-assert True as TR by auto;
-let H := fresh "H" in
-          intro H;
-let H1 := fresh "H" in
-pose proof (H var TR) as H1; clear TR; clear H ;
-apply is_derive_unique in H1;  rewrite H1; clear H1
-end.
-rewrite Rmult_1_l.
-replace (Init.Nat.pred (Init.Nat.pred n)) with
-(n - 2)%nat.
-replace ((Init.Nat.pred n)) with (n-1)%nat.
-simpl; nra.
-lia.
-lia.
-
-apply functional_extensionality. intros.
-
-repeat match goal with |- context [Derive (?f) ?var] =>
-auto_derive_fun f; unfold F;
-assert True as TR by auto;
-let H := fresh "H" in
-          intro H;
-let H1 := fresh "H" in
-pose proof (H var TR) as H1; clear TR; clear H ;
-apply is_derive_unique in H1;  rewrite H1; clear H1
-end.
-rewrite Rmult_1_l.
-auto.
-
-unfold method_norm3, x. 
-f_equal. nra.
-Qed.
+simpl in P1. replace (fun x : R => sqrt (1 + x) * 1) 
+  with (fun x : R => sqrt (1 + x)) in P1.
+pose proof Taylor_Lagrange (fun x => sqrt (1+x) ) 1 0  x Hx P1
+  as (zeta1 & B1 & C1).
+exists zeta, zeta1.
+repeat (split; try apply B; try apply B1).
+replace ((method_norm2 h w)^n) with 
+  ( sqrt(1+x)^n ). rewrite C. unfold sum_f_R0.
+rewrite Rminus_0_r. simpl. Admitted.
  
 
-Theorem global_error_linear:
+Theorem global_error_linear3:
 forall p q: R -> R,
 forall w : R,
 0< w ->
+0< h -> 
 0 < h * w < 2 ->
 (forall t1 t2: R,
 Harmonic_osc_system p q w/\
@@ -1015,20 +1160,19 @@ k_differentiable q 3 t1 t2)  ->
 forall n : nat,
 forall t0 : R,
 exists n1: R,
-let x:= ((method_norm3 h w) - 1) in 
+let x:= ((method_norm3 h w)^2 - 1) in 
   0 < n1 < x /\
 Rprod_norm (Rprod_minus (p (t0 + INR n * h), w * q (t0 + INR n * h)) 
-(leapfrogR (p t0) (w * q t0) w n)) <= 
+(leapfrogR (p t0, q t0) n)) <= 
 (h ^ 3 * w ^ 3 * Rprod_norm( p (0), w * q(0))) *
-((INR n * x + 0.5 * INR n * (INR (n -1)) * x^2 * (1 +  n1)^(n-2)) / 
-(h * w * (1 - 0.5 * h * w))).
+((INR n * x + 0.5 * INR n * (INR (n -1)) * x^2 * (1 +  n1)^(n-2)) / x).
 Proof.
 intros.
-pose proof t_exp_norm_A w n H H0.
-destruct H2 as (n1 & A).
+pose proof t_exp_norm_A w n H H1.
+destruct H3 as (n1 & A).
 destruct A as (B & C).
-replace (method_norm3 h w -1) with 
-(h * w * (1 - 0.5 * h * w)) by (unfold method_norm3;
+replace (method_norm2 h w -1) with 
+(h * w * (1 - 0.5 * h * w)) by (unfold method_norm2;
 simpl; nra).
 exists n1.
 split. apply B.
@@ -1050,7 +1194,7 @@ apply Rmult_le_compat_l.
 unfold aa. 
 apply Rle_mult; try nra; try apply Rnorm_pos.
 
-rewrite H2; rewrite H3.
+rewrite H3; rewrite H4.
 apply Req_le. 
 match goal with |-context[-?a/-?b  = _] =>
 replace (-a/-b) with (a/b) 
