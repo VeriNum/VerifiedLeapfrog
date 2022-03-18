@@ -15,11 +15,11 @@ _CoqProject: Makefile
 
 float_lib.vo: float_lib.v
 
-vcfloat.vo: vcfloat.v float_lib.vo
+vcfloat.vo: vcfloat.v
 
 real_lemmas.vo: real_lemmas.v 
 
-lf_harm_float.vo: lf_harm_float.v float_lib.vo
+lf_harm_float.vo: lf_harm_float.v
 
 lf_harm_real.vo: lf_harm_real.v real_lemmas.vo
 

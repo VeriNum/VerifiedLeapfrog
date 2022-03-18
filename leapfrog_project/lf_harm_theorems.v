@@ -3,7 +3,7 @@ local and global error, finiteness *)
 
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
-Require Import vcfloat float_lib lf_harm_float lf_harm_real optimize real_lemmas lf_harm_lemmas.
+Require Import vcfloat lf_harm_float lf_harm_real real_lemmas lf_harm_lemmas.
 Set Bullet Behavior "Strict Subproofs". 
 
 Import FPLangOpt. 

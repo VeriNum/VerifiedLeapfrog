@@ -1,17 +1,12 @@
 Require Import VST.floyd.proofauto.
 Require Import lfharm.
-Instance CompSpecs : compspecs. make_compspecs prog. Defined.
+#[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
-
-Require vcfloat.FPSolve.
-
-Existing Instance FPSolve.nans.
 
 Open Scope logic.
 
-Require Import vcfloat.
-Require Import float_lib lf_harm_float lf_harm_lemmas.
-Import IEEE754_extra.
+Require Import vcfloat vcfloat.FPSolve.
+Require Import lf_harm_float lf_harm_lemmas.
 
 Set Bullet Behavior "Strict Subproofs". 
 
@@ -80,11 +75,10 @@ forward.
 forward_call.
 forward.
 forward.
-entailer!.
-change Float32.add with (BPLUS Tsingle) in *.
-change Float32.mul with (BMULT Tsingle) in *.
+entailer!. 
+autorewrite with float_elim in *.
 unfold leapfrog_step, fst, snd.
-replace (1/2)%F32 with 0.5%F32 by prove_float_constants_equal.
+replace (1/2)%F32 with 0.5%F32 by (compute_binary_floats; auto).
 auto.
 Qed.
 
@@ -102,12 +96,13 @@ forward.
 forward.
 forward.
 forward.
+autorewrite with float_elim in *.
 pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
  forward_for_simple_bound 100%Z (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);
                    temp _max_step (Vint (Int.repr 100));
-                   temp _t (Vsingle (Z.iter n (Float32.add h) (0%F32))); 
+                   temp _t (Vsingle (Z.iter n (BPLUS Tsingle h) (0%F32))); 
                    temp lfharm._x xp; temp lfharm._v vp)
    SEP (data_at Tsh tfloat (Vsingle (fst (step n))) xp;
           data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.
@@ -116,12 +111,14 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
 - forward_call.
    apply leapfrog_step_is_finite; lia.
    forward.
+   autorewrite with float_elim in *.
    entailer!.
    fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
-   rewrite Float32.add_commut; auto.
+   rewrite BPLUS_commut by reflexivity; auto.
    fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ by lia.
    cancel.
 -
+   change (leapfrog' (initial_x, initial_v) 100) with (step 100%Z).
    forward.
 Qed.
 
@@ -129,6 +126,7 @@ Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
 forward_call.
+forget (leapfrog' (initial_x, initial_v) 100)  as a.
 forward.
 cancel.
 Qed.

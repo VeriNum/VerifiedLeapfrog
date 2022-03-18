@@ -1,8 +1,8 @@
 (* This file contains lemmas and tactics for proofs of the floating point properties *)
 
 From Flocq Require Import Binary Bits Core.
-From compcert.lib Require Import IEEE754_extra (* Coqlib Floats Zbits Integers*).
-Require Import float_lib lf_harm_float lf_harm_real vcfloat (*optimize*) real_lemmas.
+From compcert.lib Require Import IEEE754_extra.
+Require Import lf_harm_float lf_harm_real vcfloat real_lemmas.
 Set Bullet Behavior "Strict Subproofs". 
 
 Open Scope R_scope.
@@ -66,7 +66,7 @@ exists v2 : varinfo,
 Maps.PTree.get i (lf_bmap_n   (Z.succ n)) = Some v2.  
 Proof.
 intros ? ? ? H; apply Maps.PTree.elements_correct in H;
-repeat destruct H as [ H ? | ]; try contradiction;
+repeat destruct H as [ H | ]; try contradiction;
  inversion H; clear H; subst; eexists; reflexivity.
 Qed.
 
@@ -81,7 +81,7 @@ Proof.
 intros.
 split;
 intros [? H]; apply Maps.PTree.elements_correct in H;
-repeat destruct H as [ H ? | ]; try contradiction;
+repeat destruct H as [ H | ]; try contradiction;
  inversion H; clear H; subst; eexists; reflexivity.
 Qed.
 
@@ -96,7 +96,7 @@ v1.(var_type) = v2.(var_type).
 Proof.
 intros.
 apply Maps.PTree.elements_correct in H.
-repeat destruct H as [ H ? | ]; try contradiction;
+repeat destruct H as [ H | ]; try contradiction;
  inversion H; clear H; subst; inversion H0; clear H0; subst; split; reflexivity.
 Qed.
 
@@ -111,7 +111,7 @@ v2.(var_hibound) <= v1.(var_hibound).
 Proof.
 intros.
 apply Maps.PTree.elements_correct in H.
-repeat destruct H as [ H ? | ]; try contradiction;
+repeat destruct H as [ H | ]; try contradiction;
 rewrite succ_IZR in H;
  inversion H; clear H; subst; inversion H0; clear H0; subst; split;
 simpl; lra.
