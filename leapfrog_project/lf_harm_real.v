@@ -13,7 +13,7 @@ Open Scope R_scope.
 Definition h := 1 / 32.
 
 
-Definition leapfrog_stepR (ic : R * R ): R * R :=
+Definition leapfrog_stepR (ic : R * R ) (h : R) : R * R :=
   let q := snd ic in let p := fst ic in 
   let q' := q + h * p - 0.5 * h^2  * q in 
   let p' := p - 0.5 * h^2 * p - 0.5 * h *  (2 - 0.5 * h^2 ) * q in 
@@ -21,17 +21,17 @@ Definition leapfrog_stepR (ic : R * R ): R * R :=
 
 (* assumes inputs of (p, w * q, w, n) *)
 (* output q' will therefore be scaled appropriately *)
-Fixpoint leapfrogR  (ic : R * R) (n : nat): R * R:=
+Fixpoint leapfrogR  (ic : R * R) (h : R) (n : nat): R * R:=
   match n with
   | 0%nat => ic
   | S n' =>
-    let ic' := leapfrog_stepR ic in
-  leapfrogR ic' n'
+    let ic' := leapfrog_stepR ic h in
+  leapfrogR ic' h n'
 end.
 
 Lemma lfstepR_lfn:
-  forall n ic ,
-  leapfrog_stepR (leapfrogR ic n) = leapfrogR (leapfrog_stepR ic) n.
+  forall n ic h ,
+  leapfrog_stepR (leapfrogR ic h n) h = leapfrogR (leapfrog_stepR ic h) h n.
 Proof.
 induction n. 
 - auto.
@@ -39,13 +39,13 @@ induction n.
 Qed.
 
 Lemma lfn_eq_lfstepR:
-  forall n ic ,
-  leapfrogR ic (S n) = leapfrog_stepR (leapfrogR ic n).
+  forall ic h n,
+  leapfrogR ic h (S n) = leapfrog_stepR (leapfrogR ic h n) h.
 Proof.
 induction n.
 - auto.
 - intros. rewrite -> IHn. simpl. 
-replace (leapfrog_stepR (leapfrogR ic n)) with (leapfrogR (leapfrog_stepR ic) n). destruct (leapfrog_stepR ic). 
+replace (leapfrog_stepR (leapfrogR ic h0 n) h0) with (leapfrogR (leapfrog_stepR ic h0) h0 n). destruct (leapfrog_stepR ic h0). 
 all: symmetry; apply lfstepR_lfn. 
 Qed.
 
@@ -53,7 +53,8 @@ Qed.
 
 Lemma one_stepR_p_alt2:
   forall ic1 ic2: R * R,
-  (fst (leapfrog_stepR ic1) - fst (leapfrog_stepR ic2)) = 
+  forall h,
+  (fst (leapfrog_stepR ic1 h) - fst (leapfrog_stepR ic2 h)) = 
   (1 - 0.5 * h ^ 2) * (fst ic1 - fst ic2) -  
    0.5 * h * (2 - 0.5 * h^2) * (snd ic1 - snd ic2).
 Proof.
@@ -64,7 +65,8 @@ Qed.
 
 Lemma one_stepR_q_alt2:
   forall ic1 ic2: R * R,
-  (snd (leapfrog_stepR ic1) - snd (leapfrog_stepR ic2)) = 
+  forall h: R, 
+  (snd (leapfrog_stepR ic1 h) - snd (leapfrog_stepR ic2 h)) = 
   (1 - 0.5 * h ^ 2) * (snd ic1 - snd ic2) +   h *(fst ic1 - fst ic2).
 Proof.
 intros. destruct ic1 as [x1 v1]. destruct ic2 as [x2 v2].
@@ -72,12 +74,12 @@ unfold leapfrog_stepR, fst, snd; field_simplify; nra.
 Qed.
 
 
-Definition iternR (ic :R * R) (n:nat) :=  leapfrogR ic n .
+Definition iternR (ic :R * R) (h : R) (n:nat) :=  leapfrogR ic h n .
 
 Lemma step_iternR : 
   forall n : nat,
-  forall x v : R,
-  (iternR (x,v) (S n)) = leapfrog_stepR (iternR (x,v) n).
+  forall x v h : R,
+  (iternR (x,v) h (S n)) = leapfrog_stepR (iternR (x,v) h n) h.
 Proof.
 intros.
 rewrite lfn_eq_lfstepR.
@@ -87,7 +89,8 @@ Qed.
 
 Lemma leapfrog_minus_args :
 forall ic1 ic2 : (R * R),
-Rprod_minus (leapfrog_stepR ic1) (leapfrog_stepR ic2) = leapfrog_stepR (Rprod_minus ic1 ic2).
+forall h : R,
+Rprod_minus (leapfrog_stepR ic1 h) (leapfrog_stepR ic2 h) = leapfrog_stepR (Rprod_minus ic1 ic2) h.
 Proof.
 intros.
 destruct ic1; destruct ic2.
@@ -97,7 +100,8 @@ Qed.
 
 Lemma leapfrog_plus_args :
 forall ic1 ic2 : (R * R),
-Rprod_plus (leapfrog_stepR ic1) (leapfrog_stepR ic2) = leapfrog_stepR (Rprod_plus ic1 ic2).
+forall h : R,
+Rprod_plus (leapfrog_stepR ic1 h) (leapfrog_stepR ic2 h) = leapfrog_stepR (Rprod_plus ic1 ic2) h.
 Proof.
 intros.
 destruct ic1; destruct ic2.
