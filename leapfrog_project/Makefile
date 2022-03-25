@@ -40,4 +40,4 @@ lf_harm_theorems.vo: lf_harm_theorems.v lf_harm_float.vo lf_harm_real.vo vcfloat
 	coqc $(COQFLAGS) -I . $<
 
 clean:
-	rm -f *.vo *.vok *.vos *.glob lfharm.v _CoqProject
+	rm -f *.vo *.vok *.vos *.glob 
