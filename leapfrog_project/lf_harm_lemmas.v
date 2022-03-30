@@ -547,10 +547,22 @@ Qed.
 
 
 Lemma leapfrog_bmap_aux:
-forall (i : positive),
+forall (i : positive) (v: varinfo),
+       Maps.PTree.get i leapfrog_bmap = Some v -> 
        Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _q leapfrog_bmap \/
        Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _p leapfrog_bmap.
-Admitted.
+Proof.
+intros.
+apply Maps.PTree.elements_correct in H.
+inversion H.
+- 
+inversion H0. left; auto.
+- inversion H0.
+inversion H1.
++ 
+ right; auto.
++ simpl in H1; contradiction.
+Qed.
 
 Lemma leapfrog_bmap_aux1:
 forall (i : positive) (v : varinfo),
@@ -591,9 +603,28 @@ cbv. auto.
 - intros.
 destruct H.
 apply Maps.PTree.elements_correct in H.
-inversion H.
+destruct H.
++ exists 
+(    {|
+      var_type := Tsingle;
+      var_name := _q;
+      var_lobound := (-2);
+      var_hibound := 2
+    |}).
+inversion H; auto.
++ inversion H. 
+* inversion H0.
+exists 
+(    {|
+      var_type := Tsingle;
+      var_name := _p;
+      var_lobound := (-2);
+      var_hibound := 2
+    |}).
+auto.
+* inversion H0.
+Qed.
 
-Admitted.
 
 Lemma bmd_init : 
   boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init) .
@@ -607,6 +638,7 @@ pose proof bmd_vmap_bmap_iff i p_init q_init as H3.
 pose proof leapfrog_bmap_aux1 i as H4.
 destruct (Maps.PTree.get i leapfrog_bmap).
 -
+specialize (H1 v eq_refl).
 destruct H1 as [H1|H1].
 +  
 symmetry in H1.
@@ -614,11 +646,9 @@ apply Maps.PTree.elements_correct in H1.
 specialize (H4 v eq_refl).
 inversion H1.
 * 
-specialize (H4 v eq_refl).
+inversion H.
 destruct v.
-
-destruct H.
- inversion H; clear H. 
+inversion H5.
 destruct H3 as (A & B). destruct A. 
 exists ({|
       var_type := Tsingle; var_name := _q; var_lobound := -2; var_hibound := 2
@@ -630,12 +660,26 @@ specialize (H2 s eq_refl).
 -- destruct H2.
 ++ 
 split; simpl; auto.
-rewrite H0; repeat (split; simpl; auto; try interval).
+rewrite H2; repeat (split; simpl; auto; try interval).
 ++
 split; simpl; auto.
-rewrite H0; repeat (split; simpl; auto; try interval).
-+ inversion H; clear H.
-destruct H3 as (A & B). destruct A.
+rewrite H2; repeat (split; simpl; auto; try interval).
+* 
+simpl in H. destruct H; try contradiction.
+-- destruct H3.
+++ destruct v. inversion H.
++
+symmetry in H1.
+apply Maps.PTree.elements_correct in H1.
+specialize (H4 v eq_refl).
+inversion H1.
+* inversion H; clear H.
+* simpl in H. destruct H; try contradiction.
+
+-- destruct H3.
+++ destruct v. inversion H.
+
+destruct H0.
 exists ({|
       var_type := Tsingle; var_name := _p; var_lobound := -2; var_hibound := 2
     |});subst;auto.
@@ -644,12 +688,12 @@ destruct (Maps.PTree.get i (leapfrog_vmap p_init q_init));
 subst.
 specialize (H2 s eq_refl).
 destruct H2.
-++ 
+**
 split; simpl; auto.
-rewrite H0. repeat (split; simpl; auto; try interval).
-++ 
-split; simpl; auto.
-rewrite H0. repeat (split; simpl; auto; try interval).
+rewrite H2. repeat (split; simpl; auto; try interval).
+** split; simpl; auto.
+rewrite H2. repeat (split; simpl; auto; try interval).
+
 - destruct (Maps.PTree.get i (leapfrog_vmap p_init q_init)); auto.
 destruct H3.
 destruct H0; try discriminate.
@@ -657,7 +701,6 @@ exists s; auto.
 Qed.
 
 Theorem total_error: 
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init) -> 
   forall pt qt: R -> R,
   forall n : nat, 
   (n <= 200)%nat ->
@@ -671,7 +714,9 @@ Theorem total_error:
   ∥ (pt tn, qt tn) .- (FT2R_prod (iternF (p_init,q_init) n)) ∥ <= 
   (h^2  + (∥ (/ 4065000, / 4068166) ∥) / h) * ((1 + h)^ n - 1) .
 Proof.
-intros.
+assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init)) by
+apply bmd_init.
+intros ? ? ? ? ? ? ? Hsys Kdiff.
 match goal with |- context[?A <= ?B] =>
 replace A with
   (∥ ((pt (t0 + INR n * h), qt (t0 + INR n * h)) .- (iternR (FT2R p_init, FT2R q_init) h n)) .+
@@ -679,7 +724,7 @@ replace A with
 end.
 assert (HSY: Harmonic_osc_system pt qt 1 t0 (FT2R p_init) (FT2R q_init)) by auto.
 unfold Harmonic_osc_system in H0.
-destruct H0 as (A & B & C).
+destruct Hsys as (A & B & C).
 
 eapply Rle_trans.
 apply Rprod_triang_ineq.
@@ -692,9 +737,9 @@ apply symmetry in A. apply symmetry in B.
 rewrite A in *. rewrite B in *.
 apply global_truncation_error_aux; try unfold h; try nra; auto.
 
-assert (0 < h) by (unfold h; nra).
- pose proof error_sum_GS n h H0.
-rewrite H3.
+assert (hlow: 0 < h) by (unfold h; nra).
+ pose proof error_sum_GS n h hlow as GS.
+rewrite GS.
 apply Req_le.
 
 replace ((∥ (/ 4065000, / 4068166) ∥) * (((1 + h) ^ n - 1) / h))
