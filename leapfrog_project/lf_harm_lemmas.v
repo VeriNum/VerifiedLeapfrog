@@ -723,7 +723,7 @@ replace A with
 ((iternR (FT2R p_init, FT2R q_init) h n) .- (FT2R_prod (iternF (p_init,q_init) n))) ∥)
 end.
 assert (HSY: Harmonic_osc_system pt qt 1 t0 (FT2R p_init) (FT2R q_init)) by auto.
-unfold Harmonic_osc_system in H0.
+unfold Harmonic_osc_system in Hsys.
 destruct Hsys as (A & B & C).
 
 eapply Rle_trans.
