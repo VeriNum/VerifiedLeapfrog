@@ -5,8 +5,11 @@ From Flocq Require Import Core.
 
 Require Import vcfloat.RAux.
 
+Require Import Interval.Tactic.
 
 Import Coq.Logic.FunctionalExtensionality.
+
+Set Bullet Behavior "Strict Subproofs". 
 
 
 Lemma Rabs_triang_aux : 
@@ -662,4 +665,140 @@ eapply Rle_trans.
 2 : apply H.
 apply square_pos.
 Qed.
+
+Lemma Rprod_minus_comm : 
+forall a b,
+Rprod_norm (Rprod_minus a  b ) = Rprod_norm (Rprod_minus b  a ).
+Proof.
+intros. 
+unfold Rprod_norm, Rprod_minus.
+destruct a; destruct b; unfold fst, snd.
+f_equal. simpl. nra.
+Qed.
+
+Lemma Rprod_triang_inv : 
+forall a b : (R * R),
+(Rprod_norm a - Rprod_norm b ) <= Rprod_norm (Rprod_minus b a ).
+Proof.
+intros.
+assert (Rprod_norm a = Rprod_norm ( Rprod_plus (Rprod_minus a b) b)).
+  - unfold Rprod_norm, Rprod_plus, Rprod_minus.
+  destruct a; destruct b. f_equal. unfold fst, snd. nra.
+-
+rewrite H.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply Rprod_triang_ineq.
+apply Req_le. rewrite Rprod_minus_comm.
+nra.
+Qed.
+
+
+Lemma error_sum_le_Sn :
+  forall a n,
+  0 <= a ->  
+  error_sum a n <=
+  error_sum a (S n).
+Proof.
+intros.
+pose proof error_sum_aux n a.
+rewrite <- H0.
+rewrite Rplus_comm.
+apply Rle_minus_l.
+field_simplify.
+apply pow_le; nra.
+Qed.
+
+Lemma error_sum_pos:
+forall a n , 
+0 <= a -> 
+0 <=   error_sum a n.
+Proof.
+intros.
+induction n.
++ simpl; nra.
++ pose proof (error_sum_aux n a).
+rewrite <- H0.
+rewrite Rplus_comm.
+apply Rle_plus.
+apply pow_le; auto.
+apply IHn.
+Qed.
+
+
+Lemma error_sum_le_trans_aux :
+  forall a,
+  forall m n,
+  (n <= m)%nat -> 
+  ( 1 <= a) ->  
+  error_sum a (S n) <=
+  error_sum a (S m).
+Proof.
+intros.
+pose proof (error_sum_aux m a).
+rewrite <- H1.
+pose proof (error_sum_aux n a).
+rewrite <- H2.
+clear H1 H2.
+induction m.
+- assert (n = 0)%nat by lia. subst; simpl; nra.
+- assert ((n = S m)%nat \/ ((n < S m)%nat)) by lia.
+destruct H1. 
++ subst ; apply Req_le; auto.
++ assert  (n <= m)%nat by lia.
+specialize (IHm H2).
+eapply Rle_trans.
+apply IHm.
+eapply Rle_trans.
+apply Rplus_le_compat_l.
+assert (m <= S m)%nat by lia.
+pose proof Rle_pow a m (S m) H0 H3.
+apply H4.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply error_sum_le_Sn; nra.
+apply Req_le.
+auto.
+Qed.
+
+
+Lemma error_sum_le_trans :
+  forall a,
+  forall m n,
+  (n <= m)%nat -> 
+  ( 1 <= a) ->  
+  error_sum a n <=
+  error_sum a m.
+Proof.
+intros.
+destruct n.
+- simpl. apply error_sum_pos; nra.
+- destruct m.
++ lia.
++ apply error_sum_le_trans_aux; try lia; lra.
+Qed.
+
+Lemma error_sum_GS :
+forall n,
+forall h,
+0 < h -> 
+error_sum (1 + h) n = ((1 + h) ^ n - 1) / h.
+Proof.
+intros.
+induction n.
+- simpl. nra.
+- unfold error_sum.
+assert (1 + h <> 1) by nra.
+pose proof geo_series_closed_form (1 + h) n H0.
+rewrite H1. 
+replace (((1 - (1 + h) ^ S n) / (1 - (1 + h))))
+with (( (1 + h) ^ S n - 1) / h).
+field_simplify;
+repeat nra.
+set (aa:=(1 + h) ^ S n).
+apply Stdlib.Rdiv_eq_reg.
+nra.
+all : nra.
+Qed.
+
 
