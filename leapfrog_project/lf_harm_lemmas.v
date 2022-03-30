@@ -526,17 +526,149 @@ pose proof init_norm_bound (S n); auto.
 Qed. 
 
 
+Lemma leapfrog_vmap_init: 
+forall i,
+forall v1 : (sigT ftype),
+Maps.PTree.get i (leapfrog_vmap p_init q_init) = Some v1 -> 
+v1 = (existT ftype Tsingle q_init) \/
+v1 = (existT ftype Tsingle p_init).
+Proof. 
+intros.
+apply Maps.PTree.elements_correct in H.
+destruct H.
+- inversion H.
+left; auto.
+- inversion H.
++ inversion H0.
+* right; auto.
++ inversion H0; auto.
+Qed.
+
+
+
+Lemma leapfrog_bmap_aux:
+forall (i : positive),
+       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _q leapfrog_bmap \/
+       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _p leapfrog_bmap.
+Admitted.
+
+Lemma leapfrog_bmap_aux1:
+forall (i : positive) (v : varinfo),
+       Maps.PTree.get i leapfrog_bmap = Some v ->
+v.(var_name) = i. 
+Proof.
+intros.
+apply Maps.PTree.elements_correct in H.
+destruct H.
+- inversion H. auto.
+- inversion H; inversion H0; subst; auto.
+Qed. 
+
+
+Lemma bmd_vmap_bmap_iff : 
+forall (i : positive)
+(p q: ftype Tsingle),
+(exists (v : varinfo),
+       Maps.PTree.get i leapfrog_bmap = Some v) <->
+(exists (v1 : sigT ftype),
+       Maps.PTree.get i (leapfrog_vmap p q) = Some v1).
+Proof.
+intros.
+split.
+- intros.
+destruct H.
+apply Maps.PTree.elements_correct in H.
+inversion H.
++ exists (existT ftype Tsingle q).
+inversion H0.
+subst.
+cbv. auto.
++ exists (existT ftype Tsingle p).
+inversion H0. inversion H1.
+* 
+cbv. auto.
+*  simpl in H1; contradiction.
+- intros.
+destruct H.
+apply Maps.PTree.elements_correct in H.
+inversion H.
+
+Admitted.
+
+Lemma bmd_init : 
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init) .
+Proof.
+intros.
+unfold boundsmap_denote.
+intros.
+pose proof leapfrog_bmap_aux i as H1.
+pose proof leapfrog_vmap_init i as H2.
+pose proof bmd_vmap_bmap_iff i p_init q_init as H3.
+pose proof leapfrog_bmap_aux1 i as H4.
+destruct (Maps.PTree.get i leapfrog_bmap).
+-
+destruct H1 as [H1|H1].
++  
+symmetry in H1.
+apply Maps.PTree.elements_correct in H1.
+specialize (H4 v eq_refl).
+inversion H1.
+* 
+specialize (H4 v eq_refl).
+destruct v.
+
+destruct H.
+ inversion H; clear H. 
+destruct H3 as (A & B). destruct A. 
+exists ({|
+      var_type := Tsingle; var_name := _q; var_lobound := -2; var_hibound := 2
+    |}); subst; auto.
+destruct (Maps.PTree.get i (leapfrog_vmap p_init q_init)); 
+  try discriminate.
+subst.
+specialize (H2 s eq_refl).
+-- destruct H2.
+++ 
+split; simpl; auto.
+rewrite H0; repeat (split; simpl; auto; try interval).
+++
+split; simpl; auto.
+rewrite H0; repeat (split; simpl; auto; try interval).
++ inversion H; clear H.
+destruct H3 as (A & B). destruct A.
+exists ({|
+      var_type := Tsingle; var_name := _p; var_lobound := -2; var_hibound := 2
+    |});subst;auto.
+destruct (Maps.PTree.get i (leapfrog_vmap p_init q_init)); 
+  try discriminate.
+subst.
+specialize (H2 s eq_refl).
+destruct H2.
+++ 
+split; simpl; auto.
+rewrite H0. repeat (split; simpl; auto; try interval).
+++ 
+split; simpl; auto.
+rewrite H0. repeat (split; simpl; auto; try interval).
+- destruct (Maps.PTree.get i (leapfrog_vmap p_init q_init)); auto.
+destruct H3.
+destruct H0; try discriminate.
+exists s; auto.
+Qed.
+
 Theorem total_error: 
   boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init) -> 
   forall pt qt: R -> R,
+  forall n : nat, 
+  (n <= 200)%nat ->
   let t0 := 0 in
-  Harmonic_osc_system pt qt 1 t0 (FT2R p_init) (FT2R q_init) ->
+  let tn := t0 + INR n * h in
+  let w  := 1 in
+  Harmonic_osc_system pt qt w t0 (FT2R p_init) (FT2R q_init) ->
   (forall t1 t2: R,
   k_differentiable pt 4 t1 t2 /\
   k_differentiable qt 3 t1 t2)  ->
-  forall n : nat, 
-  (n <= 200)%nat ->
-  ∥ (pt (t0 + INR n * h), qt (t0 + INR n * h)) .- (FT2R_prod (iternF (p_init,q_init) n)) ∥ <= 
+  ∥ (pt tn, qt tn) .- (FT2R_prod (iternF (p_init,q_init) n)) ∥ <= 
   (h^2  + (∥ (/ 4065000, / 4068166) ∥) / h) * ((1 + h)^ n - 1) .
 Proof.
 intros.
