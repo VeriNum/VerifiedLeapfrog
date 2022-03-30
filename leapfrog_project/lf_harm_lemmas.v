@@ -248,28 +248,108 @@ Lemma reflect_reify_q : forall p q,
              fval (env_ (leapfrog_vmap p q)) q' = leapfrog_stepq p q.
 Proof.
 intros.
-destruct true.  
-- unfold q', leapfrog_stepq, leapfrog_stepF, F,  fst, snd, lf_harm_float.h, half_pow2_h.
-Admitted.
-
+unfold q'.
+reflexivity. 
+Qed.
 
 Lemma reflect_reify_p : forall p q, fval (env_ (leapfrog_vmap p q)) p' = leapfrog_stepp p q.
 Proof.
 intros.
-Admitted.
+unfold p'.
+reflexivity. 
+Qed.
 
 Lemma rval_correct_p : 
 forall pnf qnf,
 rval (env_ (leapfrog_vmap pnf qnf)) p' = fst (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
 Proof.
-Admitted.
+intros.
+ match goal with |- context [rval ?env ?x] =>
+   let a := constr:(rval env x) in let b := eval hnf in a in change a with b
+ end.
+unfold leapfrog_stepR,FT2R_prod, fst,snd, h. 
+ cbv beta iota delta [rval Rop_of_binop Rop_of_unop
+            Rop_of_rounded_binop Rop_of_exact_unop Rop_of_rounded_unop];
+ change (type_of_expr _) with Tsingle; 
+ change (type_of_expr _) with Tdouble;
+ fold (@FT2R Tsingle) in *; fold (@FT2R Tdouble).
+
+ (* Perform all env lookups *)
+ repeat 
+    match goal with
+    | |- context [env_ ?a ?b ?c] =>
+       let u := constr:(env_ a b c) in let v := eval hnf in u in change u with v
+   end.
+
+ (* Clean up all FT2R constants *)
+ repeat match goal with
+ | |- context [@FT2R ?t (b32_B754_finite ?s ?m ?e ?H)] =>
+ let j := fresh "j" in 
+  set (j :=  @FT2R t (b32_B754_finite s m e H));
+  simpl in j; subst j
+ | |- context [@FT2R ?t (b64_B754_finite ?s ?m ?e ?H)] =>
+ let j := fresh "j" in 
+  set (j :=  @FT2R t (b64_B754_finite s m e H));
+  simpl in j; subst j
+ end;
+ rewrite <- ?(F2R_eq radix2);
+ (* clean up all   F2R radix2 {| Defs.Fnum := _; Defs.Fexp := _ |}   *)
+ rewrite ?cleanup_Fnum;
+ repeat match goal with |- context [cleanup_Fnum' ?f ?e] =>
+  let x := constr:(cleanup_Fnum' f e) in
+  let y := eval cbv - [Rdiv IZR] in x in
+  change x with y
+ end.
+field_simplify.
+nra.
+Qed.
 
 
 Lemma rval_correct_q : 
 forall pnf qnf,
 rval (env_ (leapfrog_vmap pnf qnf)) q' = snd (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
 Proof.
-Admitted.
+
+intros.
+ match goal with |- context [rval ?env ?x] =>
+   let a := constr:(rval env x) in let b := eval hnf in a in change a with b
+ end.
+unfold leapfrog_stepR,FT2R_prod, fst,snd, h. 
+ cbv beta iota delta [rval Rop_of_binop Rop_of_unop
+            Rop_of_rounded_binop Rop_of_exact_unop Rop_of_rounded_unop];
+ change (type_of_expr _) with Tsingle; 
+ change (type_of_expr _) with Tdouble;
+ fold (@FT2R Tsingle) in *; fold (@FT2R Tdouble).
+
+ (* Perform all env lookups *)
+ repeat 
+    match goal with
+    | |- context [env_ ?a ?b ?c] =>
+       let u := constr:(env_ a b c) in let v := eval hnf in u in change u with v
+   end.
+
+ (* Clean up all FT2R constants *)
+ repeat match goal with
+ | |- context [@FT2R ?t (b32_B754_finite ?s ?m ?e ?H)] =>
+ let j := fresh "j" in 
+  set (j :=  @FT2R t (b32_B754_finite s m e H));
+  simpl in j; subst j
+ | |- context [@FT2R ?t (b64_B754_finite ?s ?m ?e ?H)] =>
+ let j := fresh "j" in 
+  set (j :=  @FT2R t (b64_B754_finite s m e H));
+  simpl in j; subst j
+ end;
+ rewrite <- ?(F2R_eq radix2);
+ (* clean up all   F2R radix2 {| Defs.Fnum := _; Defs.Fexp := _ |}   *)
+ rewrite ?cleanup_Fnum;
+ repeat match goal with |- context [cleanup_Fnum' ?f ?e] =>
+  let x := constr:(cleanup_Fnum' f e) in
+  let y := eval cbv - [Rdiv IZR] in x in
+  change x with y
+ end.
+field_simplify.
+nra.
+Qed.
 
 
 Lemma itern_implies_bmd_aux:
@@ -281,13 +361,70 @@ Lemma itern_implies_bmd_aux:
 (is_finite _ _  (snd(iternF (p0,q0) (S n))) = true).
 Proof.
 intros.
-induction n. 
-- split.
-+ unfold iternF, leapfrogF.
-replace (fst (leapfrog_stepF (p0, q0))) with
-  (leapfrog_stepp p0 q0) by auto.
+rewrite step_iternF.
+destruct (iternF (p0, q0) n).
+simpl in H.
+change (fst (leapfrog_stepF (f, f0))) with
+  (leapfrog_stepp f f0).
+change (snd (leapfrog_stepF (f, f0))) with
+  (leapfrog_stepq f f0).
+split.
+-
 rewrite <- reflect_reify_p.
-Admitted.
+assert (EV1: expr_valid p' = true) by auto.
+pose proof rndval_with_cond_correct2 p' EV1
+  leapfrog_bmap (leapfrog_vmap f f0) H.
+destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
+
+  (* What's left is a Forall of all the conds.  Next, clean them up a bit. *)
+  change (type_of_expr _) with Tsingle;
+  change (type_of_expr _) with Tdouble;
+  cbv beta iota zeta delta [
+            mset shifts_MAP empty_shiftmap mempty
+            compcert_map Maps.PMap.set Maps.PMap.init
+            Maps.PTree.empty Maps.PTree.set Maps.PTree.set' 
+              Maps.PTree.set0 Pos.of_succ_nat Pos.succ
+            index_of_tr map_nat fst snd
+
+          rndval_with_cond' rnd_of_binop_with_cond
+          rnd_of_unop_with_cond is_div
+          Rbinop_of_rounded_binop Runop_of_exact_unop Runop_of_rounded_unop
+          type_of_expr make_rounding round_knowl_denote
+         rounding_cond_ast no_overflow app].
+
+ 
+  (* now process the boundsmap above the line, and the conds below the line *)
+  process_boundsmap_denote;
+  process_conds; interval.
+
+-
+rewrite <- reflect_reify_q.
+assert (EV1: expr_valid q' = true) by auto.
+pose proof rndval_with_cond_correct2 q' EV1
+  leapfrog_bmap (leapfrog_vmap f f0) H.
+destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
+
+  (* What's left is a Forall of all the conds.  Next, clean them up a bit. *)
+  change (type_of_expr _) with Tsingle;
+  change (type_of_expr _) with Tdouble;
+  cbv beta iota zeta delta [
+            mset shifts_MAP empty_shiftmap mempty
+            compcert_map Maps.PMap.set Maps.PMap.init
+            Maps.PTree.empty Maps.PTree.set Maps.PTree.set' 
+              Maps.PTree.set0 Pos.of_succ_nat Pos.succ
+            index_of_tr map_nat fst snd
+
+          rndval_with_cond' rnd_of_binop_with_cond
+          rnd_of_unop_with_cond is_div
+          Rbinop_of_rounded_binop Runop_of_exact_unop Runop_of_rounded_unop
+          type_of_expr make_rounding round_knowl_denote
+         rounding_cond_ast no_overflow app].
+
+ 
+  (* now process the boundsmap above the line, and the conds below the line *)
+  process_boundsmap_denote;
+  process_conds; interval.
+Qed.
 
 
 
@@ -762,6 +899,28 @@ field_simplify.
 symmetry; apply Rprod_norm_plus_minus_eq.
 
 Qed. 
+
+Lemma leapfrog_step_is_finite:
+ forall n,  ( n <= 200)%nat->
+  (is_finite _ _  (fst(iternF (p_init,q_init)  n)) = true) /\
+  (is_finite _ _  (snd(iternF (p_init,q_init)  n)) = true).
+Proof.
+intros.
+pose proof global_error bmd_init n H.
+destruct H0 as (A & _).
+ lazymatch goal with
+ | H: boundsmap_denote _ _ |- _ =>
+  apply boundsmap_denote_e in H;
+  simpl Maps.PTree.elements in H;
+  unfold list_forall in H
+end.
+destruct A as (A & B).
+simpl in A. destruct A as (V1 & V2 & V3 & V4 & _).  
+  inversion V3; subst. simpl in V4; auto.
+simpl in B. destruct B as (U1 & U2 & U3 & U4 & _).  
+  inversion U3; subst. simpl in U4; auto.
+Qed.
+
 
 End WITHNANS.
 
