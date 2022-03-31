@@ -28,8 +28,7 @@ Proof.
 intros.
 prove_roundoff_bound.
 - abstract (prove_rndval; interval).
--
-  prove_roundoff_bound2.
+- prove_roundoff_bound2.
  match goal with |- Rabs ?a <= _ => field_simplify a end.
  interval.
 Qed.
@@ -42,18 +41,16 @@ Proof.
 intros.
 prove_roundoff_bound.
 - abstract (prove_rndval; interval).
--
-  prove_roundoff_bound2.
-
- match goal with |- Rabs ?a <= _ => field_simplify a end.
+- prove_roundoff_bound2.
+match goal with |- Rabs ?a <= _ => field_simplify a end.
 interval.
 Qed.
 
 
 Lemma prove_roundoff_bound_q_implies:
   forall p q : ftype Tsingle,
-boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) q') - rval (env_ (leapfrog_vmap p q)) q') <= (/ 4068166)
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
+  Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) q') - rval (env_ (leapfrog_vmap p q)) q') <= (/ 4068166)
 .
 Proof.
 intros.
@@ -66,8 +63,8 @@ Qed.
 
 Lemma prove_roundoff_bound_p_implies:
   forall p q : ftype Tsingle,
-boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) p') - rval (env_ (leapfrog_vmap p q)) p') <= (/4065000)
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
+  Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) p') - rval (env_ (leapfrog_vmap p q)) p') <= (/4065000)
 .
 Proof.
 intros.
@@ -79,7 +76,7 @@ Qed.
 
 
 Lemma init_norm_eq :
-∥  (FT2R p_init, FT2R q_init) ∥ = 1 . 
+  ∥  (FT2R p_init, FT2R q_init) ∥ = 1 . 
 Proof.
 intros.
 replace 1 with (sqrt 1).
@@ -101,8 +98,8 @@ Hypothesis iternR_bnd:
 
 
 Lemma init_norm_bound :
-forall n,
-∥ iternR (FT2R p_init, FT2R q_init) h n ∥ <= 1.5. 
+  forall n,
+  ∥ iternR (FT2R p_init, FT2R q_init) h n ∥ <= 1.5. 
 Proof.
 intros.
 specialize (iternR_bnd (FT2R p_init) (FT2R q_init) n).
@@ -115,11 +112,11 @@ Qed.
 
 
 Lemma roundoff_norm_bound:
- forall p q : ftype Tsingle,
-boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-let (pnf, qnf) := FT2R_prod (fval (env_ (leapfrog_vmap p q)) p', fval (env_ (leapfrog_vmap p q)) q') in 
-let (pnr, qnr) := (rval (env_ (leapfrog_vmap p q)) p', rval (env_ (leapfrog_vmap p q)) q') in
-∥ (pnf, qnf) .- (pnr, qnr)∥ <= ∥(/4065000, / 4068166)∥.
+  forall p q : ftype Tsingle,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
+  let (pnf, qnf) := FT2R_prod (fval (env_ (leapfrog_vmap p q)) p', fval (env_ (leapfrog_vmap p q)) q') in 
+  let (pnr, qnr) := (rval (env_ (leapfrog_vmap p q)) p', rval (env_ (leapfrog_vmap p q)) q') in
+  ∥ (pnf, qnf) .- (pnr, qnr)∥ <= ∥(/4065000, / 4068166)∥.
 Proof.
 intros.
 unfold Rprod_minus, FT2R_prod, Rprod_norm, fst, snd.
@@ -233,12 +230,12 @@ Theorem total_error:
   (forall t1 t2: R,
   k_differentiable pt 4 t1 t2 /\
   k_differentiable qt 3 t1 t2)  ->
-  ∥ (pt tn, qt tn) .- (FT2R_prod (iternF (p_init,q_init) n)) ∥ <= 
-  (h^2  + (∥ (/ 4065000, / 4068166) ∥) / h) * ((1 + h)^ n - 1) .
+  let c:= (∥ (/ 4065000, / 4068166) ∥) / h in 
+  ∥ (pt tn, qt tn) .- (FT2R_prod (iternF (p_init,q_init) n)) ∥ <=  (h^2  + c) * ((1 + h) ^ n - 1) .
 Proof.
 assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init)) by
 apply bmd_init.
-intros ? ? ? ? ? ? ? Hsys Kdiff.
+intros ? ? ? ? ? ? ? Hsys Kdiff; simpl.
 match goal with |- context[?A <= ?B] =>
 replace A with
   (∥ ((pt (t0 + INR n * h), qt (t0 + INR n * h)) .- (iternR (FT2R p_init, FT2R q_init) h n)) .+
@@ -277,8 +274,8 @@ Qed.
 
 
 
-Lemma leapfrog_step_is_finite:
- forall n,  ( n <= 200)%nat->
+Theorem leapfrog_step_is_finite:
+  forall n,  ( n <= 200)%nat->
   (is_finite _ _  (fst(iternF (p_init,q_init)  n)) = true) /\
   (is_finite _ _  (snd(iternF (p_init,q_init)  n)) = true).
 Proof.
