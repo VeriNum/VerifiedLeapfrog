@@ -1,199 +1,485 @@
 (* This file contains proofs of the floating point properties:
 local and global error, finiteness *)
 
-From Flocq Require Import Binary Bits Core.
-From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
-Require Import vcfloat lf_harm_float lf_harm_real real_lemmas lf_harm_lemmas.
-Set Bullet Behavior "Strict Subproofs". 
+From vcfloat Require Import FPLang FPLangOpt RAux Rounding Reify Float_notations Automate.
+Require Import Interval.Tactic.
+Import Binary.
+Import List ListNotations.
+Set Bullet Behavior "Strict Subproofs".
 
-Import FPLangOpt. 
-Import FPLang.
-Import FPSolve.
-Import Test.
+Require Import lf_harm_float lf_harm_real real_lemmas lf_harm_real_theorems lf_harm_lemmas.
+
+
+Open Scope R_scope.
+
+Section WITHNANS.
+
+
+Context {NANS: Nans}.
 
 Import Interval.Tactic.
 
-(*
 
-(* single step position error *)
-Theorem one_step_error_x:
-  forall x v : float32,
-    boundsmap_denote lf_bmap_init (leapfrog_vmap x v)->
-    (Rabs (Rminus (rval (leapfrog_env  x v) (optimize_div x')) 
-   (B2R _ _ (fval (leapfrog_env  x v) (optimize_div x'))))) <=
-         (1.25/(10^7)).
+Lemma prove_roundoff_bound_q:
+  forall p q : ftype Tsingle,
+  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap p q) q' 
+    (/ 4068166).
 Proof.
 intros.
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) (optimize_div x')) 
-  as [[r [si2 s]] p] eqn:rndval).
-(assert (BND: 0 <= 0 <= 1) by nra).
-pose proof 
-  (rndval_with_cond_correct_optx_n x v 0%nat (Nat.le_0_l (1000)) 0 0 BND BND H r si2 s p rndval)
-as rndval_result.
-intro_absolute_error_bound Tsingle Normal H x v rndval_result.
+prove_roundoff_bound.
+- abstract (prove_rndval; interval).
+-
+  prove_roundoff_bound2.
+ match goal with |- Rabs ?a <= _ => field_simplify a end.
+ interval.
 Qed.
 
-(* single step position error *)
-Theorem one_step_error_v:
-  forall x v : float32,
-    boundsmap_denote lf_bmap_init (leapfrog_vmap x v)->
-    (Rabs (Rminus (rval (leapfrog_env  x v) (optimize_div v')) 
-   (B2R _ _ (fval (leapfrog_env  x v) (optimize_div v'))))) <=
-       6.75/(10^8) .
+Lemma prove_roundoff_bound_p:
+  forall p q : ftype Tsingle,
+  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap p q) p' 
+   (/4065000).
 Proof.
 intros.
-(destruct (rndval_with_cond O (mempty  (Tsingle, Normal)) (optimize_div v')) 
-  as [[r [si2 s]] p] eqn:rndval).
-(assert (BND: 0 <= 0 <= 1) by nra).
-pose proof 
-  (rndval_with_cond_correct_optv_n x v 0%nat (Nat.le_0_l (1000)) 0 0 BND BND H r si2 s p rndval)
-as rndval_result.
-intro_absolute_error_bound Tsingle Normal H x v rndval_result.
+prove_roundoff_bound.
+- abstract (prove_rndval; interval).
+-
+  prove_roundoff_bound2.
+
+ match goal with |- Rabs ?a <= _ => field_simplify a end.
+interval.
 Qed.
 
 
-Lemma local_error_x :
-  forall x v : float32,
-  forall x1 v1 : R,
-    boundsmap_denote lf_bmap_init (leapfrog_vmap x v)->
-  x1 = B2R _ _ x ->
-  v1 = B2R _ _ v -> 
-    (Rabs (Rminus (fst(leapfrog_stepR' (x1,v1))) 
-    (B2R _ _ (leapfrog_stepx x v)))) <=  (1.25/(10^7)).
+Lemma prove_roundoff_bound_q_implies:
+  forall p q : ftype Tsingle,
+boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
+Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) q') - rval (env_ (leapfrog_vmap p q)) q') <= (/ 4068166)
+.
 Proof.
 intros.
-replace (fst (leapfrog_stepR' (x1,v1))) with 
-  (rval (leapfrog_env x v) (optimize_div x')).
- replace (B2R 24 128 (leapfrog_stepx x v)) with
-  (B2R _ _(fval (leapfrog_env x v) (optimize_div x'))).
-  - pose proof one_step_error_x x v H. apply H2.
-  - rewrite <- env_fval_reify_correct_leapfrog_step_x; 
-  (assert (BND: 0 <= 0 <= 1) by nra).
-  pose proof optimize_div_correct' (leapfrog_env x v) x' 
-  (leapfrog_stepx_not_nan_n x v 0%nat (Nat.le_0_l (1000)) 0 0 BND BND H);
-revert H2;
-generalize (fval (leapfrog_env x v) (optimize_div x'));
-rewrite optimize_div_type; intros;
-apply binary_float_eqb_eq in H2; subst; reflexivity.
-- rewrite (@env_rval_reify_correct_leapfrog_stepx x v x1 v1); auto.
+pose proof prove_roundoff_bound_q p q.
+unfold prove_roundoff_bound in H0. 
+specialize (H0 H).
+unfold roundoff_error_bound in H0; auto. 
 Qed.
 
 
-Lemma local_error_v:
-  forall x v : float32,
-  forall x1 v1 : R,
-    boundsmap_denote lf_bmap_init (leapfrog_vmap x v)->
-  x1 = B2R _ _ x ->
-  v1 = B2R _ _ v -> 
-    (Rabs (Rminus (snd(leapfrog_stepR' (x1,v1))) 
-    (B2R _ _ (leapfrog_stepv x v)))) <= 6.75/(10^8).
+Lemma prove_roundoff_bound_p_implies:
+  forall p q : ftype Tsingle,
+boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
+Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) p') - rval (env_ (leapfrog_vmap p q)) p') <= (/4065000)
+.
 Proof.
-intros. 
-replace (snd (leapfrog_stepR' (x1,v1))) with 
-  (rval (leapfrog_env x v) (optimize_div v')).
- replace (B2R 24 128 (leapfrog_stepv x v)) with
-  (B2R _ _(fval (leapfrog_env x v) (optimize_div v'))).
-  - pose proof one_step_error_v x v H. apply H2.
-  - rewrite <- env_fval_reify_correct_leapfrog_step_v; 
-  (assert (BND: 0 <= 0 <= 1) by nra).
-  pose proof optimize_div_correct' (leapfrog_env x v) v' 
-  (leapfrog_stepv_not_nan_n x v 0%nat (Nat.le_0_l (1000)) 0 0 BND BND H);
-revert H2;
-generalize (fval (leapfrog_env x v) (optimize_div v'));
-rewrite optimize_div_type; intros;
-apply binary_float_eqb_eq in H2; subst; reflexivity.
-- rewrite (@env_rval_reify_correct_leapfrog_stepv x v x1 v1); auto.
+intros.
+pose proof prove_roundoff_bound_p p q.
+unfold prove_roundoff_bound in H0. 
+specialize (H0 H).
+unfold roundoff_error_bound in H0; auto. 
 Qed.
+
+
+Lemma init_norm_eq :
+∥  (FT2R p_init, FT2R q_init) ∥ = 1 . 
+Proof.
+intros.
+replace 1 with (sqrt 1).
+replace (FT2R q_init) with 1.
+simpl. unfold Rprod_norm, fst, snd.
+f_equal; nra.
+unfold FT2R, q_init. 
+unfold Rprod_norm, fst, snd.
+ cbv [B2R]. simpl. cbv [Defs.F2R IZR IPR]. simpl;
+field_simplify; nra.
+apply sqrt_1.
+Qed.
+
+
+Hypothesis iternR_bnd:
+  forall p q n,
+  ∥iternR (p,q) h n∥ <= (sqrt 2 * ∥(p,q)∥).
+
+
+
+Lemma init_norm_bound :
+forall n,
+∥ iternR (FT2R p_init, FT2R q_init) h n ∥ <= 1.5. 
+Proof.
+intros.
+specialize (iternR_bnd (FT2R p_init) (FT2R q_init) n).
+pose proof init_norm_eq.
+rewrite H in iternR_bnd; clear H.
+rewrite Rmult_1_r in iternR_bnd.
+interval.
+Qed.
+
+
+
+Lemma roundoff_norm_bound:
+ forall p q : ftype Tsingle,
+boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
+let (pnf, qnf) := FT2R_prod (fval (env_ (leapfrog_vmap p q)) p', fval (env_ (leapfrog_vmap p q)) q') in 
+let (pnr, qnr) := (rval (env_ (leapfrog_vmap p q)) p', rval (env_ (leapfrog_vmap p q)) q') in
+∥ (pnf, qnf) .- (pnr, qnr)∥ <= ∥(/4065000, / 4068166)∥.
+Proof.
+intros.
+unfold Rprod_minus, FT2R_prod, Rprod_norm, fst, snd.
+rewrite <- pow2_abs.
+rewrite Rplus_comm.
+rewrite <- pow2_abs.
+pose proof prove_roundoff_bound_p_implies p q H.
+pose proof prove_roundoff_bound_q_implies p q H.
+apply sqrt_le_1_alt.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply pow_incr.
+split; try (apply Rabs_pos).
+apply H1.
+eapply Rle_trans. 
+apply Rplus_le_compat_l.
+apply pow_incr.
+split; try (apply Rabs_pos).
+apply H0.
+nra.
+Qed.
+
+
+
+Lemma error_sum_bound: 
+  forall n,
+  (n <= 200)%nat -> 
+  error_sum (1 + h) n <= 15033.
+Proof.
+intros.
+eapply Rle_trans.
+eapply error_sum_le_trans. 
+  apply H. try unfold h; try nra.
+assert (Hyph: 1 + h <> 1 ) by (unfold h ;nra).
+pose proof geo_series_closed_form (1 + h) 199 Hyph.
+unfold error_sum; rewrite H0.
+replace ((1 - (1 + h) ^ 200) / (1 - (1 + h))) with (  ((1 + h) ^ 200 - 1) /  h).
+rewrite Rcomplements.Rle_div_l; try (unfold h; nra).
+set (a:=(1 + h) ^ 200).
+field_simplify; try nra. 
+apply Stdlib.Rdiv_eq_reg; try nra.
+Qed.
+
+
+Lemma itern_implies_bmd_aux1:
+  forall pnf qnf : ftype Tsingle,
+  forall pnr qnr : R,
+  forall n,
+  (n <= 200)%nat -> 
+  ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=  ∥(/4065000, / 4068166)∥ * error_sum (1 + h) n 
+  /\ ∥(pnr,qnr) ∥ <= 1.5 -> 
+  Rabs (FT2R pnf)  <= 2 /\ Rabs ( FT2R qnf) <= 2.
+Proof.
+intros ? ? ? ? ? BNDn H. destruct H as (A & B).
+assert (HYP1: ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
+(∥ ( /4065000, / 4068166) ∥) * error_sum (1 + h) 200).
++ eapply Rle_trans.
+2 :  { 
+apply Rmult_le_compat_l; try (apply Rnorm_pos). 
+eapply error_sum_le_trans. apply BNDn. unfold h; nra.
+} apply A.
++ clear A. 
+assert ( HYP2 :∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
+     (∥ (/4065000, / 4068166) ∥) * 15033).
+eapply Rle_trans.
+apply HYP1.
+apply Rmult_le_compat_l; try (apply Rnorm_pos).
+apply error_sum_bound; try lia.
+clear HYP1. 
+assert (HYP3: (∥ (FT2R_prod (pnf, qnf))∥ - ∥ (pnr, qnr) ∥) <= (∥ (/4065000, / 4068166) ∥) * 15033 ).
+eapply Rle_trans.
+apply Rprod_triang_inv.
+apply HYP2.
+apply Rle_minus_l_2 in HYP3. 
+assert (HYP4: ∥ FT2R_prod (pnf, qnf) ∥ <= 1.5 + (∥ (/4065000, / 4068166) ∥) * 15033).
+eapply Rle_trans.
+2: {apply Rplus_le_compat_r. apply B.
+} apply HYP3. clear HYP2.
+generalize HYP4.
+match goal with |-context[Rprod_norm ?A <= ?a]=>
+  interval_intro a upper; intros ?HYP; clear HYP
+end. 
+unfold Rprod_norm in HYP4. 
+unfold FT2R_prod, fst ,snd in HYP4.
+assert (HYP5: sqrt (FT2R pnf  ^ 2 + FT2R qnf ^ 2) <= sqrt ((6778944017806265 / 4503599627370496)^2) ).
+eapply Rle_trans. apply  HYP4.
+rewrite sqrt_pow2; try nra. apply H.
+apply sqrt_le_0 in HYP5; try nra.
+split. 
+++ assert (FT2R pnf ^ 2 <= (6778944017806265 / 4503599627370496) ^ 2) by nra.
+apply sqrt_le in H0.
+rewrite sqrt_pow2 in H0.
+all: (try interval).
+++ assert (FT2R qnf ^ 2 <= (6778944017806265 / 4503599627370496) ^ 2) by nra.
+apply sqrt_le in H0.
+rewrite sqrt_pow2 in H0.
+all: (try interval).
+Qed.
+
+
+
+
+Lemma itern_implies_bmd:
+  forall p0 q0 : ftype Tsingle,
+  forall n,
+  (S n <= 200)%nat -> 
+  boundsmap_denote leapfrog_bmap 
+    (leapfrog_vmap (fst(iternF (p0,q0) n)) (snd(iternF (p0,q0) n))) ->
+  ∥(iternR (FT2R p0, FT2R q0) h (S n)) .- FT2R_prod (iternF (p0,q0)  (S n)) ∥ <= 
+  (∥ (/4065000, / 4068166) ∥) * error_sum (1 + h) (S n)  /\
+∥ (iternR (FT2R p0, FT2R q0) h  (S n))∥ <= 1.5 ->
+   boundsmap_denote leapfrog_bmap (leapfrog_vmap (fst(iternF (p0,q0) (S n))) (snd(iternF (p0,q0) (S n)))).
+Proof. 
+intros ? ? ? BNDn BMD NORM.
+pose proof (itern_implies_bmd_aux p0 q0 n BMD) as HFIN.
+pose proof (itern_implies_bmd_aux1) as HBND.
+unfold boundsmap_denote in *.
+intros.
+specialize (BMD i).
+pose proof bmd_Sn_bnds_le i as ABSBND.
+destruct (Maps.PTree.get i leapfrog_bmap).
+-
+specialize (ABSBND v eq_refl).
+destruct v. 
+simpl in ABSBND.
+rewrite step_iternF in *.
+destruct ((iternF (p0, q0) n)).
+set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
+set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
+pose proof  (Maps.PTree.elements_correct
+   (leapfrog_vmap f1 f2) i) as COR. 
+pose proof  (Maps.PTree.elements_correct
+   (leapfrog_vmap f f0) i) as COR2.
+pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX.
+simpl in BMD. 
+destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
+destruct (Maps.PTree.get i (leapfrog_vmap f f0));
+try contradiction.
++
+specialize (COR2 s0 eq_refl).
+inversion COR2; clear COR2.
+*
+inversion H; subst; clear H.
+simpl in BMD.
+specialize (COR s eq_refl).
+inversion COR; clear COR.
+--
+inversion H; subst; clear H.
+split; try ( apply BMD).
+split. simpl. apply BMD.
+split. apply HFIN.
+destruct ((iternR (FT2R p0, FT2R q0) h (S n))).
+specialize (HBND f1 f2 r r0 (S n) BNDn NORM). 
+destruct ABSBND.
+subst.
+unfold projT2. 
+destruct HBND.
+apply Rabs_le_inv; auto.
+--
+simpl in H; destruct H; try contradiction.
+inversion H; subst; clear H.
+*
+simpl in H; destruct H; try contradiction.
+inversion H; subst; clear H.
+simpl in BMD.
+specialize (COR s eq_refl).
+inversion COR; clear COR.
+--
+inversion H; subst; clear H.
+--
+inversion H; subst; clear H.
+++ 
+inversion H0; subst; clear H0.
+split; try ( apply BMD).
+split. simpl. apply BMD.
+split. apply HFIN.
+destruct ((iternR (FT2R p0, FT2R q0) h (S n))).
+specialize (HBND f1 f2 r r0 (S n) BNDn NORM). 
+destruct ABSBND.
+subst.
+unfold projT2. 
+destruct HBND.
+apply Rabs_le_inv; auto.
+++ 
+inversion H0; subst; clear H0.
++
+specialize (EX s eq_refl).
+destruct EX as (A & B & C); discriminate.
+-
+rewrite step_iternF in *.
+destruct ((iternF (p0, q0) n)).
+set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
+set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
+pose proof  (Maps.PTree.elements_correct
+   (leapfrog_vmap f1 f2) i) as COR. 
+pose proof  (Maps.PTree.elements_correct
+   (leapfrog_vmap f f0) i) as COR2.
+pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX1.
+pose proof (leapfrog_vmap_i_aux f f0 f1 f2 i) as EX2.
+simpl in BMD. 
+destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
+destruct (Maps.PTree.get i (leapfrog_vmap f f0));
+try contradiction.
+*
+specialize (EX2 s eq_refl).
+destruct EX2 as (A & B & C); discriminate.
+* auto.
+Qed.
+
+
+
+Lemma global_error : 
+  boundsmap_denote leapfrog_bmap 
+    (leapfrog_vmap p_init q_init) ->
+  forall n : nat, 
+  (n <= 200)%nat -> 
+  boundsmap_denote leapfrog_bmap 
+    (leapfrog_vmap (fst(iternF (p_init,q_init) n)) (snd(iternF (p_init,q_init) n))) /\
+  ∥(iternR (FT2R p_init, FT2R q_init) h n) .- FT2R_prod (iternF (p_init,q_init) n) ∥ <= (∥ (/ 4065000, / 4068166) ∥) * error_sum (1 + h) n.
+  Proof.
+intros.
+induction n.
+- unfold Rprod_minus. simpl. repeat rewrite Rminus_eq_0.
+unfold Rprod_norm, fst, snd. repeat rewrite pow_ne_zero; try lia.
+rewrite Rplus_0_r. rewrite sqrt_0.
+split.  try nra.
+  + apply H.
+  + nra. 
+- 
+match goal with |- context [?A /\ ?B] =>
+  assert B; try split; auto
+end.
++ 
+destruct IHn as (IHbmd & IHnorm); try lia.
+rewrite step_iternF; rewrite step_iternR.
+pose proof init_norm_bound n.
+destruct (iternR (FT2R p_init, FT2R q_init) h n) as (pnr, qnr). 
+destruct (iternF (p_init,q_init) n) as (pnf, qnf).
+match goal with |- context[∥?a .- ?b∥ <=  _] =>
+  let c := (constr:(leapfrog_stepR (FT2R_prod (pnf, qnf)) h)) in
+  replace (∥a .- b∥) with (∥ Rprod_plus (a .- c) (c .- b) ∥)
+end.
+eapply Rle_trans.
+apply Rprod_triang_ineq.
+rewrite leapfrog_minus_args.
+eapply Rle_trans.
+apply Rplus_le_compat_l.
+assert (BNDn: (n<= 200)%nat) by lia.
+assert (∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
+      (∥ (/ 4065000, / 4068166) ∥) * error_sum (1 + h) n /\ ∥ (pnr, qnr) ∥ <= 1.5).
+split; auto.
+pose proof (roundoff_norm_bound pnf qnf IHbmd) as BND.
+rewrite reflect_reify_p in BND.
+rewrite reflect_reify_q in BND.
+change (leapfrog_stepp pnf qnf, leapfrog_stepq pnf qnf) with 
+  (leapfrog_stepF (pnf, qnf)) in BND.
+rewrite rval_correct_q in BND. 
+rewrite rval_correct_p in BND.
+change ((fst (leapfrog_stepR (FT2R_prod (pnf, qnf)) h),
+         snd (leapfrog_stepR (FT2R_prod (pnf, qnf)) h))) with 
+(leapfrog_stepR (FT2R_prod (pnf, qnf)) h) in BND.
+destruct (FT2R_prod (leapfrog_stepF (pnf, qnf))). 
+rewrite Rprod_minus_comm in BND. 
+apply BND.  
+destruct (Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf))).
+assert (0 < h < 2) as Hh by (unfold h; nra).
+pose proof (method_norm_bounded r r0 h Hh) as BND.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply BND. 
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply Rmult_le_compat_l; try (unfold h; nra).
+assert (BNDn: (n<= 200)%nat) by lia.
+apply IHnorm. 
+set (aa:= (∥ (/ 4065000, / 4068166) ∥)). 
+replace ((1 + h) * (aa * error_sum (1 + h) n) + aa)
+with
+(aa * ((1 + h) * (error_sum (1 + h) n) + 1)) by nra.
+rewrite <- error_sum_aux2. nra.
+symmetry. apply Rprod_norm_plus_minus_eq.
++ destruct IHn as (IHbmd & IHnorm); try lia.
+apply itern_implies_bmd; try lia; auto; split; auto.
+pose proof init_norm_bound (S n); auto.
+Qed. 
+
+
+
+Theorem total_error: 
+  forall pt qt: R -> R,
+  forall n : nat, 
+  (n <= 200)%nat ->
+  let t0 := 0 in
+  let tn := t0 + INR n * h in
+  let w  := 1 in
+  Harmonic_osc_system pt qt w t0 (FT2R p_init) (FT2R q_init) ->
+  (forall t1 t2: R,
+  k_differentiable pt 4 t1 t2 /\
+  k_differentiable qt 3 t1 t2)  ->
+  ∥ (pt tn, qt tn) .- (FT2R_prod (iternF (p_init,q_init) n)) ∥ <= 
+  (h^2  + (∥ (/ 4065000, / 4068166) ∥) / h) * ((1 + h)^ n - 1) .
+Proof.
+assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init)) by
+apply bmd_init.
+intros ? ? ? ? ? ? ? Hsys Kdiff.
+match goal with |- context[?A <= ?B] =>
+replace A with
+  (∥ ((pt (t0 + INR n * h), qt (t0 + INR n * h)) .- (iternR (FT2R p_init, FT2R q_init) h n)) .+
+((iternR (FT2R p_init, FT2R q_init) h n) .- (FT2R_prod (iternF (p_init,q_init) n))) ∥)
+end.
+assert (HSY: Harmonic_osc_system pt qt 1 t0 (FT2R p_init) (FT2R q_init)) by auto.
+unfold Harmonic_osc_system in Hsys.
+destruct Hsys as (A & B & C).
+eapply Rle_trans.
+apply Rprod_triang_ineq.
+eapply Rle_trans.
+apply Rplus_le_compat_l.
+apply global_error; auto.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply symmetry in A. apply symmetry in B.
+rewrite A in *. rewrite B in *.
+apply global_truncation_error_aux; try unfold h; try nra; auto.
+assert (hlow: 0 < h) by (unfold h; nra).
+ pose proof error_sum_GS n h hlow as GS.
+rewrite GS.
+apply Req_le.
+replace ((∥ (/ 4065000, / 4068166) ∥) * (((1 + h) ^ n - 1) / h))
+with 
+((∥ (/ 4065000, / 4068166) ∥) / h  * ((1 + h) ^ n - 1) ).
+replace (∥ (pt t0, qt t0) ∥) with 1.
+field_simplify; nra.
+rewrite A. rewrite B.
+symmetry.
+apply init_norm_eq.
+field_simplify; repeat nra.
+field_simplify.
+symmetry; apply Rprod_norm_plus_minus_eq.
+Qed. 
+
 
 
 
 Lemma leapfrog_step_is_finite:
-forall n: nat,
-forall x  v : float32,
-boundsmap_denote (lf_bmap_n n) (leapfrog_vmap (fst ( iternF n x v)) (snd ( iternF n x v))) ->
-(n <= 1000)%nat ->
-is_finite _ _ (fst ( iternF (S n) x v)) = true/\
-is_finite _ _ (snd ( iternF (S n) x v)) = true.  
-Proof.
-Admitted.
-*)
-
-
-Lemma bounds_Sn: 
-  forall x v : float32, 
-  forall n: nat, 
-    boundsmap_denote (lf_bmap_n n) 
-      (leapfrog_vmap x v) -> 
-    boundsmap_denote (lf_bmap_n (S n)) 
-      (leapfrog_vmap (leapfrog_stepx x v) (leapfrog_stepv x v)).
+ forall n,  ( n <= 200)%nat->
+  (is_finite _ _  (fst(iternF (p_init,q_init)  n)) = true) /\
+  (is_finite _ _  (snd(iternF (p_init,q_init)  n)) = true).
 Proof.
 intros.
-unfold boundsmap_denote in *.
-intros.
-specialize (H i).
-pose proof bmd_Sn_bnds_le  n i.
-pose proof bmd_Sn_vars_eq   n i.
-destruct (Maps.PTree.get i (leapfrog_vmap x v)).
-destruct (
-Maps.PTree.get i (leapfrog_vmap (leapfrog_stepx x v) (leapfrog_stepv x v))).
-+ destruct (Maps.PTree.get i (lf_bmap_n  n)); 
-  try contradiction.
-++ destruct (Maps.PTree.get i (lf_bmap_n (S n))).
-+++ specialize (H0 v3 v2 eq_refl eq_refl).
-specialize (H1 v3 v2  eq_refl eq_refl).
-destruct v3; destruct v2. 
-destruct H as (xp & A & B & C & D).
-simpl in H0; simpl in H1. destruct H1. subst.
-exists xp; repeat split; auto.
-eapply Rle_trans. apply H0. apply D.
-eapply Rle_trans. apply D. apply H0.
-+++ destruct H2; destruct H2. exists v1; auto. discriminate; auto.
-+ destruct (Maps.PTree.get i (lf_bmap_n   ( n))).
-++  destruct v0; try contradiction.
-++ destruct (Maps.PTree.get i (lf_bmap_n   (S n))); auto.
-destruct H2; destruct H3. exists v0; auto. discriminate; auto.
+pose proof global_error bmd_init n H.
+destruct H0 as (A & _).
+ lazymatch goal with
+ | H: boundsmap_denote _ _ |- _ =>
+  apply boundsmap_denote_e in H;
+  simpl Maps.PTree.elements in H;
+  unfold list_forall in H
+end.
+destruct A as (A & B).
+simpl in A. destruct A as (V1 & V2 & V3 & V4 & _).  
+  inversion V3; subst. simpl in V4; auto.
+simpl in B. destruct B as (U1 & U2 & U3 & U4 & _).  
+  inversion U3; subst. simpl in U4; auto.
 Qed.
-
-
-end.
-
-Theorem global_error:
-  forall x v : float32, 
-  forall n: nat, 
-  (n <= 1000)%nat ->
-  forall x1 v1 : R,
-  x1 = B2R _ _ x ->
-  v1 = B2R _ _ v ->
-    boundsmap_denote (lf_bmap_n n) 
-      (leapfrog_vmap x v) /\
-Rprod_norm (Rprod_minus (leapfrogR x1 v1 1 n) 
-  ((B2R _ _ (fst(iternF n x v))), (B2R _ _ (snd(iternF n x v))))) <= 1
-.
-Proof.
-induction n.
-intros.
-+ simpl. rewrite H0; rewrite H1.
-split. 
-++ admit.
-++ unfold Rprod_minus; simpl. admit.
-+ intros.
-assert (Hn: (n <= 1000)%nat) by admit.
-specialize (IHn Hn x1 v1 H0 H1) as (A & B).
-rewrite step_iternF. rewrite nsteps_lem.
-destruct (leapfrogR x1 v1 1 n) as (xnr, vnr). 
-destruct (iternF n x v) as (xnf, vnf).
-simpl in A, B.
-split.
-++ 
-unfold boundsmap_denote in *.
-intros; specialize (A i).
-++
-unfold fst at 1. unfold snd at 1.
-
-
-end.
-
-
-Proof.
-Admitted.
-*)
