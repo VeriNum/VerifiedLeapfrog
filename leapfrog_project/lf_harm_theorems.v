@@ -144,192 +144,6 @@ Qed.
 
 
 
-Lemma error_sum_bound: 
-  forall n,
-  (n <= 200)%nat -> 
-  error_sum (1 + h) n <= 15033.
-Proof.
-intros.
-eapply Rle_trans.
-eapply error_sum_le_trans. 
-  apply H. try unfold h; try nra.
-assert (Hyph: 1 + h <> 1 ) by (unfold h ;nra).
-pose proof geo_series_closed_form (1 + h) 199 Hyph.
-unfold error_sum; rewrite H0.
-replace ((1 - (1 + h) ^ 200) / (1 - (1 + h))) with (  ((1 + h) ^ 200 - 1) /  h).
-rewrite Rcomplements.Rle_div_l; try (unfold h; nra).
-set (a:=(1 + h) ^ 200).
-field_simplify; try nra. 
-apply Stdlib.Rdiv_eq_reg; try nra.
-Qed.
-
-
-Lemma itern_implies_bmd_aux1:
-  forall pnf qnf : ftype Tsingle,
-  forall pnr qnr : R,
-  forall n,
-  (n <= 200)%nat -> 
-  ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=  ∥(/4065000, / 4068166)∥ * error_sum (1 + h) n 
-  /\ ∥(pnr,qnr) ∥ <= 1.5 -> 
-  Rabs (FT2R pnf)  <= 2 /\ Rabs ( FT2R qnf) <= 2.
-Proof.
-intros ? ? ? ? ? BNDn H. destruct H as (A & B).
-assert (HYP1: ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-(∥ ( /4065000, / 4068166) ∥) * error_sum (1 + h) 200).
-+ eapply Rle_trans.
-2 :  { 
-apply Rmult_le_compat_l; try (apply Rnorm_pos). 
-eapply error_sum_le_trans. apply BNDn. unfold h; nra.
-} apply A.
-+ clear A. 
-assert ( HYP2 :∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-     (∥ (/4065000, / 4068166) ∥) * 15033).
-eapply Rle_trans.
-apply HYP1.
-apply Rmult_le_compat_l; try (apply Rnorm_pos).
-apply error_sum_bound; try lia.
-clear HYP1. 
-assert (HYP3: (∥ (FT2R_prod (pnf, qnf))∥ - ∥ (pnr, qnr) ∥) <= (∥ (/4065000, / 4068166) ∥) * 15033 ).
-eapply Rle_trans.
-apply Rprod_triang_inv.
-apply HYP2.
-apply Rle_minus_l_2 in HYP3. 
-assert (HYP4: ∥ FT2R_prod (pnf, qnf) ∥ <= 1.5 + (∥ (/4065000, / 4068166) ∥) * 15033).
-eapply Rle_trans.
-2: {apply Rplus_le_compat_r. apply B.
-} apply HYP3. clear HYP2.
-generalize HYP4.
-match goal with |-context[Rprod_norm ?A <= ?a]=>
-  interval_intro a upper; intros ?HYP; clear HYP
-end. 
-unfold Rprod_norm in HYP4. 
-unfold FT2R_prod, fst ,snd in HYP4.
-assert (HYP5: sqrt (FT2R pnf  ^ 2 + FT2R qnf ^ 2) <= sqrt ((6778944017806265 / 4503599627370496)^2) ).
-eapply Rle_trans. apply  HYP4.
-rewrite sqrt_pow2; try nra. apply H.
-apply sqrt_le_0 in HYP5; try nra.
-split. 
-++ assert (FT2R pnf ^ 2 <= (6778944017806265 / 4503599627370496) ^ 2) by nra.
-apply sqrt_le in H0.
-rewrite sqrt_pow2 in H0.
-all: (try interval).
-++ assert (FT2R qnf ^ 2 <= (6778944017806265 / 4503599627370496) ^ 2) by nra.
-apply sqrt_le in H0.
-rewrite sqrt_pow2 in H0.
-all: (try interval).
-Qed.
-
-
-
-
-Lemma itern_implies_bmd:
-  forall p0 q0 : ftype Tsingle,
-  forall n,
-  (S n <= 200)%nat -> 
-  boundsmap_denote leapfrog_bmap 
-    (leapfrog_vmap (fst(iternF (p0,q0) n)) (snd(iternF (p0,q0) n))) ->
-  ∥(iternR (FT2R p0, FT2R q0) h (S n)) .- FT2R_prod (iternF (p0,q0)  (S n)) ∥ <= 
-  (∥ (/4065000, / 4068166) ∥) * error_sum (1 + h) (S n)  /\
-∥ (iternR (FT2R p0, FT2R q0) h  (S n))∥ <= 1.5 ->
-   boundsmap_denote leapfrog_bmap (leapfrog_vmap (fst(iternF (p0,q0) (S n))) (snd(iternF (p0,q0) (S n)))).
-Proof. 
-intros ? ? ? BNDn BMD NORM.
-pose proof (itern_implies_bmd_aux p0 q0 n BMD) as HFIN.
-pose proof (itern_implies_bmd_aux1) as HBND.
-unfold boundsmap_denote in *.
-intros.
-specialize (BMD i).
-pose proof bmd_Sn_bnds_le i as ABSBND.
-destruct (Maps.PTree.get i leapfrog_bmap).
--
-specialize (ABSBND v eq_refl).
-destruct v. 
-simpl in ABSBND.
-rewrite step_iternF in *.
-destruct ((iternF (p0, q0) n)).
-set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
-set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f1 f2) i) as COR. 
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f f0) i) as COR2.
-pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX.
-simpl in BMD. 
-destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
-destruct (Maps.PTree.get i (leapfrog_vmap f f0));
-try contradiction.
-+
-specialize (COR2 s0 eq_refl).
-inversion COR2; clear COR2.
-*
-inversion H; subst; clear H.
-simpl in BMD.
-specialize (COR s eq_refl).
-inversion COR; clear COR.
---
-inversion H; subst; clear H.
-split; try ( apply BMD).
-split. simpl. apply BMD.
-split. apply HFIN.
-destruct ((iternR (FT2R p0, FT2R q0) h (S n))).
-specialize (HBND f1 f2 r r0 (S n) BNDn NORM). 
-destruct ABSBND.
-subst.
-unfold projT2. 
-destruct HBND.
-apply Rabs_le_inv; auto.
---
-simpl in H; destruct H; try contradiction.
-inversion H; subst; clear H.
-*
-simpl in H; destruct H; try contradiction.
-inversion H; subst; clear H.
-simpl in BMD.
-specialize (COR s eq_refl).
-inversion COR; clear COR.
---
-inversion H; subst; clear H.
---
-inversion H; subst; clear H.
-++ 
-inversion H0; subst; clear H0.
-split; try ( apply BMD).
-split. simpl. apply BMD.
-split. apply HFIN.
-destruct ((iternR (FT2R p0, FT2R q0) h (S n))).
-specialize (HBND f1 f2 r r0 (S n) BNDn NORM). 
-destruct ABSBND.
-subst.
-unfold projT2. 
-destruct HBND.
-apply Rabs_le_inv; auto.
-++ 
-inversion H0; subst; clear H0.
-+
-specialize (EX s eq_refl).
-destruct EX as (A & B & C); discriminate.
--
-rewrite step_iternF in *.
-destruct ((iternF (p0, q0) n)).
-set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
-set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f1 f2) i) as COR. 
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f f0) i) as COR2.
-pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX1.
-pose proof (leapfrog_vmap_i_aux f f0 f1 f2 i) as EX2.
-simpl in BMD. 
-destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
-destruct (Maps.PTree.get i (leapfrog_vmap f f0));
-try contradiction.
-*
-specialize (EX2 s eq_refl).
-destruct EX2 as (A & B & C); discriminate.
-* auto.
-Qed.
-
-
 
 Lemma global_error : 
   boundsmap_denote leapfrog_bmap 
@@ -374,7 +188,7 @@ split; auto.
 pose proof (roundoff_norm_bound pnf qnf IHbmd) as BND.
 rewrite reflect_reify_p in BND.
 rewrite reflect_reify_q in BND.
-change (leapfrog_stepp pnf qnf, leapfrog_stepq pnf qnf) with 
+change (leapfrog_step_p pnf qnf, leapfrog_step_q pnf qnf) with 
   (leapfrog_stepF (pnf, qnf)) in BND.
 rewrite rval_correct_q in BND. 
 rewrite rval_correct_p in BND.
@@ -483,3 +297,7 @@ simpl in A. destruct A as (V1 & V2 & V3 & V4 & _).
 simpl in B. destruct B as (U1 & U2 & U3 & U4 & _).  
   inversion U3; subst. simpl in U4; auto.
 Qed.
+
+
+
+End WITHNANS.
