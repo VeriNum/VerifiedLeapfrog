@@ -144,12 +144,14 @@ Qed.
 
 Lemma global_error : 
   boundsmap_denote leapfrog_bmap 
-    (leapfrog_vmap p_init q_init) ->
+  (leapfrog_vmap p_init q_init) ->
   forall n : nat, 
   (n <= 200)%nat -> 
-  boundsmap_denote leapfrog_bmap 
-    (leapfrog_vmap (fst(iternF (p_init,q_init) n)) (snd(iternF (p_init,q_init) n))) /\
-  ∥(iternR (FT2R p_init, FT2R q_init) h n) .- FT2R_prod (iternF (p_init,q_init) n) ∥ <= (∥ (/ 4065000, / 4068166) ∥) * error_sum (1 + h) n.
+  let vmap_n := (leapfrog_vmap (fst(iternF (p_init,q_init) n)) (snd(iternF (p_init,q_init) n))) in
+  let c:= (∥ (/ 4065000, / 4068166) ∥) in 
+  let (pr0, qr0) := (FT2R p_init, FT2R q_init) in
+  boundsmap_denote leapfrog_bmap vmap_n /\
+  ∥(iternR (pr0, qr0) h n) .- FT2R_prod (iternF (p_init,q_init) n) ∥ <= c * error_sum (1 + h) n.
   Proof.
 intros.
 induction n.
@@ -206,11 +208,10 @@ apply Rplus_le_compat_r.
 apply Rmult_le_compat_l; try (unfold h; nra).
 assert (BNDn: (n<= 200)%nat) by lia.
 apply IHnorm. 
-set (aa:= (∥ (/ 4065000, / 4068166) ∥)). 
-replace ((1 + h) * (aa * error_sum (1 + h) n) + aa)
+replace ((1 + h) * (c * error_sum (1 + h) n) + c)
 with
-(aa * ((1 + h) * (error_sum (1 + h) n) + 1)) by nra.
-rewrite <- error_sum_aux2. nra.
+(c * ((1 + h) * (error_sum (1 + h) n) + 1)) by nra.
+rewrite <- error_sum_aux2; unfold c; nra.
 symmetry. apply Rprod_norm_plus_minus_eq.
 + destruct IHn as (IHbmd & IHnorm); try lia.
 apply itern_implies_bmd; try lia; auto; split; auto.
