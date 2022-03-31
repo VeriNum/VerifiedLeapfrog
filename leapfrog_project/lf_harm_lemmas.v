@@ -20,36 +20,83 @@ Section WITHNANS.
 Context {NANS: Nans}.
 
 
-(* The initial conditions of the momentum "p" and position "q" specified for the integration *)
+(* The initial conditions of the momentum "p" and position "q" specified for the integration scheme*)
 Definition p_init: ftype Tsingle :=  0%F32.
 Definition q_init: ftype Tsingle :=  1%F32.
 
 
-Definition leapfrog_stepp p q  := fst (leapfrog_stepF (p,q)).
-Definition leapfrog_stepq p q := snd (leapfrog_stepF (p,q)).
+(** Calculate a new momentum, as a function of momentum p and position q *)
+Definition leapfrog_step_p p q  := fst (leapfrog_stepF (p,q)).
+(** Calculate a new posisition, as a function of momentum p and position q *)
+Definition leapfrog_step_q p q := snd (leapfrog_stepF (p,q)).
 
 
-Definition _p : ident := 1%positive.  (* Variable name for position *)
-Definition _q : ident := 2%positive.  (* Variable name for velocity *)
+(** In deep-embedded (syntactic) expressons, variables are represented
+  by "ident"ifiers, which are actually small positive numbers. *)
+Definition _p : ident := 1%positive.  (* Variable name for momentum *)
+Definition _q : ident := 2%positive.  (* Variable name for position *)
 
-
-
+(** These two lines compute a deep-embedded "expr"ession from
+  a shallow-embedded Coq expression.  *)
 Definition p' := ltac:(let e' := 
-  HO_reify_float_expr constr:([_p; _q]) leapfrog_stepp in exact e').
+  HO_reify_float_expr constr:([_p; _q]) leapfrog_step_p in exact e').
 Definition q' := ltac:(let e' := 
-  HO_reify_float_expr constr:([_p; _q]) leapfrog_stepq in exact e').
+  HO_reify_float_expr constr:([_p; _q]) leapfrog_step_q in exact e').
 
 
+(** When interpreting deep-embedded expressions, "Var"iables will appear
+  which are labeled by identifiers such as "_p" and "_q".  We want a
+  "varmap" for looking up the values of those variables.  We'll compute
+  that varmap in two stages. **)
 
-
-
+(**  Step one, given values "p" and "q", 
+  make an association list mapping _q to q, and _p to p,  each labeled
+  by its floating-point type.  **)
 Definition leapfrog_vmap_list (p q : ftype Tsingle) := 
    [(_p, existT ftype _ p);(_q, existT ftype _ q)].
 
 
+(** Step two, build that into "varmap" data structure, taking care to
+  compute it into a lookup-tree ___here___, not later in each place
+  where we look something up. *)
 Definition leapfrog_vmap (p q : ftype Tsingle) : valmap :=
  ltac:(let z := compute_PTree (valmap_of_list (leapfrog_vmap_list p q)) in exact z).
 
+
+
+(**  Reification and reflection.   When you have a 
+  deep-embedded "expr"ession, you can get back the shallow embedding
+   by applying the "fval" function *)
+Lemma reflect_reify_q : forall p q, 
+  fval (env_ (leapfrog_vmap p q)) q' = leapfrog_step_q p q.
+Proof.
+intros.
+unfold q'.
+reflexivity. 
+Qed.
+
+Lemma reflect_reify_p : forall p q, 
+  fval (env_ (leapfrog_vmap p q)) p' = leapfrog_step_p p q.
+Proof.
+intros.
+unfold p'.
+reflexivity. 
+Qed.
+
+
+(** The main point of VCFloat is to prove bounds on the roundoff error of
+  floating-point expressions.  Generally those bounds are provable only if
+  the free variables of the expression (e.g., "p" and "q") are themselves 
+  bounded in some way;  otherwise, the expression might overflow.
+  A "boundsmap" is a mapping from identifier (such as "_p") to
+  a "varinfo", which gives its (floating-point) and its lower and upper bound. *)
+
+
+(** First we make an association list.  This one says that 
+  -2.0 <= p <= 2.0   and   -2.0 <= q <= 2.0. Given that the energy, computed in real arithmetic
+  using the leapfrog integration scheme, is upper bounded, we can guarantee that these 
+  bounds hold for the position and momentum computed in floating-point arithmetic for 
+  some number of iterations *)
 
 Definition leapfrog_bmap_list : list varinfo := 
   [ Build_varinfo Tsingle _p (-2)  2 ;  Build_varinfo Tsingle _q (-2)  2 ].
@@ -60,119 +107,33 @@ Definition leapfrog_bmap : boundsmap :=
 
 
 
-Lemma reflect_reify_q : forall p q, 
-             fval (env_ (leapfrog_vmap p q)) q' = leapfrog_stepq p q.
-Proof.
-intros.
-unfold q'.
-reflexivity. 
-Qed.
-
-Lemma reflect_reify_p : forall p q, fval (env_ (leapfrog_vmap p q)) p' = leapfrog_stepp p q.
-Proof.
-intros.
-unfold p'.
-reflexivity. 
-Qed.
-
-
 Definition FT2R_prod (A: ftype Tsingle * ftype Tsingle)  := (FT2R (fst A), FT2R (snd A)).
 
 
+(** Reification and reflection: get back the shallow embedding
+   of the real functional model by applying the "rval" function *)
 Lemma rval_correct_p : 
 forall pnf qnf,
 rval (env_ (leapfrog_vmap pnf qnf)) p' = fst (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
 Proof.
 intros.
- match goal with |- context [rval ?env ?x] =>
-   let a := constr:(rval env x) in let b := eval hnf in a in change a with b
- end.
-unfold leapfrog_stepR,FT2R_prod, fst,snd, h. 
- cbv beta iota delta [rval Rop_of_binop Rop_of_unop
-            Rop_of_rounded_binop Rop_of_exact_unop Rop_of_rounded_unop];
- change (type_of_expr _) with Tsingle; 
- change (type_of_expr _) with Tdouble;
- fold (@FT2R Tsingle) in *; fold (@FT2R Tdouble).
-
- (* Perform all env lookups *)
- repeat 
-    match goal with
-    | |- context [env_ ?a ?b ?c] =>
-       let u := constr:(env_ a b c) in let v := eval hnf in u in change u with v
-   end.
-
- (* Clean up all FT2R constants *)
- repeat match goal with
- | |- context [@FT2R ?t (b32_B754_finite ?s ?m ?e ?H)] =>
- let j := fresh "j" in 
-  set (j :=  @FT2R t (b32_B754_finite s m e H));
-  simpl in j; subst j
- | |- context [@FT2R ?t (b64_B754_finite ?s ?m ?e ?H)] =>
- let j := fresh "j" in 
-  set (j :=  @FT2R t (b64_B754_finite s m e H));
-  simpl in j; subst j
- end;
- rewrite <- ?(F2R_eq radix2);
- (* clean up all   F2R radix2 {| Defs.Fnum := _; Defs.Fexp := _ |}   *)
- rewrite ?cleanup_Fnum;
- repeat match goal with |- context [cleanup_Fnum' ?f ?e] =>
-  let x := constr:(cleanup_Fnum' f e) in
-  let y := eval cbv - [Rdiv IZR] in x in
-  change x with y
- end.
+intros.
+unfold_rval.
 field_simplify.
+unfold leapfrog_stepR,FT2R_prod, fst,snd, h. 
 nra.
 Qed.
-
 
 Lemma rval_correct_q : 
 forall pnf qnf,
 rval (env_ (leapfrog_vmap pnf qnf)) q' = snd (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
 Proof.
-
 intros.
- match goal with |- context [rval ?env ?x] =>
-   let a := constr:(rval env x) in let b := eval hnf in a in change a with b
- end.
-unfold leapfrog_stepR,FT2R_prod, fst,snd, h. 
- cbv beta iota delta [rval Rop_of_binop Rop_of_unop
-            Rop_of_rounded_binop Rop_of_exact_unop Rop_of_rounded_unop];
- change (type_of_expr _) with Tsingle; 
- change (type_of_expr _) with Tdouble;
- fold (@FT2R Tsingle) in *; fold (@FT2R Tdouble).
-
- (* Perform all env lookups *)
- repeat 
-    match goal with
-    | |- context [env_ ?a ?b ?c] =>
-       let u := constr:(env_ a b c) in let v := eval hnf in u in change u with v
-   end.
-
- (* Clean up all FT2R constants *)
- repeat match goal with
- | |- context [@FT2R ?t (b32_B754_finite ?s ?m ?e ?H)] =>
- let j := fresh "j" in 
-  set (j :=  @FT2R t (b32_B754_finite s m e H));
-  simpl in j; subst j
- | |- context [@FT2R ?t (b64_B754_finite ?s ?m ?e ?H)] =>
- let j := fresh "j" in 
-  set (j :=  @FT2R t (b64_B754_finite s m e H));
-  simpl in j; subst j
- end;
- rewrite <- ?(F2R_eq radix2);
- (* clean up all   F2R radix2 {| Defs.Fnum := _; Defs.Fexp := _ |}   *)
- rewrite ?cleanup_Fnum;
- repeat match goal with |- context [cleanup_Fnum' ?f ?e] =>
-  let x := constr:(cleanup_Fnum' f e) in
-  let y := eval cbv - [Rdiv IZR] in x in
-  change x with y
- end.
+unfold_rval.
 field_simplify.
+unfold leapfrog_stepR,FT2R_prod, fst,snd, h. 
 nra.
 Qed.
-
-
-
 
 
 
@@ -212,9 +173,9 @@ rewrite step_iternF.
 destruct (iternF  (p0, q0) n).
 simpl in H.
 change (fst (leapfrog_stepF (f, f0))) with
-  (leapfrog_stepp f f0).
+  (leapfrog_step_p f f0).
 change (snd (leapfrog_stepF (f, f0))) with
-  (leapfrog_stepq f f0).
+  (leapfrog_step_q f f0).
 split.
 -
 rewrite <- reflect_reify_p.
