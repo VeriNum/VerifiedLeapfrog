@@ -1,14 +1,18 @@
 Require Import VST.floyd.proofauto.
 Require Import lfharm.
-#[export] Instance CompSpecs : compspecs. make_compspecs prog. Defined.
+Instance CompSpecs : compspecs. make_compspecs prog. Defined.
 Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
 Open Scope logic.
 
-Require Import vcfloat vcfloat.FPSolve.
-Require Import lf_harm_float lf_harm_lemmas.
+From vcfloat Require Import FPSolve Float_notations.
+Require Import lf_harm_float lf_harm_lemmas lf_harm_theorems.
 
 Set Bullet Behavior "Strict Subproofs". 
+
+Section WITHNANS.
+
+Context {NANS: Nans}.
 
 Definition force_spec :=
  DECLARE _force
@@ -26,11 +30,11 @@ Definition lfstep_spec :=
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_step (x,v)))) xp; 
-          data_at Tsh tfloat (Vsingle (snd(leapfrog_step (x,v)))) vp ).
+    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_stepF_ver (x,v)))) xp; 
+          data_at Tsh tfloat (Vsingle (snd(leapfrog_stepF_ver (x,v)))) vp ).
 
-Definition initial_x := 1%F32.
-Definition initial_v := 0%F32.
+Definition initial_x : ftype Tsingle := 1%F32.
+Definition initial_v : ftype Tsingle := 0%F32.
 
 Definition integrate_spec := 
   DECLARE _integrate
@@ -42,8 +46,8 @@ Definition integrate_spec :=
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog' (initial_x,initial_v) 100))) xp; 
-          data_at Tsh tfloat (Vsingle (snd(leapfrog' (initial_x,initial_v) 100))) vp ).
+    SEP(data_at Tsh tfloat (Vsingle (fst(iternF_ver (initial_x,initial_v) 100))) xp; 
+          data_at Tsh tfloat (Vsingle (snd(iternF_ver (initial_x,initial_v) 100))) vp ).
 
 Definition main_spec :=
  DECLARE _main
@@ -56,10 +60,12 @@ Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec; main_sp
 
 Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
-canonicalize_float_constants.
 start_function.
 forward.
-Qed.
+autorewrite with float_elim in *.
+unfold F.
+Admitted.
+
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
 Proof.
@@ -77,9 +83,34 @@ forward.
 forward.
 entailer!. 
 autorewrite with float_elim in *.
-unfold leapfrog_step, fst, snd.
-replace (1/2)%F32 with 0.5%F32 by (compute_binary_floats; auto).
+unfold leapfrog_stepF_ver, fst, snd.
+replace (BMULT Tsingle 0.5%F32 h) with 
+  (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32) h) in *by 
+  (compute_binary_floats; auto).
+replace (BMULT Tsingle 0.5%F32 (BMULT Tsingle h h)) with
+  (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32)
+                  (BMULT Tsingle h h)) in * by 
+  (compute_binary_floats; auto).
 auto.
+set (aa:= Vsingle
+     (BPLUS Tsingle v
+        (BMULT Tsingle (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32) h)
+           (BPLUS Tsingle (F x)
+              (F
+                 (BPLUS Tsingle (BPLUS Tsingle x (BMULT Tsingle h v))
+                    (BMULT Tsingle
+                       (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32)
+                          (BMULT Tsingle h h)) (F x)))))))).
+set (bb:= Vsingle
+         (BPLUS Tsingle v
+            (BMULT Tsingle (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32) h)
+               (BPLUS Tsingle (F x)
+                  (F
+                     (BPLUS Tsingle (BPLUS Tsingle x (BMULT Tsingle h v))
+                        (BMULT Tsingle
+                           (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32)
+                              (BMULT Tsingle h h)) 
+                           (F x)))))))).
 Qed.
 
 Lemma leapfrog_step_is_finite:
