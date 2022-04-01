@@ -28,11 +28,11 @@ lf_harm_real_theorems.vo: lf_harm_real_theorems.v real_lemmas.vo lf_harm_real.vo
 lfharm.v: lfharm.c
 	$(CC_LOC)/clightgen -normalize $<
 
-verif_lfharm.vo: lfharm.vo lf_harm_float.vo lf_harm_lemmas.vo
-
 lf_harm_lemmas.vo: lf_harm_lemmas.v lf_harm_float.vo lf_harm_real.vo lf_harm_real_theorems.vo vcfloat.vo real_lemmas.vo
 
-lf_harm_theorems.vo: lf_harm_theorems.v lf_harm_float.vo lf_harm_real.vo vcfloat.vo  real_lemmas.vo lf_harm_lemmas.vo  
+lf_harm_theorems.vo: lf_harm_theorems.v  lf_harm_float.vo lf_harm_real.vo lf_harm_real_theorems.vo vcfloat.vo real_lemmas.vo lf_harm_lemmas.vo 
+verif_lfharm.vo: lfharm.vo lf_harm_float.vo lf_harm_lemmas.vo lf_harm_theorems.vo
+
 
 %.vo: %.v
 	coqc $(COQFLAGS) -I . $<
