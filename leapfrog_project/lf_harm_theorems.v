@@ -21,8 +21,8 @@ Import Interval.Tactic.
 
 
 Lemma prove_roundoff_bound_q:
-  forall p q : ftype Tsingle,
-  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap p q) q' 
+  forall q p : ftype Tsingle,
+  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap q p) q' 
     (/ 4068166).
 Proof.
 intros.
@@ -34,9 +34,9 @@ prove_roundoff_bound.
 Qed.
 
 Lemma prove_roundoff_bound_p:
-  forall p q : ftype Tsingle,
-  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap p q) p' 
-   (/4065000).
+  forall q p : ftype Tsingle,
+  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap q p) p' 
+   (/7662000).
 Proof.
 intros.
 prove_roundoff_bound.
@@ -48,13 +48,13 @@ Qed.
 
 
 Lemma prove_roundoff_bound_q_implies:
-  forall p q : ftype Tsingle,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-  Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) q') - rval (env_ (leapfrog_vmap p q)) q') <= (/ 4068166)
+  forall q p : ftype Tsingle,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap q p)-> 
+  Rabs (FT2R (fval (env_ (leapfrog_vmap q p)) q') - rval (env_ (leapfrog_vmap q p)) q') <= (/ 4068166)
 .
 Proof.
 intros.
-pose proof prove_roundoff_bound_q p q.
+pose proof prove_roundoff_bound_q q p.
 unfold prove_roundoff_bound in H0. 
 specialize (H0 H).
 unfold roundoff_error_bound in H0; auto. 
@@ -62,13 +62,13 @@ Qed.
 
 
 Lemma prove_roundoff_bound_p_implies:
-  forall p q : ftype Tsingle,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-  Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) p') - rval (env_ (leapfrog_vmap p q)) p') <= (/4065000)
+  forall q p : ftype Tsingle,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap q p)-> 
+  Rabs (FT2R (fval (env_ (leapfrog_vmap q p)) p') - rval (env_ (leapfrog_vmap q p)) p') <= (/7662000)
 .
 Proof.
 intros.
-pose proof prove_roundoff_bound_p p q.
+pose proof prove_roundoff_bound_p q p.
 unfold prove_roundoff_bound in H0. 
 specialize (H0 H).
 unfold roundoff_error_bound in H0; auto. 
@@ -98,7 +98,7 @@ Hypothesis iternR_bnd:
 
 
 Lemma init_norm_bound :
-  forall n,
+  forall n : nat,
   ∥ iternR (FT2R p_init, FT2R q_init) h n ∥ <= 1.5. 
 Proof.
 intros.
@@ -110,21 +110,20 @@ interval.
 Qed.
 
 
-
 Lemma roundoff_norm_bound:
   forall p q : ftype Tsingle,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-  let (pnf, qnf) := FT2R_prod (fval (env_ (leapfrog_vmap p q)) p', fval (env_ (leapfrog_vmap p q)) q') in 
-  let (pnr, qnr) := (rval (env_ (leapfrog_vmap p q)) p', rval (env_ (leapfrog_vmap p q)) q') in
-  ∥ (pnf, qnf) .- (pnr, qnr)∥ <= ∥(/4065000, / 4068166)∥.
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap q p)-> 
+  let (pnf, qnf) := FT2R_prod_rev (fval (env_ (leapfrog_vmap q p)) q', fval (env_ (leapfrog_vmap q p)) p') in 
+  let (pnr, qnr) := (rval (env_ (leapfrog_vmap q p)) p', rval (env_ (leapfrog_vmap q p)) q') in
+  ∥ (pnf, qnf) .- (pnr, qnr)∥ <= ∥(/7662000, / 4068166)∥.
 Proof.
 intros.
-unfold Rprod_minus, FT2R_prod, Rprod_norm, fst, snd.
+unfold Rprod_minus, FT2R_prod_rev, Rprod_norm, fst, snd.
 rewrite <- pow2_abs.
 rewrite Rplus_comm.
 rewrite <- pow2_abs.
-pose proof prove_roundoff_bound_p_implies p q H.
-pose proof prove_roundoff_bound_q_implies p q H.
+pose proof prove_roundoff_bound_p_implies q p H.
+pose proof prove_roundoff_bound_q_implies q p H.
 apply sqrt_le_1_alt.
 eapply Rle_trans.
 apply Rplus_le_compat_r.
@@ -141,17 +140,16 @@ Qed.
 
 
 
-
 Lemma global_error : 
   boundsmap_denote leapfrog_bmap 
-  (leapfrog_vmap p_init q_init) ->
+  (leapfrog_vmap q_init p_init) ->
   forall n : nat, 
   (n <= 200)%nat -> 
-  let vmap_n := (leapfrog_vmap (fst(iternF (p_init,q_init) n)) (snd(iternF (p_init,q_init) n))) in
-  let c:= (∥ (/ 4065000, / 4068166) ∥) in 
+  let vmap_n := (leapfrog_vmap (fst(iternF_ver (q_init,p_init) n)) (snd(iternF_ver (q_init,p_init) n))) in
+  let c:= (∥ (/ 7662000, / 4068166) ∥) in 
   let (pr0, qr0) := (FT2R p_init, FT2R q_init) in
   boundsmap_denote leapfrog_bmap vmap_n /\
-  ∥(iternR (pr0, qr0) h n) .- FT2R_prod (iternF (p_init,q_init) n) ∥ <= c * error_sum (1 + h) n.
+  ∥(iternR (pr0, qr0) h n) .- FT2R_prod_rev (iternF_ver (q_init,p_init) n) ∥ <= c * error_sum (1 + h) n.
   Proof.
 intros.
 induction n.
@@ -167,12 +165,12 @@ match goal with |- context [?A /\ ?B] =>
 end.
 + 
 destruct IHn as (IHbmd & IHnorm); try lia.
-rewrite step_iternF; rewrite step_iternR.
+rewrite step_iternF_ver; rewrite step_iternR.
 pose proof init_norm_bound n.
 destruct (iternR (FT2R p_init, FT2R q_init) h n) as (pnr, qnr). 
-destruct (iternF (p_init,q_init) n) as (pnf, qnf).
+destruct (iternF_ver (q_init,p_init) n) as (qnf, pnf).
 match goal with |- context[∥?a .- ?b∥ <=  _] =>
-  let c := (constr:(leapfrog_stepR (FT2R_prod (pnf, qnf)) h)) in
+  let c := (constr:(leapfrog_stepR (FT2R_prod_rev (qnf, pnf)) h)) in
   replace (∥a .- b∥) with (∥ Rprod_plus (a .- c) (c .- b) ∥)
 end.
 eapply Rle_trans.
@@ -181,23 +179,23 @@ rewrite leapfrog_minus_args.
 eapply Rle_trans.
 apply Rplus_le_compat_l.
 assert (BNDn: (n<= 200)%nat) by lia.
-assert (∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-      (∥ (/ 4065000, / 4068166) ∥) * error_sum (1 + h) n /\ ∥ (pnr, qnr) ∥ <= 1.5).
+assert (∥ Rprod_minus (pnr, qnr) (FT2R_prod_rev (qnf, pnf)) ∥ <=
+      (∥ (/ 7662000, / 4068166) ∥) * error_sum (1 + h) n /\ ∥ (pnr, qnr) ∥ <= 1.5).
 split; auto.
 pose proof (roundoff_norm_bound pnf qnf IHbmd) as BND.
 rewrite reflect_reify_p in BND.
 rewrite reflect_reify_q in BND.
-change (leapfrog_step_p pnf qnf, leapfrog_step_q pnf qnf) with 
-  (leapfrog_stepF (pnf, qnf)) in BND.
+change (leapfrog_step_q qnf pnf, leapfrog_step_p qnf pnf) with 
+  (leapfrog_stepF_ver (qnf, pnf)) in BND.
 rewrite rval_correct_q in BND. 
 rewrite rval_correct_p in BND.
 change ((fst (leapfrog_stepR (FT2R_prod (pnf, qnf)) h),
          snd (leapfrog_stepR (FT2R_prod (pnf, qnf)) h))) with 
 (leapfrog_stepR (FT2R_prod (pnf, qnf)) h) in BND.
-destruct (FT2R_prod (leapfrog_stepF (pnf, qnf))). 
+destruct (FT2R_prod_rev (leapfrog_stepF_ver (qnf, pnf))). 
 rewrite Rprod_minus_comm in BND. 
 apply BND.  
-destruct (Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf))).
+destruct (Rprod_minus (pnr, qnr) (FT2R_prod_rev (qnf, pnf))).
 assert (0 < h < 2) as Hh by (unfold h; nra).
 pose proof (method_norm_bounded r r0 h Hh) as BND.
 eapply Rle_trans.
@@ -231,16 +229,16 @@ Theorem total_error:
   (forall t1 t2: R,
   k_differentiable pt 4 t1 t2 /\
   k_differentiable qt 3 t1 t2)  ->
-  let c:= (∥ (/ 4065000, / 4068166) ∥) / h in 
-  ∥ (pt tn, qt tn) .- (FT2R_prod (iternF (p_init,q_init) n)) ∥ <=  (h^2  + c) * ((1 + h) ^ n - 1) .
+  let c:= (∥ (/ 7662000, / 4068166) ∥) / h in 
+  ∥ (pt tn, qt tn) .- (FT2R_prod_rev (iternF_ver (q_init,p_init) n)) ∥ <=  (h^2  + c) * ((1 + h) ^ n - 1) .
 Proof.
-assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init)) by
+assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap q_init p_init)) by
 apply bmd_init.
 intros ? ? ? ? ? ? ? Hsys Kdiff; simpl.
 match goal with |- context[?A <= ?B] =>
 replace A with
   (∥ ((pt (t0 + INR n * h), qt (t0 + INR n * h)) .- (iternR (FT2R p_init, FT2R q_init) h n)) .+
-((iternR (FT2R p_init, FT2R q_init) h n) .- (FT2R_prod (iternF (p_init,q_init) n))) ∥)
+((iternR (FT2R p_init, FT2R q_init) h n) .- (FT2R_prod_rev (iternF_ver (q_init,p_init) n))) ∥)
 end.
 assert (HSY: Harmonic_osc_system pt qt 1 t0 (FT2R p_init) (FT2R q_init)) by auto.
 unfold Harmonic_osc_system in Hsys.
@@ -259,9 +257,9 @@ assert (hlow: 0 < h) by (unfold h; nra).
  pose proof error_sum_GS n h hlow as GS.
 rewrite GS.
 apply Req_le.
-replace ((∥ (/ 4065000, / 4068166) ∥) * (((1 + h) ^ n - 1) / h))
+replace ((∥ (/ 7662000, / 4068166) ∥) * (((1 + h) ^ n - 1) / h))
 with 
-((∥ (/ 4065000, / 4068166) ∥) / h  * ((1 + h) ^ n - 1) ).
+((∥ (/ 7662000, / 4068166) ∥) / h  * ((1 + h) ^ n - 1) ).
 replace (∥ (pt t0, qt t0) ∥) with 1.
 field_simplify; nra.
 rewrite A. rewrite B.
@@ -275,10 +273,10 @@ Qed.
 
 
 
-Theorem leapfrog_step_is_finite:
-  forall n,  ( n <= 200)%nat->
-  (is_finite _ _  (fst(iternF (p_init,q_init)  n)) = true) /\
-  (is_finite _ _  (snd(iternF (p_init,q_init)  n)) = true).
+Theorem iternF_is_finite:
+  forall n : nat,  ( n <= 200)%nat->
+  (is_finite _ _  (fst(iternF_ver (q_init,p_init)  n)) = true) /\
+  (is_finite _ _  (snd(iternF_ver (q_init,p_init)  n)) = true).
 Proof.
 intros.
 pose proof global_error bmd_init n H.

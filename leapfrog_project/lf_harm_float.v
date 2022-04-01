@@ -100,6 +100,38 @@ rewrite ?lfn_eq_lfstep;
 congruence.
 Qed.
 
+
+Lemma lfstep_lfn_ver:
+  forall n ic ,
+  leapfrog_stepF_ver (leapfrogF leapfrog_stepF_ver ic n) = leapfrogF leapfrog_stepF_ver (leapfrog_stepF_ver ic) n.
+Proof.
+induction n. 
+- auto.
+- simpl. auto. 
+Qed.
+
+Lemma lfn_eq_lfstep_ver:
+  forall n ic ,
+  leapfrogF leapfrog_stepF_ver ic (S n) = leapfrog_stepF_ver (leapfrogF leapfrog_stepF_ver ic n).
+Proof.
+induction n.
+- auto.
+- intros. rewrite -> IHn. simpl. 
+replace (leapfrog_stepF_ver (leapfrogF _ _ _ )) with (leapfrogF leapfrog_stepF_ver (leapfrog_stepF_ver ic) n). 
+  destruct (leapfrog_stepF_ver ic). 
+all: symmetry; apply lfstep_lfn_ver. 
+Qed.
+
+Lemma step_iternF_ver : 
+  forall n : nat,
+  forall ic, 
+  (iternF_ver  ic (S n)) = leapfrog_stepF_ver (iternF_ver ic n ).
+Proof.
+intros; unfold iternF_ver.
+rewrite ?lfn_eq_lfstep_ver; 
+congruence.
+Qed.
+
 End WITHNANS.
 
 
