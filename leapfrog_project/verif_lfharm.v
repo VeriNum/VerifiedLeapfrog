@@ -10,9 +10,8 @@ Require Import lf_harm_float lf_harm_lemmas lf_harm_theorems.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-Section WITHNANS.
 
-Context {NANS: Nans}.
+
 
 Definition force_spec :=
  DECLARE _force
@@ -62,9 +61,8 @@ Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
 start_function.
 forward.
-autorewrite with float_elim in *.
-unfold F.
-Admitted.
+Qed.
+
 
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
@@ -92,30 +90,11 @@ replace (BMULT Tsingle 0.5%F32 (BMULT Tsingle h h)) with
                   (BMULT Tsingle h h)) in * by 
   (compute_binary_floats; auto).
 auto.
-set (aa:= Vsingle
-     (BPLUS Tsingle v
-        (BMULT Tsingle (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32) h)
-           (BPLUS Tsingle (F x)
-              (F
-                 (BPLUS Tsingle (BPLUS Tsingle x (BMULT Tsingle h v))
-                    (BMULT Tsingle
-                       (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32)
-                          (BMULT Tsingle h h)) (F x)))))))).
-set (bb:= Vsingle
-         (BPLUS Tsingle v
-            (BMULT Tsingle (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32) h)
-               (BPLUS Tsingle (F x)
-                  (F
-                     (BPLUS Tsingle (BPLUS Tsingle x (BMULT Tsingle h v))
-                        (BMULT Tsingle
-                           (BMULT Tsingle (BDIV Tsingle 1%F32 2%F32)
-                              (BMULT Tsingle h h)) 
-                           (F x)))))))).
 Qed.
 
 Lemma leapfrog_step_is_finite:
  forall i,  (0 <= i < 100)%Z ->
-  Binary.is_finite 24 128 (fst (Z.iter i leapfrog_step (initial_x, initial_v))) = true.
+  Binary.is_finite 24 128 (fst (Z.iter i leapfrog_stepF_ver (initial_x, initial_v))) = true.
 Admitted.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
@@ -128,7 +107,7 @@ forward.
 forward.
 forward.
 autorewrite with float_elim in *.
-pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
+pose (step n := Z.iter n leapfrog_stepF_ver (initial_x, initial_v)).
  forward_for_simple_bound 100%Z (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);
@@ -149,7 +128,7 @@ pose (step n := Z.iter n leapfrog_step (initial_x, initial_v)).
    fold (Z.succ i); unfold step; rewrite Zbits.Ziter_succ by lia.
    cancel.
 -
-   change (leapfrog' (initial_x, initial_v) 100) with (step 100%Z).
+   change (iternF_ver (initial_x, initial_v) 100) with (step 100%Z).
    forward.
 Qed.
 
@@ -157,7 +136,7 @@ Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
 forward_call.
-forget (leapfrog' (initial_x, initial_v) 100)  as a.
+forget (leapfrog_stepF_ver (initial_x, initial_v) 100)  as a.
 forward.
 cancel.
 Qed.
