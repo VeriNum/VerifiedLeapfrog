@@ -26,9 +26,9 @@ Definition q_init: ftype Tsingle :=  1%F32.
 
 
 (** Calculate a new momentum, as a function of momentum p and position q *)
-Definition leapfrog_step_p q p  := snd (leapfrog_stepF_ver (q,p)).
+Definition leapfrog_step_p q p  := snd (leapfrog_stepF (q,p)).
 (** Calculate a new posisition, as a function of momentum p and position q *)
-Definition leapfrog_step_q q p  := fst (leapfrog_stepF_ver (q,p)).
+Definition leapfrog_step_q q p  := fst (leapfrog_stepF (q,p)).
 
 
 (** In deep-embedded (syntactic) expressons, variables are represented
@@ -166,17 +166,17 @@ Lemma itern_implies_bmd_aux:
   forall q0 p0 : ftype Tsingle,
   forall n : nat,
   boundsmap_denote leapfrog_bmap 
-  (leapfrog_vmap (fst(iternF_ver (q0,p0) n)) (snd(iternF_ver (q0,p0) n))) ->
-  (is_finite _ _  (fst(iternF_ver (q0,p0) (S n))) = true) /\
-  (is_finite _ _  (snd(iternF_ver (q0,p0) (S n))) = true).
+  (leapfrog_vmap (fst(iternF (q0,p0) n)) (snd(iternF (q0,p0) n))) ->
+  (is_finite _ _  (fst(iternF (q0,p0) (S n))) = true) /\
+  (is_finite _ _  (snd(iternF (q0,p0) (S n))) = true).
 Proof.
 intros.
-rewrite step_iternF_ver.
-destruct (iternF_ver (q0,p0) n).
+rewrite step_iternF.
+destruct (iternF (q0,p0) n).
 simpl in H.
-change (snd (leapfrog_stepF_ver (f, f0))) with
+change (snd (leapfrog_stepF (f, f0))) with
   (leapfrog_step_p f f0).
-change (fst (leapfrog_stepF_ver (f, f0))) with
+change (fst (leapfrog_stepF (f, f0))) with
   (leapfrog_step_q f f0).
 split.
 -
@@ -483,11 +483,11 @@ Lemma itern_implies_bmd:
   forall n,
   (S n <= 200)%nat -> 
   boundsmap_denote leapfrog_bmap 
-    (leapfrog_vmap (fst(iternF_ver (q0,p0) n)) (snd(iternF_ver (q0,p0) n))) ->
-  ∥(iternR (FT2R p0, FT2R q0) h (S n)) .- FT2R_prod_rev (iternF_ver (q0,p0)  (S n)) ∥ <= 
+    (leapfrog_vmap (fst(iternF (q0,p0) n)) (snd(iternF (q0,p0) n))) ->
+  ∥(iternR (FT2R p0, FT2R q0) h (S n)) .- FT2R_prod_rev (iternF (q0,p0)  (S n)) ∥ <= 
   (∥ (/7662000, / 4068166) ∥) * error_sum (1 + h) (S n)  /\
 ∥ (iternR (FT2R p0, FT2R q0) h  (S n))∥ <= 1.5 ->
-   boundsmap_denote leapfrog_bmap (leapfrog_vmap (fst(iternF_ver (q0,p0) (S n))) (snd(iternF_ver (q0,p0) (S n)))).
+   boundsmap_denote leapfrog_bmap (leapfrog_vmap (fst(iternF (q0,p0) (S n))) (snd(iternF (q0,p0) (S n)))).
 Proof. 
 intros ? ? ? BNDn BMD NORM.
 pose proof (itern_implies_bmd_aux q0 p0 n BMD) as HFIN.
@@ -501,10 +501,10 @@ destruct (Maps.PTree.get i leapfrog_bmap).
 specialize (ABSBND v eq_refl).
 destruct v. 
 simpl in ABSBND.
-rewrite step_iternF_ver in *.
-destruct ((iternF_ver (q0, p0) n)).
-set (f1 := (fst (leapfrog_stepF_ver (f, f0)))) in *.
-set (f2:=(snd (leapfrog_stepF_ver (f, f0)))) in *.
+rewrite step_iternF in *.
+destruct ((iternF (q0, p0) n)).
+set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
+set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
 pose proof  (Maps.PTree.elements_correct
    (leapfrog_vmap f1 f2) i) as COR. 
 pose proof  (Maps.PTree.elements_correct
@@ -565,10 +565,10 @@ inversion H0; subst; clear H0.
 specialize (EX s eq_refl).
 destruct EX as (A & B & C); discriminate.
 -
-rewrite step_iternF_ver in *.
-destruct ((iternF_ver (q0, p0) n)).
-set (f1 := (fst (leapfrog_stepF_ver (f, f0)))) in *.
-set (f2 := (snd (leapfrog_stepF_ver (f, f0)))) in *.
+rewrite step_iternF in *.
+destruct ((iternF (q0, p0) n)).
+set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
+set (f2 := (snd (leapfrog_stepF (f, f0)))) in *.
 pose proof  (Maps.PTree.elements_correct
    (leapfrog_vmap f1 f2) i) as COR. 
 pose proof  (Maps.PTree.elements_correct
