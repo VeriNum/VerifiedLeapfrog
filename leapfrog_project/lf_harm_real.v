@@ -15,41 +15,39 @@ Definition h := 1 / 32.
 
 Definition leapfrog_stepR (ic : R * R ) (h : R) : R * R :=
   let q := snd ic in let p := fst ic in 
-  let q' := q + h * p - 0.5 * h^2  * q in 
-  let p' := p - 0.5 * h^2 * p - 0.5 * h *  (2 - 0.5 * h^2 ) * q in 
+  let q' := ( 1 - 0.5 * h^2) * q + h * p  in 
+  let p' := ( 1 - 0.5 * h^2) * p - 0.5 * h * (2 - 0.5 * h^2 ) * q in 
   (p', q').
 
 (* assumes inputs of (p, w * q, w, n) *)
 (* output q' will therefore be scaled appropriately *)
-Fixpoint leapfrogR  (ic : R * R) (h : R) (n : nat): R * R:=
+Fixpoint iternR (ic : R * R) (h : R) (n : nat): R * R:=
   match n with
   | 0%nat => ic
   | S n' =>
     let ic' := leapfrog_stepR ic h in
-  leapfrogR ic' h n'
+  iternR ic' h n'
 end.
 
 Lemma lfstepR_lfn:
   forall n ic h ,
-  leapfrog_stepR (leapfrogR ic h n) h = leapfrogR (leapfrog_stepR ic h) h n.
+  leapfrog_stepR (iternR ic h n) h = iternR (leapfrog_stepR ic h) h n.
 Proof.
 induction n. 
 - auto.
 - simpl. auto. 
 Qed.
 
-Lemma lfn_eq_lfstepR:
+Lemma step_iternR:
   forall ic h n,
-  leapfrogR ic h (S n) = leapfrog_stepR (leapfrogR ic h n) h.
+  iternR ic h (S n) = leapfrog_stepR (iternR ic h n) h.
 Proof.
 induction n.
 - auto.
 - intros. rewrite -> IHn. simpl. 
-replace (leapfrog_stepR (leapfrogR ic h0 n) h0) with (leapfrogR (leapfrog_stepR ic h0) h0 n). destruct (leapfrog_stepR ic h0). 
+replace (leapfrog_stepR (iternR ic h0 n) h0) with (iternR (leapfrog_stepR ic h0) h0 n). destruct (leapfrog_stepR ic h0). 
 all: symmetry; apply lfstepR_lfn. 
 Qed.
-
-
 
 Lemma one_stepR_p_alt2:
   forall ic1 ic2: R * R,
@@ -74,15 +72,14 @@ unfold leapfrog_stepR, fst, snd; field_simplify; nra.
 Qed.
 
 
-Definition iternR (ic :R * R) (h : R) (n:nat) :=  leapfrogR ic h n .
 
-Lemma step_iternR : 
+Lemma step_iternR_2 : 
   forall n : nat,
   forall x v h : R,
   (iternR (x,v) h (S n)) = leapfrog_stepR (iternR (x,v) h n) h.
 Proof.
 intros.
-rewrite lfn_eq_lfstepR.
+rewrite step_iternR.
 unfold iternR. 
 congruence.
 Qed.
@@ -109,24 +106,7 @@ unfold leapfrog_stepR, Rprod_plus, fst ,snd.
 f_equal; nra.
 Qed.
 
-(* Linear forcing function *)
-Definition F (x w :R) : R := (- w^2 * x)%R.
 
-
-Definition leapfrog_stepR' (ic : R * R) : R * R :=
-  let x  := fst ic in let v:= snd ic in 
-  let x' := (x + h * v) + 0.5 * h^2 * F x 1 in
-  let v' :=  v +  0.5 * h * (F x 1 + F x' 1) in 
-  (x', v').
-
-Fixpoint leapfrogR' (x v : R) (n : nat): R * R:=
-  match n with
-  | 0%nat => (x,v)
-  | S n' =>
-    let x' := (x + h * v) + 0.5 * h^2 * F x 1 in
-    let v' :=  v +  0.5 * h * (F x 1 + F x' 1) in 
-    leapfrogR' x' v' n'
-end.
 
 
 (*  TODO: the following need to be updated with new def of leapfrogR over p, q 
