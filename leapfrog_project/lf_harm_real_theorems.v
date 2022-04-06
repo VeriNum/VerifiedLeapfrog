@@ -557,7 +557,6 @@ Qed.
 
  
 
-(* a loose upper bound on the norm of the method *)
 Lemma method_norm_bounded : 
 forall p q h: R,
   0 < h <= 2 -> 
@@ -618,6 +617,24 @@ specialize( H2 q); auto.
 rewrite sqrt_mult_alt.
 rewrite sqrt_pow2; try nra.
 apply square_pos.
+Qed.
+
+Lemma method_bound_n: 
+  forall p q h: R,
+  forall n : nat, 
+    0 < h <= 2 -> 
+  ∥iternR (p,q) h n∥ <= (1 + h) ^ n * ∥(p,q)∥.
+Proof.
+intros.
+induction n.
+-  simpl; nra.
+- rewrite step_iternR.
+rewrite <- tech_pow_Rmult.
+destruct (iternR (p, q) h n).
+eapply Rle_trans.
+apply method_norm_bounded; try nra.
+rewrite Rmult_assoc.
+eapply Rmult_le_compat_l; try nra.
 Qed.
 
 
@@ -695,8 +712,6 @@ field_simplify.
 subst aa.
 nra.
 Qed.
-
-
 
 
 Lemma global_truncation_error_aux: 

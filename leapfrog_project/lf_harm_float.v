@@ -1,6 +1,4 @@
-(* This file defines a functional model for the C
-   program.  *)
-
+From Coq Require Import ZArith Reals Psatz.
 From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra
  (* Coqlib Floats Zbits Integers*).
@@ -74,6 +72,14 @@ replace (leapfrog_stepF (iternF _ _ )) with (iternF (leapfrog_stepF ic) n).
   destruct (leapfrog_stepF ic). 
 all: symmetry; apply lfstep_lfn. 
 Qed.
+
+Lemma Ziter_itern:
+  forall x v i,
+  (Z.iter i leapfrog_stepF (x, v)) = iternF (x, v) (Z.to_nat i).
+Proof.
+induction i.
+- simpl; auto.
+Admitted.
 
 End WITHNANS.
 

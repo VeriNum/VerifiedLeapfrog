@@ -98,8 +98,39 @@ Qed.
   bounds hold for the position and momentum computed in floating-point arithmetic for 
   some number of iterations *)
 
+Lemma init_norm_eq :
+  ∥  (FT2R p_init, FT2R q_init) ∥ = 1 . 
+Proof.
+intros.
+replace 1 with (sqrt 1).
+replace (FT2R q_init) with 1.
+simpl. unfold Rprod_norm, fst, snd.
+f_equal; nra.
+unfold FT2R, q_init. 
+unfold Rprod_norm, fst, snd.
+ cbv [B2R]. simpl. cbv [Defs.F2R IZR IPR]. simpl;
+field_simplify; nra.
+apply sqrt_1.
+Qed.
+
+Lemma iternR_bound : 
+  forall n : nat, 
+  ( n <=100)%nat -> 
+  ∥iternR (FT2R p_init, FT2R q_init) h n∥ <= 21.697.
+Proof.
+intros.
+eapply Rle_trans.
+eapply method_bound_n; try unfold h; try nra.
+rewrite init_norm_eq.
+rewrite Rmult_1_r.
+eapply Rle_trans.
+apply Rle_pow; try unfold h; try nra.
+apply H.
+interval.
+Qed.
+
 Definition leapfrog_bmap_list : list varinfo := 
-  [ Build_varinfo Tsingle _q (-2)  2 ;  Build_varinfo Tsingle _p (-2)  2 ].
+  [ Build_varinfo Tsingle _q (-22)  22 ;  Build_varinfo Tsingle _p (-22)  22 ].
 
 
 Definition leapfrog_bmap : boundsmap :=
@@ -205,8 +236,8 @@ Lemma bmd_Sn_bnds_le :
 forall i,
 forall v : varinfo,
 Maps.PTree.get i leapfrog_bmap = Some v-> 
-v.(var_lobound) = -2 /\ 
-v.(var_hibound) = 2.
+v.(var_lobound) = -22 /\ 
+v.(var_hibound) = 22.
 Proof.
 intros.
 apply Maps.PTree.elements_correct in H.
@@ -302,8 +333,8 @@ destruct H.
 (    {|
       var_type := Tsingle;
       var_name := _q;
-      var_lobound := (-2);
-      var_hibound := 2
+      var_lobound := (-22);
+      var_hibound := 22
     |}).
 inversion H; auto.
 + inversion H. 
@@ -312,8 +343,8 @@ exists
 (    {|
       var_type := Tsingle;
       var_name := _p;
-      var_lobound := (-2);
-      var_hibound := 2
+      var_lobound := (-22);
+      var_hibound := 22
     |}).
 auto.
 * inversion H0.
@@ -345,7 +376,7 @@ destruct v.
 inversion H5.
 destruct H3 as (A & B). destruct A. 
 exists ({|
-      var_type := Tsingle; var_name := _q; var_lobound := -2; var_hibound := 2
+      var_type := Tsingle; var_name := _q; var_lobound := -22; var_hibound := 22
     |}); subst; auto.
 destruct (Maps.PTree.get i (leapfrog_vmap q_init p_init)); 
   try discriminate.
@@ -375,7 +406,7 @@ inversion H1.
 
 destruct H0.
 exists ({|
-      var_type := Tsingle; var_name := _p; var_lobound := -2; var_hibound := 2
+      var_type := Tsingle; var_name := _p; var_lobound := -22; var_hibound := 22
     |});subst;auto.
 destruct (Maps.PTree.get i (leapfrog_vmap q_init p_init)); 
   try discriminate.
@@ -414,178 +445,93 @@ apply Stdlib.Rdiv_eq_reg; try nra.
 Qed.
 
 
-Lemma itern_implies_bmd_aux1:
-  forall pnf qnf : ftype Tsingle,
-  forall pnr qnr : R,
-  forall n,
-  (n <= 200)%nat -> 
-  ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=  ∥(/7662000, / 4068166)∥ * error_sum (1 + h) n 
-  /\ ∥(pnr,qnr) ∥ <= 1.5 -> 
-  Rabs (FT2R pnf)  <= 2 /\ Rabs ( FT2R qnf) <= 2.
+
+
+
+Lemma iterR_bound: 
+  forall pt qt: R -> R,
+  forall n : nat, 
+  (n <= 200)%nat ->
+  let t0 := 0 in
+  let tn := t0 + INR n * h in
+  let w  := 1 in
+  Harmonic_oscillator_system pt qt w t0 (FT2R p_init) (FT2R q_init) ->
+   ∥(pt tn, qt tn) .- (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum (1 + h) n -> 
+  (forall m,
+    (m <= n)%nat -> 
+    ∥(iternR ((FT2R p_init), (FT2R q_init)) h m)∥ <= 1.5).
 Proof.
-intros ? ? ? ? ? BNDn H. destruct H as (A & B).
-assert (HYP1: ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-(∥ ( /7662000, / 4068166) ∥) * error_sum (1 + h) 200).
-+ eapply Rle_trans.
-2 :  { 
-apply Rmult_le_compat_l; try (apply Rnorm_pos). 
-eapply error_sum_le_trans. apply BNDn. unfold h; nra.
-} apply A.
-+ clear A. 
-(* use the fact that (error_sum (1 + h) 200 = 15032.068779571218 *)
-assert ( HYP2 :∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-     (∥ (/7662000, / 4068166) ∥) * 15033).
-eapply Rle_trans.
-apply HYP1.
-apply Rmult_le_compat_l; try (apply Rnorm_pos).
-apply error_sum_bound; try lia.
-clear HYP1. 
-assert (HYP3: (∥ (FT2R_prod (pnf, qnf))∥ - ∥ (pnr, qnr) ∥) <= (∥ (/7662000, / 4068166) ∥) * 15033 ).
-eapply Rle_trans.
-apply Rprod_triang_inv.
-apply HYP2.
-apply Rle_minus_l_2 in HYP3. 
-assert (HYP4: ∥ FT2R_prod (pnf, qnf) ∥ <= 1.5 + (∥ (/7662000, / 4068166) ∥) * 15033).
-eapply Rle_trans.
-2: {apply Rplus_le_compat_r. apply B.
-} apply HYP3. clear HYP2.
-generalize HYP4.
-match goal with |-context[Rprod_norm ?A <= ?a]=>
-  interval_intro a upper; intros ?HYP; clear HYP;
-match goal with [H: a <= ?B |- _] =>
-set (valB:= B)
-end
-end. 
-unfold Rprod_norm in HYP4. 
-unfold FT2R_prod, fst ,snd in HYP4.
-assert (HYP5: sqrt (FT2R pnf  ^ 2 + FT2R qnf ^ 2) <= sqrt (valB^2) ).
-eapply Rle_trans. apply  HYP4.
-rewrite sqrt_pow2; try nra; try (unfold valB; nra); apply H.
-apply sqrt_le_0 in HYP5; try nra.
-split. 
-++ assert (FT2R pnf ^ 2 <= valB ^ 2) by nra.
-apply sqrt_le in H0.
-rewrite sqrt_pow2 in H0.
-all: (try interval).
-++ assert (FT2R qnf ^ 2 <= valB ^ 2) by nra.
-apply sqrt_le in H0.
-rewrite sqrt_pow2 in H0.
-all: (try interval).
-Qed.
-
-
-Definition FT2R_prod_rev := fun A : ftype Tsingle * ftype Tsingle =>
-(FT2R (snd A), FT2R (fst A)).
-
-
-Lemma itern_implies_bmd:
-  forall q0 p0: ftype Tsingle,
-  forall n,
-  (S n <= 200)%nat -> 
-  boundsmap_denote leapfrog_bmap 
-    (leapfrog_vmap (fst(iternF (q0,p0) n)) (snd(iternF (q0,p0) n))) ->
-  ∥(iternR (FT2R p0, FT2R q0) h (S n)) .- FT2R_prod_rev (iternF (q0,p0)  (S n)) ∥ <= 
-  (∥ (/7662000, / 4068166) ∥) * error_sum (1 + h) (S n)  /\
-∥ (iternR (FT2R p0, FT2R q0) h  (S n))∥ <= 1.5 ->
-   boundsmap_denote leapfrog_bmap (leapfrog_vmap (fst(iternF (q0,p0) (S n))) (snd(iternF (q0,p0) (S n)))).
-Proof. 
-intros ? ? ? BNDn BMD NORM.
-pose proof (itern_implies_bmd_aux q0 p0 n BMD) as HFIN.
-pose proof (itern_implies_bmd_aux1) as HBND.
-unfold boundsmap_denote in *.
 intros.
-specialize (BMD i).
-pose proof bmd_Sn_bnds_le i as ABSBND.
-destruct (Maps.PTree.get i leapfrog_bmap).
--
-specialize (ABSBND v eq_refl).
-destruct v. 
-simpl in ABSBND.
-rewrite step_iternF in *.
-destruct ((iternF (q0, p0) n)).
-set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
-set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f1 f2) i) as COR. 
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f f0) i) as COR2.
-pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX.
-simpl in BMD. 
-destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
-destruct (Maps.PTree.get i (leapfrog_vmap f f0));
-try contradiction.
-+
-specialize (COR2 s0 eq_refl).
-inversion COR2; clear COR2.
-*
-inversion H; subst; clear H.
-simpl in BMD.
-specialize (COR s eq_refl).
-inversion COR; clear COR.
---
-inversion H; subst; clear H.
-split; try ( apply BMD).
-split. simpl. apply BMD.
-split. apply HFIN.
-destruct ((iternR (FT2R p0, FT2R q0) h (S n))).
-specialize (HBND f2 f1 r r0 (S n) BNDn NORM). 
-destruct ABSBND.
-subst.
-unfold projT2. 
-destruct HBND.
-apply Rabs_le_inv; auto.
---
-simpl in H; destruct H; try contradiction.
-inversion H; subst; clear H.
-*
-simpl in H; destruct H; try contradiction.
-inversion H; subst; clear H.
-simpl in BMD.
-specialize (COR s eq_refl).
-inversion COR; clear COR.
---
-inversion H; subst; clear H.
---
-inversion H; subst; clear H.
-++ 
-inversion H0; subst; clear H0.
-split; try ( apply BMD).
-split. simpl. apply BMD.
-split. apply HFIN.
-destruct ((iternR (FT2R p0, FT2R q0) h (S n))).
-specialize (HBND f2 f1 r r0 (S n) BNDn NORM). 
-destruct ABSBND.
-subst.
-unfold projT2. 
-destruct HBND.
-apply Rabs_le_inv; auto.
-++ 
-inversion H0; subst; clear H0.
-+
-specialize (EX s eq_refl).
-destruct EX as (A & B & C); discriminate.
--
-rewrite step_iternF in *.
-destruct ((iternF (q0, p0) n)).
-set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
-set (f2 := (snd (leapfrog_stepF (f, f0)))) in *.
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f1 f2) i) as COR. 
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f f0) i) as COR2.
-pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX1.
-pose proof (leapfrog_vmap_i_aux f f0 f1 f2 i) as EX2.
-simpl in BMD. 
-destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
-destruct (Maps.PTree.get i (leapfrog_vmap f f0));
-try contradiction.
-*
-specialize (EX2 s eq_refl).
-destruct EX2 as (A & B & C); discriminate.
-* auto.
+assert (0 < h <= 2) as Hbnd by (unfold h; nra).
+assert (pt t0 = FT2R p_init /\ qt t0 = FT2R q_init) as IC by
+  (destruct H0 as (A & B & _); auto). destruct IC as (IC1 & IC2).
+rewrite <- IC1 in H0.
+rewrite <- IC2 in H0.
+pose proof global_truncation_error_sum pt qt t0 tn h Hbnd H0 m.
+assert (t0 + INR m * h <= tn). 
+  subst tn. apply Rplus_le_compat_l.
+  apply Rmult_le_compat_r; try unfold h; try nra.
+  apply le_INR; apply H2.
+specialize (H3 H4).
+eapply Rle_trans in H3.
+2: apply Rprod_triang_inv.
+destruct H0 as ( _ & _ & _ & _ & A).
+specialize (A (t0 + INR m * h)).
+destruct A as ( _ & _ & C).
+subst w; repeat (rewrite Rmult_1_l in C).
+rewrite C in H3.
+rewrite IC1 in H3.
+rewrite IC2 in H3.
+rewrite init_norm_eq in H3.
+repeat (rewrite Rmult_1_l in H3).
+rewrite Rle_minus_l_2 in H3.
+pose proof error_sum_bound.
+assert (1 + h ^ 3 * error_sum (1 + h) m <= 
+  1 + h ^ 3 * error_sum (1 + h) n).
+  apply Rplus_le_compat_l.
+  apply Rmult_le_compat_l.
+  try unfold h; try nra.
+  apply error_sum_le_trans.
+  apply H2.
+  unfold h; nra.
+eapply Rle_trans.
+apply H3.
+eapply Rle_trans.
+apply H5.
+specialize (H0 n H).
+assert (1 + h ^ 3 * error_sum (1 + h) n <=
+  1 + h ^ 3 * 15033).
+apply Rplus_le_compat_l.
+  apply Rmult_le_compat_l.
+  try unfold h; try nra.
+  apply H0.
+eapply Rle_trans.
+apply H6.
+unfold h.
+interval.
 Qed.
 
 
+
+
+Lemma init_norm_bound :
+  forall n : nat,
+  (forall p q n,
+  ∥iternR (p,q) h n∥ <= (sqrt 2 * ∥(p,q)∥)) ->
+  ∥ iternR (FT2R p_init, FT2R q_init) h n ∥ <= 1.5. 
+Proof.
+intros.
+pose proof init_norm_eq as Hnorm.
+specialize (H (FT2R p_init) (FT2R q_init) n).
+eapply Rle_trans.
+apply H.
+eapply Rle_trans.
+apply Rmult_le_compat_l.
+apply sqrt_pos.
+apply Req_le.
+apply Hnorm.
+interval.
+Qed.
 
 
 End WITHNANS.
