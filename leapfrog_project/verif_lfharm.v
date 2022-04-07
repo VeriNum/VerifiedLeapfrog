@@ -92,10 +92,6 @@ replace (BMULT Tsingle 0.5%F32 (BMULT Tsingle h h)) with
 auto.
 Qed.
 
-Lemma leapfrog_step_is_finite:
- forall i,  (0 <= i < 100)%Z ->
-  Binary.is_finite 24 128 (fst (Z.iter i leapfrog_stepF (initial_x, initial_v))) = true.
-Admitted.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
 Proof.
@@ -118,19 +114,20 @@ pose (step n := iternF (initial_x, initial_v) (Z.to_nat n)).
           data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.
 - 
   entailer!.
-- forward_call.
-   apply iternF_is_finite; lia.
-   forward.
-   autorewrite with float_elim in *.
-   entailer!.
-   fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
-   rewrite BPLUS_commut by reflexivity; auto.
+- 
+  forward_call.
+  apply iternF_is_finite; lia.
+  forward.
+  autorewrite with float_elim in *.
+  entailer!.
+  fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
+  rewrite BPLUS_commut by reflexivity; auto.
   replace (fst (step i), snd (step i)) with
   (iternF (initial_x, initial_v) (Z.to_nat i)).
-rewrite <- step_iternF.
-replace (iternF (initial_x, initial_v) (S (Z.to_nat i))) with 
-( (step (i + 1)%Z)).
-cancel.
+  rewrite <- step_iternF.
+  replace (iternF (initial_x, initial_v) (S (Z.to_nat i))) with 
+  ((step (i + 1)%Z)).
+  cancel.
 + unfold step. f_equal. lia.
 + unfold step. destruct (iternF (initial_x, initial_v) (Z.to_nat i)).
 auto.
