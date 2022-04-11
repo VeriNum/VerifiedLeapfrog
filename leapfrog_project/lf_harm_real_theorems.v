@@ -20,14 +20,6 @@ the powers of the transition matrix corresponding to our numerical method. *)
 
 Open Scope R_scope.
 
-Notation "∥ L ∥" := (Rprod_norm L) (at level 50).
-Notation "∥·∥" := Rprod_norm (only parsing).
-
-
-Notation " L1 .- L2 " := (Rprod_minus L1 L2) (at level 50, only parsing).
-
-Notation " L1 .+ L2 " := (Rprod_plus L1 L2) (at level 50, only parsing).
-
 
 (* the function f is k times differentiable in the interval [a,b] *)
 Definition k_differentiable f k a b:=
@@ -440,8 +432,6 @@ apply HSY.
     simpl; nra.
 Qed.
 
-
-
 (* upper bound the norm of the truncation error *)
 Theorem local_truncation_error_norm_aux:
   forall p q: R -> R,
@@ -453,7 +443,7 @@ Theorem local_truncation_error_norm_aux:
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
   let '(r1, r2) := (h^4/INR(fact 4) * Derive_n p 4 t2 - h^3 / 12 * q tn,  h^3/INR(fact 3) * Derive_n q 3 t1) in
-  ∥(p (tn + h), q (tn + h)) .- (leapfrog_stepR (p tn, q tn) h)∥ <= ∥(r1 , r2)∥.
+  ∥(p (tn + h)%R, q (tn + h)%R) - (leapfrog_stepR (p tn, q tn) h)∥ <= ∥(r1 , r2)∥.
 Proof.
 intros ? ? ? ? ? Hbnd HSY; intros.
 pose proof local_truncation_error_aux p q t0 tn h Hbnd HSY as LTE.
@@ -469,9 +459,6 @@ apply Req_le.
 nra.
 Qed.
 
-
-
-
 Theorem local_truncation_error:
   forall p q : R -> R,
   forall t0 tn: R,
@@ -480,7 +467,7 @@ Theorem local_truncation_error:
   let w := 1 in 
   Harmonic_oscillator_system p q w t0 (p t0) (q t0) -> 
   let '(pn,qn):= (leapfrog_stepR (p tn, q tn) h ) in
-  ∥(p (tn + h), q (tn + h)) .- (pn, qn)∥ <= h^3 * ∥(p t0,  q t0)∥.
+  ∥(p (tn + h)%R, q (tn + h)%R) - (pn, qn)∥ <= h^3 * ∥(p t0,  q t0)∥.
 Proof.
 intros ? ? ? ? ? Hbnd ? HSY; intros.
 pose proof local_truncation_error_norm_aux 
@@ -494,8 +481,6 @@ repeat rewrite Rmult_1_r in Hsys.
 repeat rewrite Rmult_1_l in Hsys.
 apply Hsys. 
 Qed.
-
-
 
 Lemma method_norm_bounded_aux_p : 
 forall p q h: R,
@@ -526,7 +511,6 @@ apply H0.
 nra. 
 Qed.
 
-
 Lemma method_norm_bounded_aux_q : 
 forall p q h: R,
   0 < h <= 2 -> 
@@ -552,10 +536,7 @@ assert (Rabs (1 - 0.5 * h ^ 2) <= 1).
 apply Rabs_le. nra.
 apply H1.
 nra. 
-Qed.
-
-
- 
+Qed. 
 
 Lemma method_norm_bounded : 
 forall p q h: R,
@@ -637,7 +618,6 @@ rewrite Rmult_assoc.
 eapply Rmult_le_compat_l; try nra.
 Qed.
 
-
 Lemma global_truncation_error_sum : 
   forall p q: R -> R,
   forall t0 T: R,
@@ -647,7 +627,7 @@ Lemma global_truncation_error_sum :
   forall n : nat, 
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
-  ∥ (p tn, q tn) .- (iternR (p t0, q t0) h n)∥
+  ∥ (p tn, q tn) - (iternR (p t0, q t0) h n)∥
     <= h^3 * ∥(p t0,  q t0)∥ * error_sum (1 + h) n.
 Proof.
 intros ? ? ? ? ? HBND HSY; intros. 
@@ -713,7 +693,6 @@ subst aa.
 nra.
 Qed.
 
-
 Lemma global_truncation_error_aux: 
   forall p q: R -> R,
   forall t0 T: R,
@@ -723,7 +702,7 @@ Lemma global_truncation_error_aux:
   forall n : nat, 
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
-  ∥ (p tn , q tn ) .- (iternR (p t0, q t0) h n) ∥ <= 
+  ∥ (p tn , q tn ) - (iternR (p t0, q t0) h n) ∥ <= 
   h^2 * ∥(p t0, q t0)∥ * ((1 + h)^ n - 1) .
 Proof.
 intros ? ? ? ? ? HBND HSY; intros.
@@ -746,9 +725,6 @@ rewrite  H3.
 field_simplify; nra.
 Qed.
 
-
-
-
 Lemma global_truncation_error: 
  forall p q: R -> R,
   forall t0 T : R,
@@ -758,21 +734,17 @@ Lemma global_truncation_error:
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
-  ∥ (p (t0 + INR n * h), q (t0 + INR n * h)) .- (iternR (p t0, q t0) h n)∥ <= h^ 2 * ∥(p t0, q t0)∥ * (exp (INR n *h) - 1) .
+  ∥ (p (t0 + INR n * h)%R, q (t0 + INR n * h)%R) - (iternR (p t0, q t0) h n)∥ <= h^ 2 * ∥(p t0, q t0)∥ * (exp (INR n *h) - 1) .
 Proof.
 intros ? ? ? ? ? HBND; intros.
 subst tn.
 eapply Rle_trans.
 eapply global_truncation_error_aux; auto.
 apply H0.
-eapply Rle_trans.
-eapply Rmult_le_compat_l.
-nra.
 apply Rmult_le_compat_l.
-apply Rnorm_pos.
+pose proof (Rnorm_pos (p t0, q t0)); nra.
 apply Rplus_le_compat_r.
 apply bounded_one_plus_pow.
-nra.
 nra.
 Qed.
 
@@ -786,7 +758,7 @@ Lemma convergence_aux:
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
-  ∥ (p tn, q tn) .- (iternR (p t0, q t0) h n)∥ <= h^ 2 * ∥(p t0, q t0)∥ * (exp T - 1) .
+  ∥ (p tn, q tn) - (iternR (p t0, q t0) h n)∥ <= h^ 2 * (∥(p t0, q t0)∥ * (exp T - 1) ).
 Proof.
 intros ? ? ? ? ? ? HBND; intros.
 subst tn.
@@ -795,10 +767,9 @@ eapply Rle_trans.
 eapply global_truncation_error; auto.
 apply H1.
 
+rewrite <- Rmult_assoc.
 eapply Rmult_le_compat_l.
-nra.
-eapply Rmult_le_compat_l.
-apply Rnorm_pos.
+pose proof (Rnorm_pos (p t0, q t0)); nra.
 eapply Rplus_le_compat_r.
 apply Raux.exp_le.
 
@@ -807,7 +778,6 @@ assert (INR n * h <= t0 + INR n * h) by nra.
 apply H2.
 auto.
 Qed.
-
 
 Theorem method_convergence:
   forall p q: R -> R,
@@ -822,21 +792,21 @@ Theorem method_convergence:
     (forall y,  
   t0 < t0 + INR n * y <= T) -> 
   is_lim 
-    (fun h => ∥ (p (t0 + INR n * h), q (t0 + INR n * h)) .- (iternR (p t0, q t0) h n)∥) 0 0. 
+    (fun h => ∥ (p (t0 + INR n * h)%R, q (t0 + INR n * h)%R) - (iternR (p t0, q t0) h n)∥) 0 0. 
 Proof.
 intros ? ? ? ? ? ? hbnd hsys ? ? ? hy.
 induction n.
 - simpl. 
 apply (is_lim_ext ((fun h0 : R => 0))
   ((fun h0 : R =>
-   ∥ Rprod_minus (p (t0 + 0 * h0), q (t0 + 0 * h0)) (p t0, q t0) ∥))).
+   ∥ Rprod_minus (p (t0 + 0 * h0)%R, q (t0 + 0 * h0)%R) (p t0, q t0) ∥))).
 intros. rewrite Rmult_0_l. rewrite Rplus_0_r. unfold Rprod_minus, Rprod_norm. simpl.
 repeat rewrite Rminus_eq_0. rewrite  Rmult_0_l. rewrite Rplus_0_r. rewrite sqrt_0; auto.
 apply is_lim_const.
 -
 apply (is_lim_le_le_loc 
   (fun _ => 0) 
-    (fun h => h^ 2 * ∥(p t0, q t0)∥ * (exp T - 1))).
+    (fun h => h^ 2 * (∥(p t0, q t0)∥ * (exp T - 1)))).
 + unfold Rbar_locally'. unfold locally'. unfold within. unfold locally. 
     assert ( 0 < 2) as bnd by (nra).
     exists (mkposreal 2 bnd). intros; split.
@@ -863,8 +833,6 @@ apply H1.
 
    *unfold ex_Rbar_mult; auto.
 Qed.
-
-
 
 (* assuming we have an upper bound on powers of the transition matrix,
 we can prove that each of the individual components of solution vector are

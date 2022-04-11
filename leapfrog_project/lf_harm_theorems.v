@@ -109,6 +109,7 @@ clear HYP1.
 assert (HYP3: (∥ (FT2R_prod (pnf, qnf))∥ - ∥ (pnr, qnr) ∥) <=local_round_off * 15033 ).
 eapply Rle_trans.
 apply Rprod_triang_inv.
+rewrite Rprod_minus_comm.
 apply HYP2.
 apply Rle_minus_l_2 in HYP3. 
 assert (HYP4: ∥ FT2R_prod (pnf, qnf) ∥ <= 21.697 + local_round_off * 15033).
@@ -139,10 +140,8 @@ rewrite sqrt_pow2 in H0.
 all: (try interval).
 Qed.
 
-
 Definition FT2R_prod_rev := fun A : ftype Tsingle * ftype Tsingle =>
 (FT2R (snd A), FT2R (fst A)).
-
 
 Lemma itern_implies_bmd:
   forall q0 p0: ftype Tsingle,
@@ -150,7 +149,7 @@ Lemma itern_implies_bmd:
   (S n <= 100)%nat -> 
   boundsmap_denote leapfrog_bmap 
     (leapfrog_vmap (fst(iternF (q0,p0) n)) (snd(iternF (q0,p0) n))) ->
-  ∥(iternR (FT2R p0, FT2R q0) h (S n)) .- FT2R_prod_rev (iternF (q0,p0)  (S n)) ∥ <= 
+  ∥(iternR (FT2R p0, FT2R q0) h (S n)) - FT2R_prod_rev (iternF (q0,p0)  (S n)) ∥ <= 
   local_round_off * error_sum (1 + h) (S n)  /\
 ∥ (iternR (FT2R p0, FT2R q0) h  (S n))∥ <= 21.697 ->
    boundsmap_denote leapfrog_bmap (leapfrog_vmap (fst(iternF (q0,p0) (S n))) (snd(iternF (q0,p0) (S n)))).
@@ -251,14 +250,12 @@ destruct EX2 as (A & B & C); discriminate.
 * auto.
 Qed.
 
-
-
 Lemma roundoff_norm_bound:
   forall p q : ftype Tsingle,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap q p)-> 
   let (pnf, qnf) := FT2R_prod_rev (fval (env_ (leapfrog_vmap q p)) q', fval (env_ (leapfrog_vmap q p)) p') in 
   let (pnr, qnr) := (rval (env_ (leapfrog_vmap q p)) p', rval (env_ (leapfrog_vmap q p)) q') in
-  ∥ (pnf, qnf) .- (pnr, qnr)∥ <= local_round_off.
+  ∥ (pnf, qnf) - (pnr, qnr)∥ <= local_round_off.
 Proof.
 intros.
 unfold Rprod_minus, FT2R_prod_rev, Rprod_norm, fst, snd.
@@ -291,7 +288,7 @@ Lemma global_error :
   let c:= local_round_off in 
   let (pr0, qr0) := (FT2R p_init, FT2R q_init) in
   boundsmap_denote leapfrog_bmap vmap_n /\
-  ∥(iternR (pr0, qr0) h n) .- FT2R_prod_rev (iternF (q_init,p_init) n) ∥ <= c * error_sum (1 + h) n.
+  ∥(iternR (pr0, qr0) h n) - FT2R_prod_rev (iternF (q_init,p_init) n) ∥ <= c * error_sum (1 + h) n.
   Proof.
 intros.
 induction n.
@@ -312,9 +309,9 @@ assert (BNDn: (n<= 100)%nat) by lia.
 pose proof iternR_bound n BNDn.
 destruct (iternR (FT2R p_init, FT2R q_init) h n) as (pnr, qnr). 
 destruct (iternF (q_init,p_init) n) as (qnf, pnf).
-match goal with |- context[∥?a .- ?b∥ <=  _] =>
+match goal with |- context[∥?a - ?b∥ <=  _] =>
   let c := (constr:(leapfrog_stepR (FT2R_prod_rev (qnf, pnf)) h)) in
-  replace (∥a .- b∥) with (∥ Rprod_plus (a .- c) (c .- b) ∥)
+  replace (∥a - b∥) with (∥ Rprod_plus (a - c) (c - b) ∥)
 end.
 eapply Rle_trans.
 apply Rprod_triang_ineq.
@@ -370,15 +367,15 @@ Theorem total_error:
   let w  := 1 in
   Harmonic_oscillator_system pt qt w t0 (FT2R p_init) (FT2R q_init) ->
   let c:= local_round_off / h in 
-  ∥ (pt tn, qt tn) .- (FT2R_prod_rev (iternF (q_init,p_init) n)) ∥ <=  (h^2  + c) * ((1 + h) ^ n - 1) .
+  ∥ (pt tn, qt tn) - (FT2R_prod_rev (iternF (q_init,p_init) n)) ∥ <=  (h^2  + c) * ((1 + h) ^ n - 1) .
 Proof.
 assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap q_init p_init)) by
 apply bmd_init.
 intros ? ? ? ? ? ? ? Hsys ; simpl.
 match goal with |- context[?A <= ?B] =>
 replace A with
-  (∥ ((pt (t0 + INR n * h), qt (t0 + INR n * h)) .- (iternR (FT2R p_init, FT2R q_init) h n)) .+
-((iternR (FT2R p_init, FT2R q_init) h n) .- (FT2R_prod_rev (iternF (q_init,p_init) n))) ∥)
+  (∥ ((pt (t0 + INR n * h)%R, qt (t0 + INR n * h)%R) - (iternR (FT2R p_init, FT2R q_init) h n)) +
+((iternR (FT2R p_init, FT2R q_init) h n) - (FT2R_prod_rev (iternF (q_init,p_init) n))) ∥)
 end.
 assert (HSY: Harmonic_oscillator_system pt qt 1 t0 (FT2R p_init) (FT2R q_init)) by auto.
 unfold Harmonic_oscillator_system in Hsys.
@@ -431,7 +428,5 @@ simpl in A. destruct A as (V1 & V2 & V3 & V4 & _).
 simpl in B. destruct B as (U1 & U2 & U3 & U4 & _).  
   inversion U3; subst. simpl in U4; auto.
 Qed.
-
-
 
 End WITHNANS.

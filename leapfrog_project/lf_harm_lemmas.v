@@ -444,10 +444,6 @@ field_simplify; try nra.
 apply Stdlib.Rdiv_eq_reg; try nra.
 Qed.
 
-
-
-
-
 Lemma iterR_bound: 
   forall pt qt: R -> R,
   forall n : nat, 
@@ -456,7 +452,7 @@ Lemma iterR_bound:
   let tn := t0 + INR n * h in
   let w  := 1 in
   Harmonic_oscillator_system pt qt w t0 (FT2R p_init) (FT2R q_init) ->
-   ∥(pt tn, qt tn) .- (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum (1 + h) n -> 
+   ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum (1 + h) n -> 
   (forall m,
     (m <= n)%nat -> 
     ∥(iternR ((FT2R p_init), (FT2R q_init)) h m)∥ <= 1.5).
@@ -473,6 +469,7 @@ assert (t0 + INR m * h <= tn).
   apply Rmult_le_compat_r; try unfold h; try nra.
   apply le_INR; apply H2.
 specialize (H3 H4).
+rewrite  Rprod_minus_comm in H3.
 eapply Rle_trans in H3.
 2: apply Rprod_triang_inv.
 destruct H0 as ( _ & _ & _ & _ & A).
@@ -483,7 +480,7 @@ rewrite C in H3.
 rewrite IC1 in H3.
 rewrite IC2 in H3.
 rewrite init_norm_eq in H3.
-repeat (rewrite Rmult_1_l in H3).
+rewrite Rmult_1_r in H3.
 rewrite Rle_minus_l_2 in H3.
 pose proof error_sum_bound.
 assert (1 + h ^ 3 * error_sum (1 + h) m <= 
@@ -510,9 +507,6 @@ apply H6.
 unfold h.
 interval.
 Qed.
-
-
-
 
 Lemma init_norm_bound :
   forall n : nat,

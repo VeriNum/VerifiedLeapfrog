@@ -321,18 +321,28 @@ rewrite Rabs_mult.
 nra.
 Qed.
 
-
-Definition Rprod_minus (x y : R * R) : R * R :=
+Definition Rprod : Type := R * R.
+Declare Scope Rprod.
+Delimit Scope Rprod with Rprod.
+Bind Scope Rprod with Rprod.
+  
+Definition Rprod_minus (x y : Rprod) : Rprod :=
   (Rminus (fst x) (fst y), Rminus (snd x) (snd y)).
 
-Definition Rprod_plus (x y : R * R) : R * R :=
+Definition Rprod_plus (x y : Rprod) : Rprod :=
   (Rplus (fst x) (fst y), Rplus (snd x) (snd y)).
 
-Definition Rprod_norm (x : R * R) : R  :=
+Definition Rprod_norm (x : Rprod) : R  :=
   sqrt ( fst x ^ 2 +  snd x ^ 2).
 
-Lemma Rprod_triang_ineq x y: 
-Rprod_norm ( Rprod_plus x y) <= Rprod_norm x + Rprod_norm y.
+Notation " L1 - L2 " := (Rprod_minus L1 L2) (at level 50, left associativity) : Rprod.
+
+Notation " L1 + L2 " := (Rprod_plus L1 L2) (at level 50,  left associativity) : Rprod.
+
+Notation "∥ L ∥" := (Rprod_norm L%Rprod) (at level 10, L at level 90) : R_scope.
+Notation "∥·∥" := Rprod_norm (only parsing) : R_scope.
+
+Lemma Rprod_triang_ineq x y: ∥ x + y ∥ <=  ∥ x ∥ + ∥ y ∥.
 Proof.
 destruct x, y.
 unfold Rprod_plus, Rprod_norm, fst, snd.
@@ -367,8 +377,7 @@ rewrite <- Rsqr_pow2.
 apply Rle_0_sqr.
 Qed.
 
-Lemma Rprod_norm_plus_minus_eq x y z:
-Rprod_norm ( Rprod_minus x y) = Rprod_norm ( Rprod_plus (Rprod_minus x z) (Rprod_minus z y)).
+Lemma Rprod_norm_plus_minus_eq x y z:  ∥ x - y ∥ = ∥ (x - z) + (z - y) ∥.
 Proof.
 intros.
 destruct x, y, z.
@@ -378,17 +387,14 @@ nra.
 Qed.
 
 
-Lemma Rnorm_pos x:
-0 <= Rprod_norm x.
+Lemma Rnorm_pos x: 0 <= ∥ x ∥.
 Proof.
 unfold Rprod_norm.
 apply sqrt_pos.
 Qed.
 
 Lemma Rprod_plus_assoc :
-forall a b c, 
-Rprod_plus (Rprod_plus a b) c = 
-Rprod_plus a (Rprod_plus b c).
+forall a b c : Rprod,  ( (a+b)+c = a+(b+c) )%Rprod. 
 Proof.
 intros.
 unfold Rprod_plus.
@@ -396,17 +402,12 @@ simpl. f_equal; nra.
 Qed.
 
 Lemma Rprod_plus_sym :
-forall a b, 
-Rprod_plus a b  = 
-Rprod_plus b a.
+forall a b : Rprod,  ( a + b = b + a )%Rprod.
 Proof.
 intros.
 unfold Rprod_plus.
 f_equal; nra.
 Qed.
-
-
-
 
 Lemma sum_pow_mult_l:
   forall a : R,
@@ -478,13 +479,11 @@ rewrite <- Nat.succ_le_mono.
 apply Nat.le_0_l.
 Qed.
 
-
 Definition error_sum error n: R:=
  match n with 
   | 0 => 0
   | S n' => sum_f 0 n' (fun m => error ^ m )
-end
-.
+end.
 
 Lemma error_sum_aux n (er: R):
   error_sum er n + er ^ n = error_sum er (S n).
@@ -510,7 +509,6 @@ rewrite sum_pow_first.
 nra.
 Qed.
 
-
 Lemma Rmax_mult_le_pos a b:
 0 <=a -> 
 0 <= b ->  
@@ -527,7 +525,6 @@ apply Rmult_le_compat_l; auto.
 apply Rlt_le in n.
 apply n. nra.
 Qed.
-
 
 Lemma Rmax_mult_le_neg  a b:
 a <= 0 -> 
@@ -602,7 +599,6 @@ Proof.
 intros; nra.
 Qed.
 
-
 Lemma is_lim_exp_pow: 
 forall n ,
 is_lim (fun y : R => exp (INR n * y)) 0 1.
@@ -666,9 +662,7 @@ eapply Rle_trans.
 apply square_pos.
 Qed.
 
-Lemma Rprod_minus_comm : 
-forall a b,
-Rprod_norm (Rprod_minus a  b ) = Rprod_norm (Rprod_minus b  a ).
+Lemma Rprod_minus_comm : forall a b, ∥ a - b ∥ = ∥ b - a ∥.
 Proof.
 intros. 
 unfold Rprod_norm, Rprod_minus.
@@ -676,12 +670,10 @@ destruct a; destruct b; unfold fst, snd.
 f_equal. simpl. nra.
 Qed.
 
-Lemma Rprod_triang_inv : 
-forall a b : (R * R),
-(Rprod_norm a - Rprod_norm b ) <= Rprod_norm (Rprod_minus b a ).
+Lemma Rprod_triang_inv : forall a b, ∥a∥ - ∥b∥ <= ∥ a - b ∥.
 Proof.
 intros.
-assert (Rprod_norm a = Rprod_norm ( Rprod_plus (Rprod_minus a b) b)).
+assert ( ∥ a ∥ = ∥ (a-b)+b ∥ ).
   - unfold Rprod_norm, Rprod_plus, Rprod_minus.
   destruct a; destruct b. f_equal. unfold fst, snd. nra.
 -
@@ -692,7 +684,6 @@ apply Rprod_triang_ineq.
 apply Req_le. rewrite Rprod_minus_comm.
 nra.
 Qed.
-
 
 Lemma error_sum_le_Sn :
   forall a n,
@@ -724,7 +715,6 @@ apply Rle_plus.
 apply pow_le; auto.
 apply IHn.
 Qed.
-
 
 Lemma error_sum_le_trans_aux :
   forall a,
@@ -760,7 +750,6 @@ apply error_sum_le_Sn; nra.
 apply Req_le.
 auto.
 Qed.
-
 
 Lemma error_sum_le_trans :
   forall a,
@@ -800,5 +789,4 @@ apply Stdlib.Rdiv_eq_reg.
 nra.
 all : nra.
 Qed.
-
 
