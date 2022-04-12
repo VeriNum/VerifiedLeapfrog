@@ -52,7 +52,9 @@ Qed.
 Lemma prove_roundoff_bound_q_implies:
   forall q p : ftype Tsingle,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap q p)-> 
-  Rabs (FT2R (fval (env_ (leapfrog_vmap q p)) q') - rval (env_ (leapfrog_vmap q p)) q') <= (2.704*(1/10^6))
+  Rabs (FT2R (fval (env_ (leapfrog_vmap q p)) q') 
+           - rval (env_ (leapfrog_vmap q p)) q')
+        <= (2.704*(1/10^6))
 .
 Proof.
 intros.
@@ -288,7 +290,8 @@ Lemma global_error :
   let c:= local_round_off in 
   let (pr0, qr0) := (FT2R p_init, FT2R q_init) in
   boundsmap_denote leapfrog_bmap vmap_n /\
-  ∥(iternR (pr0, qr0) h n) - FT2R_prod_rev (iternF (q_init,p_init) n) ∥ <= c * error_sum (1 + h) n.
+  ∥(iternR (pr0, qr0) h n) - FT2R_prod_rev (iternF (q_init,p_init) n) ∥ 
+     <= c * error_sum (1 + h) n.
   Proof.
 intros.
 induction n.
@@ -364,22 +367,25 @@ Theorem total_error:
   (n <= 100)%nat ->
   let t0 := 0 in
   let tn := t0 + INR n * h in
-  let w  := 1 in
-  Harmonic_oscillator_system pt qt w t0 (FT2R p_init) (FT2R q_init) ->
+  let ω  := 1 in
+  pt t0 = FT2R p_init ->
+  qt t0 = FT2R q_init ->
+  Harmonic_oscillator_system pt qt ω t0 ->
   let c:= local_round_off / h in 
-  ∥ (pt tn, qt tn) - (FT2R_prod_rev (iternF (q_init,p_init) n)) ∥ <=  (h^2  + c) * ((1 + h) ^ n - 1) .
+  ∥ (pt tn, qt tn) - (FT2R_prod_rev (iternF (q_init,p_init) n)) ∥ 
+     <=  (h^2  + c) * ((1 + h) ^ n - 1) .
 Proof.
 assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap q_init p_init)) by
 apply bmd_init.
-intros ? ? ? ? ? ? ? Hsys ; simpl.
+intros ? ? ? ? ? ? ? Hp Hq Hsys ; simpl.
 match goal with |- context[?A <= ?B] =>
 replace A with
   (∥ ((pt (t0 + INR n * h)%R, qt (t0 + INR n * h)%R) - (iternR (FT2R p_init, FT2R q_init) h n)) +
 ((iternR (FT2R p_init, FT2R q_init) h n) - (FT2R_prod_rev (iternF (q_init,p_init) n))) ∥)
 end.
-assert (HSY: Harmonic_oscillator_system pt qt 1 t0 (FT2R p_init) (FT2R q_init)) by auto.
+assert (HSY: Harmonic_oscillator_system pt qt 1 t0) by auto.
 unfold Harmonic_oscillator_system in Hsys.
-destruct Hsys as (A & B & C).
+rename Hsys into C.
 eapply Rle_trans.
 apply Rprod_triang_ineq.
 eapply Rle_trans.
@@ -387,8 +393,7 @@ apply Rplus_le_compat_l.
 apply global_error; auto.
 eapply Rle_trans.
 apply Rplus_le_compat_r.
-apply symmetry in A. apply symmetry in B.
-rewrite A in *. rewrite B in *.
+rewrite <- Hp, <- Hq in *.
 eapply global_truncation_error_aux; try unfold h; try nra; auto.
 apply Rle_refl.
 assert (hlow: 0 < h) by (unfold h; nra).
@@ -400,8 +405,8 @@ with
 ((∥ (/ 7662000, / 4068166) ∥) / h  * ((1 + h) ^ n - 1) ).
 replace (∥ (pt t0, qt t0) ∥) with 1.
 field_simplify; nra.
-rewrite A. rewrite B.
 symmetry.
+rewrite Hp, Hq.
 apply init_norm_eq.
 field_simplify; repeat nra.
 field_simplify.

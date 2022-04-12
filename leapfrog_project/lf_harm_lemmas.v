@@ -451,18 +451,16 @@ Lemma iterR_bound:
   let t0 := 0 in
   let tn := t0 + INR n * h in
   let w  := 1 in
-  Harmonic_oscillator_system pt qt w t0 (FT2R p_init) (FT2R q_init) ->
+  pt t0 = FT2R p_init -> 
+  qt t0 = FT2R q_init ->
+  Harmonic_oscillator_system pt qt w t0 ->
    ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum (1 + h) n -> 
   (forall m,
     (m <= n)%nat -> 
     ∥(iternR ((FT2R p_init), (FT2R q_init)) h m)∥ <= 1.5).
 Proof.
-intros.
+intros * ? * IC1 IC2. intros.
 assert (0 < h <= 2) as Hbnd by (unfold h; nra).
-assert (pt t0 = FT2R p_init /\ qt t0 = FT2R q_init) as IC by
-  (destruct H0 as (A & B & _); auto). destruct IC as (IC1 & IC2).
-rewrite <- IC1 in H0.
-rewrite <- IC2 in H0.
 pose proof global_truncation_error_sum pt qt t0 tn h Hbnd H0 m.
 assert (t0 + INR m * h <= tn). 
   subst tn. apply Rplus_le_compat_l.
@@ -472,7 +470,7 @@ specialize (H3 H4).
 rewrite  Rprod_minus_comm in H3.
 eapply Rle_trans in H3.
 2: apply Rprod_triang_inv.
-destruct H0 as ( _ & _ & _ & _ & A).
+destruct H0 as (_ & _ & A).
 specialize (A (t0 + INR m * h)).
 destruct A as ( _ & _ & C).
 subst w; repeat (rewrite Rmult_1_l in C).

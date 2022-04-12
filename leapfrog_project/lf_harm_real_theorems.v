@@ -32,46 +32,43 @@ Definition smooth_fun (f: R -> R): Prop :=
   ex_derive_n f n x
 .
 
-Definition F x w := - w ^ 2 * x.
+Definition F x ω := - ω ^ 2 * x.
 
 (* the continuous system of equations for the simple harmonic oscillator *) 
-Definition Harmonic_oscillator_system (p q : R -> R) (w t0 p0 q0 : R) :=
-  p t0 = p0 /\ q t0 = q0 /\  (* initial conditions *)
+Definition Harmonic_oscillator_system (p q : R -> R) (ω t0 : R) :=
   smooth_fun p /\ smooth_fun q /\
   forall t: R, 
   Derive_n q 1 t  = p t /\  
-  Derive_n p 1 t  = F (q t) w /\ 
-  ∥( p t , w * q t )∥ = ∥( p t0, w * q t0)∥ 
-.
+  Derive_n p 1 t  = F (q t) ω /\ 
+  ∥( p t , ω * q t )∥ = ∥( p t0, ω * q t0)∥ .
 
 Lemma HOS_implies_k_diff:
-  forall p q w t0 t h, 
-  Harmonic_oscillator_system p q w t0 (p t0) (q t0) -> 
+  forall p q ω t0 t h, 
+  Harmonic_oscillator_system p q ω t0 -> 
   k_differentiable p 4 t (t + h) /\
   k_differentiable q 3 t (t + h) .
 Proof.
 intros.
 unfold Harmonic_oscillator_system in H.
-destruct H as (_ & _ & C & D & _).
+destruct H as (C & D & _).
 split; unfold smooth_fun in *; 
 unfold k_differentiable in *; intros.
 -apply C.
 -apply D.
 Qed.
 
-
 (* relating derivatives of the continuous system for future rewrites *)
-Lemma Harm_sys_derive_eq p q w t0: 
-  Harmonic_oscillator_system p q w t0 (p t0) (q t0)-> 
+Lemma Harm_sys_derive_eq p q ω t0: 
+  Harmonic_oscillator_system p q ω t0 -> 
   forall t,
   Derive_n q 2 t  = Derive_n p 1 t /\
-  Derive_n q 3 t  = - w ^2 * p t /\
+  Derive_n q 3 t  = - ω^2 * p t /\
   Derive_n p 2 t  = Derive_n q 3 t /\ 
-  Derive_n p 3 t  = w ^4 * q t /\
-  Derive_n p 4 t  = w^4 * p t.
+  Derive_n p 3 t  = ω^4 * q t /\
+  Derive_n p 4 t  = ω^4 * p t.
 Proof.
 unfold Harmonic_oscillator_system; intros.
-destruct H as (H1 & H2 & _ & _ & H).
+destruct H as (_ & _ & H).
 pose proof (H t) as (A & B & C).
 
 assert (forall t, Derive_n q 2 t  = Derive_n p 1 t).
@@ -81,7 +78,7 @@ apply Derive_n_ext; intros.
 specialize (H t2); apply H; auto.
 -
 
-assert ((Derive_n (fun y : R => F (q y) w) 1 t) = 
+assert ((Derive_n (fun y : R => F (q y) ω) 1 t) = 
 (Derive_n (Derive_n q 1) 2 t )).
 +  
 replace (Derive_n (Derive_n q 1) 2 t) with
@@ -92,7 +89,7 @@ specialize (H0 t1). rewrite H0.
 apply H.
 + split; auto; split. 
 * replace (Derive_n q 3 t) with 
-(Derive_n (fun y : R => F (q y) w) 1 t).
+(Derive_n (fun y : R => F (q y) ω) 1 t).
 rewrite <- A.
           rewrite <- Derive_n_scal_l.
 unfold F; auto.
@@ -100,7 +97,7 @@ unfold F; auto.
 -- 
 unfold F in *.
  replace (Derive_n q 3 t) with 
-(Derive_n (fun y : R => F (q y) w) 1 t).
+(Derive_n (fun y : R => F (q y) ω) 1 t).
 
 
          rewrite  Coquelicot.Derive_nS. 
@@ -111,16 +108,15 @@ unfold F.
 ++  
 
 unfold F in *.
-replace ( w ^ 4 * q t) with
-        ( -w ^ 2 *(-w ^ 2 * q t)) by nra.
+replace ( ω ^ 4 * q t) with
+        ( -ω ^ 2 *(-ω ^ 2 * q t)) by nra.
 rewrite <- B.
 
          replace (Derive_n p 3 t) with (Derive_n (Derive_n p 2) 1 t) by auto.
           rewrite <- Derive_n_scal_l.
          apply Derive_n_ext. 
 intros.
-pose proof (H t1).
-destruct H4 as ( J & K).
+destruct (H t1) as ( J & K).
 rewrite <- J.
          replace (Derive_n p 2 t1) with (Derive_n (Derive_n p 1) 1 t1) by auto.
           rewrite <- Derive_n_scal_l.
@@ -132,13 +128,13 @@ intros. specialize (H t2). apply H.
         rewrite <- Derive_n_scal_l.
         apply Derive_n_ext.
         intros.
-        replace (w ^ 4 * q t1) with 
-        (- w ^ 2 * Derive_n q 2 t1).
+        replace (ω ^ 4 * q t1) with 
+        (- ω ^ 2 * Derive_n q 2 t1).
         rewrite <- Derive_n_scal_l.
         rewrite  Coquelicot.Derive_nS. 
         apply Derive_n_ext.
         intros.
-        replace (- w ^ 2 * q t2) with
+        replace (- ω ^ 2 * q t2) with
         ( Derive_n q 2 t2).
         rewrite  Coquelicot.Derive_nS.
          replace (Derive p) with (Derive_n p 1); auto.
@@ -153,8 +149,8 @@ intros. specialize (H t2). apply H.
 unfold F in H; apply H.
         specialize (H t1).
 unfold F in H.
-replace (w ^ 4 * q t1) with 
-        ( -w ^ 2 *(-w ^ 2 * q t1)) by nra.
+replace (ω ^ 4 * q t1) with 
+        ( -ω ^ 2 *(-ω ^ 2 * q t1)) by nra.
 destruct H as ( _ & K & _).
 rewrite <- K.
 f_equal.
@@ -167,33 +163,34 @@ Qed.
   the continuous system  *)
 Lemma Harm_sys_norm_bound p q:
   forall t0 t1 t2 t3,
-  forall w h,
-  0 < w ->
+  forall ω h,
+  0 < ω ->
   (* the following hypothesis, which is NOT derived from stability analysis on h ,
-     is required in order to show that (h w)^4/ 4! can be upper bounded by (h w)^3/ 3! *)
-  0 <= h * w <= 4 ->
-  Harmonic_oscillator_system p q w t0 (p t0) (q t0)-> 
-  let '(r1, r2) := (h^4/INR(fact 4) * (Derive_n p 4 t2) - h^3/12 * w^4 * q t3, h^3/INR(fact 3) * w * (Derive_n q 3 t1)) in
-  ∥(r1,r2)∥  <= (h*w)^3 * ∥(p t0 , w * q t0)∥.
+     is required in order to show that (h ω)^4/ 4! can be upper bounded by (h ω)^3/ 3! *)
+  0 <= h * ω <= 4 ->
+  Harmonic_oscillator_system p q ω t0 -> 
+  let r1 := h^4/INR(fact 4) * (Derive_n p 4 t2) - h^3/12 * ω^4 * q t3 in
+  let r2 := h^3/INR(fact 3) * ω * (Derive_n q 3 t1) in
+  ∥(r1,r2)∥  <= (h*ω)^3 * ∥(p t0, ω * q t0)∥.
 Proof.
-intros ? ? ? ? ? ? wpos hsep H.
+intros ? ? ? ? ? ? ωpos hsep H.
 unfold Harmonic_oscillator_system in H.
-pose proof Harm_sys_derive_eq p q w t0 H t1 as (A0 & A & _ & _ & _).
-pose proof Harm_sys_derive_eq p q w t0 H t2 as (B0 & _ & _ & _ & C2). 
+pose proof Harm_sys_derive_eq p q ω t0 H t1 as (A0 & A & _ & _ & _).
+pose proof Harm_sys_derive_eq p q ω t0 H t2 as (B0 & _ & _ & _ & C2). 
 rewrite A, C2. clear A C2.
-destruct H as (HA & HB & _ & _ & H).
+destruct H as (HA & HB & H).
 pose proof (H t1) as A1; destruct A1 as (_ & _ &C).
 pose proof (H t2) as A1; destruct A1 as (_ & _ &C2).
 specialize (H t3). destruct H as (_ & _ & C3). 
 unfold Rprod_norm, fst, snd in *. cbv [prod_norm fst snd].
 apply sqrt_inj in C, C2, C3; try nra.
-assert (p t1 ^ 2  <= w ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
+assert (p t1 ^ 2  <= ω ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
   clear C.
-assert (p t2 ^ 2  <= w ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
+assert (p t2 ^ 2  <= ω ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
   clear C2.
-assert (w ^2 * q t3 ^ 2 <= w ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
+assert (ω ^2 * q t3 ^ 2 <= ω ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
   clear C3.
-set (y:= w ^ 2 * q t0 ^ 2 + p t0 ^ 2) in *. 
+set (y:= ω ^ 2 * q t0 ^ 2 + p t0 ^ 2) in *. 
 match goal with |- context[(?a - ?aa) ^2 ] =>
 replace ((a - aa) ^2) with
   (a^2 + aa^2 -2*a*aa) by nra
@@ -205,15 +202,15 @@ end.
   eapply Rplus_le_compat_r.
   eapply Rplus_le_compat_r.
   eapply Rplus_le_compat_r.
-  replace ((h ^ 4 / INR (fact 4) * (w ^ 4 * p t2)) ^ 2)
-  with ((h ^ 4 / INR (fact 4))^2 * (w ^ 4)^2 * (p t2) ^ 2) by nra.
+  replace ((h ^ 4 / INR (fact 4) * (ω ^ 4 * p t2)) ^ 2)
+  with ((h ^ 4 / INR (fact 4))^2 * (ω ^ 4)^2 * (p t2) ^ 2) by nra.
   eapply Rmult_le_compat_l; try nra. apply H0.
   eapply Rle_trans.
   eapply Rplus_le_compat_r.
   eapply Rplus_le_compat_r.
   eapply Rplus_le_compat_l.
-  replace ((h ^ 3 / 12 * w ^ 4 * q t3) ^ 2) 
-  with ((h ^ 3 / 12)^2 * (w ^ 3)^2 * (w ^2 * q t3 ^ 2)) by nra.
+  replace ((h ^ 3 / 12 * ω ^ 4 * q t3) ^ 2) 
+  with ((h ^ 3 / 12)^2 * (ω ^ 3)^2 * (ω ^2 * q t3 ^ 2)) by nra.
   eapply Rmult_le_compat_l; try nra. apply H1.
   eapply Rle_trans.
   eapply Rplus_le_compat_r.
@@ -225,12 +222,12 @@ end.
   repeat rewrite <- Rabs_mult. apply Rabs_pos.
   rewrite Rmult_assoc.
   eapply Rmult_le_compat_l. apply Rabs_pos.
-  replace (Rabs (w ^ 4) * Rabs (q t3)) with
-  (Rabs (w ^ 3) * Rabs (w * q t3)).
+  replace (Rabs (ω ^ 4) * Rabs (q t3)) with
+  (Rabs (ω ^ 3) * Rabs (ω * q t3)).
   eapply Rmult_le_compat_l. apply Rabs_pos.
   apply Rabs_pos_le in H1; try nra; auto.
-  replace (w ^ 2 * q t3 ^ 2) with
-  ((w * q t3) ^ 2) in H1.
+  replace (ω ^ 2 * q t3 ^ 2) with
+  ((ω * q t3) ^ 2) in H1.
   rewrite Rabs_sqr_le in H1.
   apply sqrt_le_1_alt in H1.
   rewrite sqrt_pow2 in H1; try (apply Rabs_pos).
@@ -255,22 +252,22 @@ end.
   apply H0.
   eapply Rle_trans.
   eapply Rplus_le_compat_l.
-  replace ((h ^ 3 / INR (fact 3) * w * (- w ^ 2 * p t1)) ^ 2)
-  with ((h ^ 3 / INR (fact 3) )^2 * w^2 * (w ^ 2)^2 * (p t1) ^ 2) by nra.
+  replace ((h ^ 3 / INR (fact 3) * ω * (- ω ^ 2 * p t1)) ^ 2)
+  with ((h ^ 3 / INR (fact 3) )^2 * ω^2 * (ω ^ 2)^2 * (p t1) ^ 2) by nra.
   eapply Rmult_le_compat_l. nra.
   apply H.
-  replace (Rabs 2 * (Rabs (h ^ 4 / INR (fact 4)) * (Rabs (w ^ 4) * sqrt (Rabs y))) *
-  (Rabs (h ^ 3 / 12) * (Rabs (w ^ 3) * sqrt (Rabs y)))) with
-  (2 * h ^ 4 / INR (fact 4) * w ^ 4 * h ^ 3 / 12 *  w ^ 3 * y).
-  assert (h ^ 3 / 12 * w ^ 3 <= h ^ 3 / INR (fact 3) * (w ^ 3)).
+  replace (Rabs 2 * (Rabs (h ^ 4 / INR (fact 4)) * (Rabs (ω ^ 4) * sqrt (Rabs y))) *
+  (Rabs (h ^ 3 / 12) * (Rabs (ω ^ 3) * sqrt (Rabs y)))) with
+  (2 * h ^ 4 / INR (fact 4) * ω ^ 4 * h ^ 3 / 12 *  ω ^ 3 * y).
+  assert (h ^ 3 / 12 * ω ^ 3 <= h ^ 3 / INR (fact 3) * (ω ^ 3)).
   replace (INR (fact 3)) with (6) by (simpl;nra).
   apply Rmult_le_compat_r; try nra.
-  assert (h ^ 4 / INR (fact 4) * w ^ 4 <= h ^ 3 / INR (fact 3) * (w ^ 3)).
+  assert (h ^ 4 / INR (fact 4) * ω ^ 4 <= h ^ 3 / INR (fact 3) * (ω ^ 3)).
   replace (INR (fact 4)) with (24) by (simpl;nra).
-  replace (h ^ 4 / 24 * w ^ 4) with
-  ((h * w)^3 * (h * w) * /24) by nra.
-  replace (h ^ 3 / INR (fact 3) * w ^ 3) with
-  ((h * w) ^ 3 * 4 *  /24) by (simpl; nra).
+  replace (h ^ 4 / 24 * ω ^ 4) with
+  ((h * ω)^3 * (h * ω) * /24) by nra.
+  replace (h ^ 3 / INR (fact 3) * ω ^ 3) with
+  ((h * ω) ^ 3 * 4 *  /24) by (simpl; nra).
   apply Rmult_le_compat_r; try nra.
   apply Rmult_le_compat_l; try nra. 
   apply pow_le; nra.
@@ -280,15 +277,15 @@ end.
   eapply Rle_trans.
   apply Rplus_le_compat_r.
   apply Rmult_le_compat_r; try nra.
-  replace ((h ^ 4 / INR (fact 4)) ^ 2 * (w ^ 4) ^ 2)
-  with ((h ^ 4 / INR (fact 4) * (w ^ 4)) ^ 2) by nra.
+  replace ((h ^ 4 / INR (fact 4)) ^ 2 * (ω ^ 4) ^ 2)
+  with ((h ^ 4 / INR (fact 4) * (ω ^ 4)) ^ 2) by nra.
   apply pow_incr.
   split. simpl. nra.
   apply H3.
   apply Rplus_le_compat_l.
   apply Rmult_le_compat_r; try nra.
-  replace ((h ^ 3 / 12) ^ 2 * (w ^ 3) ^ 2)
-  with ((h ^ 3 / 12 * w ^ 3) ^ 2) by nra.
+  replace ((h ^ 3 / 12) ^ 2 * (ω ^ 3) ^ 2)
+  with ((h ^ 3 / 12 * ω ^ 3) ^ 2) by nra.
   apply pow_incr.
   split. apply Rle_mult; try nra.
   apply H2.
@@ -300,8 +297,8 @@ end.
   apply Rmult_le_compat_r; try nra.
   apply Rmult_le_compat_r; try nra.
   apply Rmult_le_compat_r; try nra.
-  replace (2 * h ^ 4 / INR (fact 4) * w ^ 4)
-  with (2 * (h ^ 4 / INR (fact 4) * w ^ 4)) by nra.
+  replace (2 * h ^ 4 / INR (fact 4) * ω ^ 4)
+  with (2 * (h ^ 4 / INR (fact 4) * ω ^ 4)) by nra.
   apply Rmult_le_compat_l; try nra. 
   apply H3.
   rewrite Rmult_assoc.
@@ -311,15 +308,15 @@ end.
   rewrite <- Rmult_assoc.
   apply H2.
   match goal with |- context [?a <= ?b] =>
-  replace a with ( 5 * (h ^ 3 / INR (fact 3)) ^ 2 * (w ^ 3) ^ 2 * y);
-  replace b with  ((h ^3)^2 * (w ^ 3)^2 * (w^2 * q t0 ^2 + p t0 ^ 2))
+  replace a with ( 5 * (h ^ 3 / INR (fact 3)) ^ 2 * (ω ^ 3) ^ 2 * y);
+  replace b with  ((h ^3)^2 * (ω ^ 3)^2 * (ω^2 * q t0 ^2 + p t0 ^ 2))
   end.
   subst y.
   apply Rmult_le_compat_r; try (simpl; nra).
   rewrite Rpow_mult_distr.
   rewrite pow2_sqrt. nra. nra.
-  replace ((h ^ 3 / INR (fact 3)) ^ 2 * w ^ 2 * (w ^ 2) ^ 2 * y)
-  with ((h ^ 3 / INR (fact 3)) ^ 2 * (w ^ 3) ^ 2 * y) by nra.
+  replace ((h ^ 3 / INR (fact 3)) ^ 2 * ω ^ 2 * (ω ^ 2) ^ 2 * y)
+  with ((h ^ 3 / INR (fact 3)) ^ 2 * (ω ^ 3) ^ 2 * y) by nra.
   field_simplify. nra.
   simpl; nra. simpl; nra.
   field_simplify. 
@@ -338,8 +335,8 @@ end.
   rewrite Rmult_comm.
   rewrite Rmult_assoc.
   rewrite Rmult_assoc.
-  replace (sqrt (Rabs y) * (Rabs (h ^ 3 / 12 * w ^ 3) * sqrt (Rabs y))) with 
-  ((Rabs y) * Rabs (h ^ 3 / 12 * w ^ 3)).
+  replace (sqrt (Rabs y) * (Rabs (h ^ 3 / 12 * ω ^ 3) * sqrt (Rabs y))) with 
+  ((Rabs y) * Rabs (h ^ 3 / 12 * ω ^ 3)).
   repeat rewrite<- Rabs_mult.
   field_simplify.
   match goal with |- context [Rabs ?a = ?b] =>
@@ -362,15 +359,13 @@ end.
   apply sqrt_pos.
 Qed.
 
-
-
 (* the componentwise truncation error for the solution vector *)
 Theorem local_truncation_error_aux:
   forall p q: R -> R,
   forall t0 tn: R,
   forall h : R, 
-  0 < h <= 4 -> 
-  Harmonic_oscillator_system p q 1 t0 (p t0) (q t0) -> 
+  0 < h <= 4 ->  (* ideally we would write 0 < ω*h <= 4   here *)
+  Harmonic_oscillator_system p q 1 t0 -> 
   exists t1 t2: R,
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
@@ -393,7 +388,7 @@ pose proof Harm_sys_derive_eq p q 1 t0 HSY tn as (HD1 & HD2 & HD3 & HD4 & HD5).
 exists t1, t2. 
 repeat split; try apply A; try apply C.
   + rewrite B. cbv [sum_f_R0].
-    destruct HSY as (HA & HB & _& _ &HSY).
+    destruct HSY as ( _& _ &HSY).
     specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2 & _ ).
 rewrite Hxd1, HD1, Hxd2. 
     unfold Derive_n at 1. unfold F.
@@ -413,7 +408,7 @@ rewrite Hxd1, HD1, Hxd2.
     pose proof Harm_sys_derive_eq p q 1 t0 HSY t.
   destruct H0 as ( H0 & _).
     rewrite H0.
-  destruct HSY as ( _ & _ & _ & _ &HSY).
+  destruct HSY as (_ & _ &HSY).
         specialize (HSY t).
 apply HSY.
     }
@@ -424,7 +419,7 @@ apply HSY.
     replace (Derive_n q 2 tn) with
     (Derive_n (Derive_n q 1) 1 tn) by auto;
     apply Derive_n_ext; apply HSY).
-    destruct HSY as (HA & HB & _ & _ &HSY).
+    destruct HSY as ( _ & _ &HSY).
     specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2 & _).
     rewrite HD1. rewrite Hxd1. unfold Derive_n at 1.
     rewrite Hxd2. rewrite HD4.
@@ -437,8 +432,8 @@ Theorem local_truncation_error_norm_aux:
   forall p q: R -> R,
   forall t0 tn: R,
   forall h : R, 
-  0 < h <= 4 -> 
-  Harmonic_oscillator_system p q 1 t0 (p t0) (q t0) -> 
+  0 < h <= 4 ->  (* ideally we would write 0 < ω*h <= 4   here *)
+  Harmonic_oscillator_system p q 1 t0 -> 
   exists t1 t2: R,
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
@@ -463,9 +458,9 @@ Theorem local_truncation_error:
   forall p q : R -> R,
   forall t0 tn: R,
   forall h : R, 
-  0 < h <= 4 -> 
-  let w := 1 in 
-  Harmonic_oscillator_system p q w t0 (p t0) (q t0) -> 
+  0 < h <= 4 ->  (* ideally we would write 0 < ω*h <= 4   here *)
+  let ω := 1 in 
+  Harmonic_oscillator_system p q ω t0 -> 
   let '(pn,qn):= (leapfrog_stepR (p tn, q tn) h ) in
   ∥(p (tn + h)%R, q (tn + h)%R) - (pn, qn)∥ <= h^3 * ∥(p t0,  q t0)∥.
 Proof.
@@ -484,7 +479,7 @@ Qed.
 
 Lemma method_norm_bounded_aux_p : 
 forall p q h: R,
-  0 < h <= 2 -> 
+  0 < h <= 2 ->  (* ideally we would write 0 < ω*h <= 2   here *)
 Rabs (fst(leapfrog_stepR (p,q) h)) <=  Rabs p + h * Rabs q.
 Proof.
 intros.
@@ -513,7 +508,7 @@ Qed.
 
 Lemma method_norm_bounded_aux_q : 
 forall p q h: R,
-  0 < h <= 2 -> 
+  0 < h <= 2 ->  (* ideally we would write 0 < ω*h <= 2   here *)
 Rabs (snd(leapfrog_stepR (p,q) h)) <=  Rabs q + h * Rabs p.
 Proof.
 intros.
@@ -623,7 +618,7 @@ Lemma global_truncation_error_sum :
   forall t0 T: R,
   forall h : R, 
   0 < h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 (p t0) (q t0) -> 
+  Harmonic_oscillator_system p q 1 t0  -> 
   forall n : nat, 
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
@@ -698,7 +693,7 @@ Lemma global_truncation_error_aux:
   forall t0 T: R,
   forall h : R, 
   0 < h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 (p t0) (q t0) -> 
+  Harmonic_oscillator_system p q 1 t0 -> 
   forall n : nat, 
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
@@ -730,11 +725,12 @@ Lemma global_truncation_error:
   forall t0 T : R,
   forall h : R, 
   0 < h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 (p t0) (q t0) -> 
+  Harmonic_oscillator_system p q 1 t0 -> 
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
-  ∥ (p (t0 + INR n * h)%R, q (t0 + INR n * h)%R) - (iternR (p t0, q t0) h n)∥ <= h^ 2 * ∥(p t0, q t0)∥ * (exp (INR n *h) - 1) .
+  ∥ (p (t0 + INR n * h)%R, q (t0 + INR n * h)%R) - (iternR (p t0, q t0) h n)∥
+        <= h^ 2 * ∥(p t0, q t0)∥ * (exp (INR n *h) - 1) .
 Proof.
 intros ? ? ? ? ? HBND; intros.
 subst tn.
@@ -754,7 +750,7 @@ Lemma convergence_aux:
   forall h : R, 
   0 <= t0 -> 
   0 < h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 (p t0) (q t0) -> 
+  Harmonic_oscillator_system p q 1 t0 -> 
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
@@ -785,7 +781,7 @@ Theorem method_convergence:
   forall h : R, 
   0 <= t0 -> 
   0 < h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 (p t0) (q t0) -> 
+  Harmonic_oscillator_system p q 1 t0 -> 
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
