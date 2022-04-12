@@ -120,7 +120,7 @@ Lemma iternR_bound :
 Proof.
 intros.
 eapply Rle_trans.
-eapply method_bound_n; try unfold h; try nra.
+eapply method_bound_n; try unfold h,ω; try nra.
 rewrite init_norm_eq.
 rewrite Rmult_1_r.
 eapply Rle_trans.
@@ -148,7 +148,7 @@ rval (env_ (leapfrog_vmap qnf pnf)) q' = snd (leapfrog_stepR (FT2R_prod (pnf,qnf
 Proof.
 intros.
 unfold_rval.
-unfold leapfrog_stepR,FT2R_prod, fst,snd, h. 
+unfold leapfrog_stepR,FT2R_prod, fst,snd, h,ω. 
 nra.
 Qed.
 
@@ -162,7 +162,7 @@ Proof.
 intros.
 unfold_rval.
 field_simplify.
-unfold leapfrog_stepR,FT2R_prod, fst,snd, h.
+unfold leapfrog_stepR,FT2R_prod, fst,snd, h,ω.
 nra.
 Qed.
 
@@ -450,17 +450,16 @@ Lemma iterR_bound:
   (n <= 200)%nat ->
   let t0 := 0 in
   let tn := t0 + INR n * h in
-  let w  := 1 in
   pt t0 = FT2R p_init -> 
   qt t0 = FT2R q_init ->
-  Harmonic_oscillator_system pt qt w t0 ->
+  Harmonic_oscillator_system pt qt ω t0 ->
    ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum (1 + h) n -> 
   (forall m,
     (m <= n)%nat -> 
     ∥(iternR ((FT2R p_init), (FT2R q_init)) h m)∥ <= 1.5).
 Proof.
 intros * ? * IC1 IC2. intros.
-assert (0 < h <= 2) as Hbnd by (unfold h; nra).
+assert (0 < ω*h <= 2) as Hbnd by (unfold h,ω; nra).
 pose proof global_truncation_error_sum pt qt t0 tn h Hbnd H0 m.
 assert (t0 + INR m * h <= tn). 
   subst tn. apply Rplus_le_compat_l.
@@ -473,7 +472,7 @@ eapply Rle_trans in H3.
 destruct H0 as (_ & _ & A).
 specialize (A (t0 + INR m * h)).
 destruct A as ( _ & _ & C).
-subst w; repeat (rewrite Rmult_1_l in C).
+unfold ω in *; repeat (rewrite Rmult_1_l in C).
 rewrite C in H3.
 rewrite IC1 in H3.
 rewrite IC2 in H3.

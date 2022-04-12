@@ -19,9 +19,6 @@ Context {NANS: Nans}.
 
 Import Interval.Tactic.
 
-Print q'.
-
-
 Lemma prove_roundoff_bound_q:
   forall q p : ftype Tsingle,
   prove_roundoff_bound leapfrog_bmap (leapfrog_vmap q p) q' 
@@ -47,7 +44,6 @@ prove_roundoff_bound.
 match goal with |- Rabs ?a <= _ => field_simplify a end.
 interval.
 Qed.
-
 
 Lemma prove_roundoff_bound_q_implies:
   forall q p : ftype Tsingle,
@@ -339,7 +335,7 @@ destruct (FT2R_prod_rev (leapfrog_stepF (qnf, pnf))).
 rewrite Rprod_minus_comm in BND. 
 apply BND.  
 destruct (Rprod_minus (pnr, qnr) (FT2R_prod_rev (qnf, pnf))).
-assert (0 < h <= 2) as Hh by (unfold h; nra).
+assert (0 < ω*h <= 2) as Hh by (unfold h,ω; nra).
 pose proof (method_norm_bounded r r0 h Hh) as BND.
 eapply Rle_trans.
 apply Rplus_le_compat_r.
@@ -367,7 +363,6 @@ Theorem total_error:
   (n <= 100)%nat ->
   let t0 := 0 in
   let tn := t0 + INR n * h in
-  let ω  := 1 in
   pt t0 = FT2R p_init ->
   qt t0 = FT2R q_init ->
   Harmonic_oscillator_system pt qt ω t0 ->
@@ -377,7 +372,7 @@ Theorem total_error:
 Proof.
 assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap q_init p_init)) by
 apply bmd_init.
-intros ? ? ? ? ? ? ? Hp Hq Hsys ; simpl.
+intros ? ? ? ? ? ? Hp Hq Hsys ; simpl.
 match goal with |- context[?A <= ?B] =>
 replace A with
   (∥ ((pt (t0 + INR n * h)%R, qt (t0 + INR n * h)%R) - (iternR (FT2R p_init, FT2R q_init) h n)) +
@@ -394,7 +389,7 @@ apply global_error; auto.
 eapply Rle_trans.
 apply Rplus_le_compat_r.
 rewrite <- Hp, <- Hq in *.
-eapply global_truncation_error_aux; try unfold h; try nra; auto.
+eapply global_truncation_error_aux; try unfold h,ω; try nra; auto.
 apply Rle_refl.
 assert (hlow: 0 < h) by (unfold h; nra).
  pose proof error_sum_GS n h hlow as GS.

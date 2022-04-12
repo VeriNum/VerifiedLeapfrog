@@ -11,12 +11,12 @@ Open Scope R_scope.
 
 (* Time step*)
 Definition h := 1 / 32.
-
+Definition ω := 1.
 
 Definition leapfrog_stepR (ic : R * R ) (h : R) : R * R :=
   let q := snd ic in let p := fst ic in 
-  let q' := ( 1 - 0.5 * h^2) * q + h * p  in 
-  let p' := ( 1 - 0.5 * h^2) * p - 0.5 * h * (2 - 0.5 * h^2 ) * q in 
+  let q' := ( 1 - 0.5 * h^2*ω^2) * q + h * p  in 
+  let p' := ( 1 - 0.5 * h^2*ω^2) * p - 0.5 * h * (2 - 0.5 * h^2*ω^2 ) * q in 
   (p', q').
 
 (* assumes inputs of (p, w * q, w, n) *)
@@ -53,8 +53,8 @@ Lemma one_stepR_p_alt2:
   forall ic1 ic2: R * R,
   forall h,
   (fst (leapfrog_stepR ic1 h) - fst (leapfrog_stepR ic2 h)) = 
-  (1 - 0.5 * h ^ 2) * (fst ic1 - fst ic2) -  
-   0.5 * h * (2 - 0.5 * h^2) * (snd ic1 - snd ic2).
+  (1 - 0.5 * h ^ 2 * ω^2) * (fst ic1 - fst ic2) -  
+   0.5 * h * (2 - 0.5 * h^2 * ω^2) * (snd ic1 - snd ic2).
 Proof.
 intros. destruct ic1 as [x1 v1]. destruct ic2 as [x2 v2].
 unfold leapfrog_stepR, fst, snd; field_simplify. nra.
@@ -65,7 +65,7 @@ Lemma one_stepR_q_alt2:
   forall ic1 ic2: R * R,
   forall h: R, 
   (snd (leapfrog_stepR ic1 h) - snd (leapfrog_stepR ic2 h)) = 
-  (1 - 0.5 * h ^ 2) * (snd ic1 - snd ic2) +   h *(fst ic1 - fst ic2).
+  (1 - 0.5 * h ^ 2 * ω^2) * (snd ic1 - snd ic2) +   h *(fst ic1 - fst ic2).
 Proof.
 intros. destruct ic1 as [x1 v1]. destruct ic2 as [x2 v2].
 unfold leapfrog_stepR, fst, snd; field_simplify; nra.

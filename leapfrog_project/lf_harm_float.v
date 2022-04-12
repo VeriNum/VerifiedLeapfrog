@@ -21,12 +21,17 @@ Context {NANS: Nans}.
 (** Compute one time-step: given "ic" which is a pair of momentum "q" and position "p" ,
   calculate the new position and mometum after time "h" has elapsed. **)
 
-Definition h := (1 / 32)%F32.   (* Time-step: 1/32 of a second *)
+Definition h : ftype Tsingle := 1 / 32.   (* Time-step: 1/32 of a second *)
+Definition ω : ftype Tsingle := 1.
 
-
-(* Linear forcing function *)
+(* Linear force function *)
+Definition F_alt (x : ftype Tsingle) : ftype Tsingle := -((ω*ω)*x).
 Definition F (x : ftype Tsingle) : ftype Tsingle := -x.
-
+(* We will use F rather than F_alt in the floating-point functional model,
+  because the C program omits the multiplication by 1.0*1.0.  
+  You might think that (1.0*1.0)*x is the same as x, but we do
+  not wish to use the identity (1.0*x=x)  _in the floats_;  we want
+  to match exactly the computation that the C program does. *)
 
 (* Single step of Verlet integration *)
 Definition leapfrog_stepF (ic : ftype Tsingle * ftype Tsingle) : ftype Tsingle * ftype Tsingle :=
@@ -73,13 +78,26 @@ replace (leapfrog_stepF (iternF _ _ )) with (iternF (leapfrog_stepF ic) n).
 all: symmetry; apply lfstep_lfn. 
 Qed.
 
-Lemma Ziter_itern:
+Lemma Ziter_itern:  (* Delete this lemma?  doesn't seem to be used. *)
   forall x v i,
   (Z.iter i leapfrog_stepF (x, v)) = iternF (x, v) (Z.to_nat i).
 Proof.
-induction i.
-- simpl; auto.
-Admitted.
+intros.
+destruct (Z_le_dec 0 i).
+-
+ pattern i at 1; rewrite <- (Z2Nat.id i)  by auto.
+ clear.
+ set (xv := (x,v)). clearbody xv.
+revert xv; induction (Z.to_nat i); intros.
+ + reflexivity.
+ + rewrite inj_S. rewrite Zbits.Ziter_succ by lia. simpl iternF.
+     rewrite IHn.
+     apply lfstep_lfn.
+-
+  rewrite Zbits.Ziter_base by lia.
+  destruct i; try lia. simpl. auto.
+Qed.
+
 
 End WITHNANS.
 
