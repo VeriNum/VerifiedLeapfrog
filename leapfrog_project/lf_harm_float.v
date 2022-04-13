@@ -98,6 +98,14 @@ revert xv; induction (Z.to_nat i); intros.
   destruct i; try lia. simpl. auto.
 Qed.
 
+(* The initial conditions of the momentum "p" and position "q" specified for the integration scheme*)
+Definition p_init: ftype Tsingle :=  0%F32.
+Definition q_init: ftype Tsingle :=  1%F32.
+
+Definition iternF_is_finite : Prop :=
+  forall n : nat,  ( n <= 100)%nat->
+  (is_finite _ _  (fst(iternF (q_init,p_init)  n)) = true) /\
+  (is_finite _ _  (snd(iternF (q_init,p_init)  n)) = true).
 
 End WITHNANS.
 
