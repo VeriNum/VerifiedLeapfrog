@@ -466,20 +466,20 @@ with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
 f_equal; try nra.
 field_simplify.
 rewrite pow2_sqrt; try nra.
-admit (*h * h - 2 <> 0*).
-admit (*h * h - 2 <> 0*).
+all : cbv; nra.
 +
 subst.
 simpl.
-cbv [mult Cmult]; simpl.
+repeat cbv [mult Cmult plus Cplus]; simpl.
 rewrite ?mult_aux1.
 rewrite ?mult_aux2. 
 rewrite ?mult_aux3.
-cbv [mult Cmult]; simpl. repeat rewrite Rmult_0_r; unfold C0.
-cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
-repeat rewrite Rmult_1_r. repeat rewrite Rplus_0_r.
+repeat cbv [mult Cmult plus Cplus C0]; simpl.
+repeat rewrite Rmult_0_r.
+repeat rewrite Rplus_0_r.
+repeat rewrite Rmult_1_r. 
+repeat rewrite Rplus_0_r.
 repeat rewrite Rminus_0_r.
-cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
 repeat rewrite Rplus_0_l.
 rewrite Rmult_assoc.
 rewrite Rmult_assoc.
@@ -489,10 +489,9 @@ rewrite <- sqrt_mult; try nra.
 replace (((h * h + 4) * (h * (h * (h * h)) - 4 * (h * h) + 16))) 
 with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
 f_equal; try nra.
-field_simplify.
+field_simplify. 
 rewrite pow2_sqrt; try nra.
-admit (*h * h - 2 <> 0*).
-admit (*h * h - 2 <> 0*).
+all : cbv; nra.
 -
 assert (B: j = 0%nat \/ j = 1%nat) by lia;
 destruct B. 
@@ -517,11 +516,31 @@ rewrite <- sqrt_mult; try nra.
 replace (((h * h + 4) * (h * (h * (h * h)) - 4 * (h * h) + 16))) 
 with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
 f_equal; try nra.
-field_simplify.
-Search ( _ = _ / _).
-rewrite pow2_sqrt; try nra.
-admit (*h * h - 2 <> 0*).
-admit (*h * h - 2 <> 0*).
+simpl. cbv -[sqrt]. field.
+all : cbv; nra. 
++
+subst.
+simpl.
+cbv [mult Cmult]; simpl.
+rewrite ?mult_aux1.
+rewrite ?mult_aux2. 
+rewrite ?mult_aux3.
+cbv [mult Cmult]; simpl. repeat rewrite Rmult_0_r; unfold C0.
+cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
+repeat rewrite Rmult_1_r. repeat rewrite Rplus_0_r.
+repeat rewrite Rminus_0_r.
+cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
+repeat rewrite Rplus_0_l.
+repeat rewrite Rmult_1_l.
+repeat rewrite Rmult_0_l.
+symmetry.
+rewrite Rmult_assoc.
+rewrite <- sqrt_mult; try nra.
+replace (((h * h + 4) * (h * (h * (h * h)) - 4 * (h * h) + 16))) 
+with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
+f_equal; try nra.
+simpl. cbv -[sqrt]. field.
+all : cbv; nra. 
 Qed.
 
 (* define P D such that P D invP *)
