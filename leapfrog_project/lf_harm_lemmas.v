@@ -21,9 +21,9 @@ Context {NANS: Nans}.
 
 
 (** Calculate a new momentum, as a function of momentum p and position q *)
-Definition leapfrog_step_p q p  := snd (leapfrog_stepF (q,p)).
+Definition leapfrog_step_p p q  := fst (leapfrog_stepF (p,q)).
 (** Calculate a new posisition, as a function of momentum p and position q *)
-Definition leapfrog_step_q q p  := fst (leapfrog_stepF (q,p)).
+Definition leapfrog_step_q p q  := snd (leapfrog_stepF (p,q)).
 
 
 (** In deep-embedded (syntactic) expressons, variables are represented
@@ -34,9 +34,9 @@ Definition _q : ident := 2%positive.  (* Variable name for position *)
 (** These two lines compute a deep-embedded "expr"ession from
   a shallow-embedded Coq expression.  *)
 Definition p' := ltac:(let e' := 
-  HO_reify_float_expr constr:([_q; _p]) leapfrog_step_p in exact e').
+  HO_reify_float_expr constr:([_p; _q]) leapfrog_step_p in exact e').
 Definition q' := ltac:(let e' := 
-  HO_reify_float_expr constr:([_q; _p]) leapfrog_step_q in exact e').
+  HO_reify_float_expr constr:([_p; _q]) leapfrog_step_q in exact e').
 
 
 (** When interpreting deep-embedded expressions, "Var"iables will appear
@@ -47,31 +47,31 @@ Definition q' := ltac:(let e' :=
 (**  Step one, given values "p" and "q", 
   make an association list mapping _q to q, and _p to p,  each labeled
   by its floating-point type.  **)
-Definition leapfrog_vmap_list (q p : ftype Tsingle) := 
-   [(_q, existT ftype _ q);(_p, existT ftype _ p)].
+Definition leapfrog_vmap_list (p q : ftype Tsingle) := 
+   [(_p, existT ftype _ p);(_q, existT ftype _ q)].
 
 
 (** Step two, build that into "varmap" data structure, taking care to
   compute it into a lookup-tree ___here___, not later in each place
   where we look something up. *)
-Definition leapfrog_vmap (q p : ftype Tsingle) : valmap :=
- ltac:(let z := compute_PTree (valmap_of_list (leapfrog_vmap_list q p)) in exact z).
+Definition leapfrog_vmap (p q : ftype Tsingle) : valmap :=
+ ltac:(let z := compute_PTree (valmap_of_list (leapfrog_vmap_list p q)) in exact z).
 
 
 
 (**  Reification and reflection.   When you have a 
   deep-embedded "expr"ession, you can get back the shallow embedding
    by applying the "fval" function *)
-Lemma reflect_reify_q : forall q p, 
-  fval (env_ (leapfrog_vmap q p)) q' = leapfrog_step_q q p.
+Lemma reflect_reify_q : forall p q, 
+  fval (env_ (leapfrog_vmap p q)) q' = leapfrog_step_q p q.
 Proof.
 intros.
 unfold q'. 
 reflexivity. 
 Qed.
 
-Lemma reflect_reify_p : forall q p, 
-  fval (env_ (leapfrog_vmap q p)) p' = leapfrog_step_p q p.
+Lemma reflect_reify_p : forall p q, 
+  fval (env_ (leapfrog_vmap p q)) p' = leapfrog_step_p p q.
 Proof.
 intros.
 unfold p'.
@@ -125,7 +125,7 @@ interval.
 Qed.
 
 Definition leapfrog_bmap_list : list varinfo := 
-  [ Build_varinfo Tsingle _q (-22)  22 ;  Build_varinfo Tsingle _p (-22)  22 ].
+  [ Build_varinfo Tsingle _p (-22)  22 ;  Build_varinfo Tsingle _q (-22)  22 ].
 
 
 Definition leapfrog_bmap : boundsmap :=
@@ -138,8 +138,8 @@ Definition FT2R_prod (A: ftype Tsingle * ftype Tsingle)  := (FT2R (fst A), FT2R 
 
 
 Lemma rval_correct_q : 
-forall qnf pnf,
-rval (env_ (leapfrog_vmap qnf pnf)) q' = snd (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
+forall pnf qnf,
+rval (env_ (leapfrog_vmap pnf qnf)) q' = snd (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
 Proof.
 intros.
 unfold_rval.
@@ -152,7 +152,7 @@ Qed.
    of the real functional model by applying the "rval" function *)
 Lemma rval_correct_p : 
 forall pnf qnf,
-rval (env_ (leapfrog_vmap qnf pnf)) p' = fst (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
+rval (env_ (leapfrog_vmap pnf qnf)) p' = fst (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
 Proof.
 intros.
 unfold_rval.
@@ -166,12 +166,12 @@ Qed.
 
 
 Lemma leapfrog_vmap_i_aux: 
-  forall q1 p1 q0 p0,
+  forall  p1 q1 p0 q0 ,
   forall i,
   forall v1 : {x : type & ftype x},
-  Maps.PTree.get i (leapfrog_vmap q0 p0) = Some v1 -> 
+  Maps.PTree.get i (leapfrog_vmap p0 q0) = Some v1 -> 
   exists v2 : {x : type & ftype x},
-  Maps.PTree.get i (leapfrog_vmap q1 p1) = Some v2 /\ 
+  Maps.PTree.get i (leapfrog_vmap p1 q1) = Some v2 /\ 
   projT1 v1 = projT1 v2.
 Proof.
 intros.
@@ -189,36 +189,40 @@ Qed.
 
 
 Lemma itern_implies_bmd_aux:
-  forall q0 p0 : ftype Tsingle,
+  forall p0 q0 : ftype Tsingle,
   forall n : nat,
   boundsmap_denote leapfrog_bmap 
-  (leapfrog_vmap (fst(iternF (q0,p0) n)) (snd(iternF (q0,p0) n))) ->
-  (is_finite _ _  (fst(iternF (q0,p0) (S n))) = true) /\
-  (is_finite _ _  (snd(iternF (q0,p0) (S n))) = true).
+  (leapfrog_vmap (fst(iternF (p0,q0) n)) (snd(iternF (p0,q0) n))) ->
+  (is_finite _ _  (fst(iternF (p0,q0) (S n))) = true) /\
+  (is_finite _ _  (snd(iternF (p0,q0) (S n))) = true).
 Proof.
 intros.
 rewrite step_iternF.
-destruct (iternF (q0,p0) n).
+destruct (iternF (p0,q0) n).
 simpl in H.
-change (snd (leapfrog_stepF (f, f0))) with
-  (leapfrog_step_p f f0).
-change (fst (leapfrog_stepF (f, f0))) with
-  (leapfrog_step_q f f0).
+change (snd (leapfrog_stepF (f0, f))) with
+  (leapfrog_step_p f0 f ).
+change (fst (leapfrog_stepF (f0, f))) with
+  (leapfrog_step_q f0 f).
 split.
 -
-rewrite <- reflect_reify_q.
-assert (EV1: expr_valid q' = true) by auto.
-pose proof rndval_with_cond_correct2 q' EV1
-  leapfrog_bmap (leapfrog_vmap f f0) H.
-destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
-(* this takes a moment to solve *)
-solve_Forall_conds; interval.
--
+replace ((fst (leapfrog_stepF (f, f0)))) with
+(leapfrog_step_p f f0) by (unfold leapfrog_step_p; auto). 
 rewrite <- reflect_reify_p.
 assert (EV1: expr_valid p' = true) by auto.
 pose proof rndval_with_cond_correct2 p' EV1
   leapfrog_bmap (leapfrog_vmap f f0) H.
 (* this takes a moment to print *)
+destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
+(* this takes a moment to solve *)
+solve_Forall_conds; interval.
+-
+replace ((snd (leapfrog_stepF (f, f0)))) with
+(leapfrog_step_q f f0) by (unfold leapfrog_step_q; auto). 
+rewrite <- reflect_reify_q.
+assert (EV1: expr_valid q' = true) by auto.
+pose proof rndval_with_cond_correct2 q' EV1
+  leapfrog_bmap (leapfrog_vmap f f0) H.
 destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
 (* this takes a moment to solve *)
 solve_Forall_conds; interval.
@@ -257,10 +261,10 @@ intros.
 apply Maps.PTree.elements_correct in H.
 destruct H.
 - inversion H.
-left; auto.
+right; auto.
 - inversion H.
 + inversion H0.
-* right; auto.
+* left; auto.
 + inversion H0; auto.
 Qed.
 
@@ -269,18 +273,18 @@ Qed.
 Lemma leapfrog_bmap_aux:
 forall (i : positive) (v: varinfo),
        Maps.PTree.get i leapfrog_bmap = Some v -> 
-       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _q leapfrog_bmap \/
-       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _p leapfrog_bmap.
+       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _p leapfrog_bmap \/
+       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _q leapfrog_bmap.
 Proof.
 intros.
 apply Maps.PTree.elements_correct in H.
 inversion H.
 - 
-inversion H0. left; auto.
+inversion H0. right; auto.
 - inversion H0.
 inversion H1.
 + 
- right; auto.
+ left; auto.
 + simpl in H1; contradiction.
 Qed.
 
@@ -299,11 +303,11 @@ Qed.
 
 Lemma bmd_vmap_bmap_iff : 
 forall (i : positive)
-(q p: ftype Tsingle),
+(p q: ftype Tsingle),
 (exists (v : varinfo),
        Maps.PTree.get i leapfrog_bmap = Some v) <->
 (exists (v1 : sigT ftype),
-       Maps.PTree.get i (leapfrog_vmap q p) = Some v1).
+       Maps.PTree.get i (leapfrog_vmap p q) = Some v1).
 Proof.
 intros.
 split.
@@ -317,9 +321,8 @@ subst.
 cbv. auto.
 + exists (existT ftype Tsingle p).
 inversion H0. inversion H1.
-* 
-cbv. auto.
-*  simpl in H1; contradiction.
+subst. cbv. auto.
+inversion H1.
 - intros.
 destruct H.
 apply Maps.PTree.elements_correct in H.
@@ -347,14 +350,14 @@ Qed.
 
 
 Lemma bmd_init : 
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap q_init p_init) .
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init) .
 Proof.
 intros.
 unfold boundsmap_denote.
 intros.
 pose proof leapfrog_bmap_aux i as H1.
 pose proof leapfrog_vmap_init i as H2.
-pose proof bmd_vmap_bmap_iff i q_init p_init as H3.
+pose proof bmd_vmap_bmap_iff i p_init q_init as H3.
 pose proof leapfrog_bmap_aux1 i as H4.
 destruct (Maps.PTree.get i leapfrog_bmap).
 -
@@ -365,56 +368,36 @@ symmetry in H1.
 apply Maps.PTree.elements_correct in H1.
 specialize (H4 v eq_refl).
 inversion H1.
-* 
-inversion H.
-destruct v.
-inversion H5.
-destruct H3 as (A & B). destruct A. 
-exists ({|
-      var_type := Tsingle; var_name := _q; var_lobound := -22; var_hibound := 22
-    |}); subst; auto.
-destruct (Maps.PTree.get i (leapfrog_vmap q_init p_init)); 
-  try discriminate.
-subst.
-specialize (H2 s eq_refl).
--- destruct H2.
-++ 
-split; simpl; auto.
-rewrite H2; repeat (split; simpl; auto; try interval).
-++
-split; simpl; auto.
-rewrite H2; repeat (split; simpl; auto; try interval).
-* 
-simpl in H. destruct H; try contradiction.
--- destruct H3.
-++ destruct v. inversion H.
-+
-symmetry in H1.
-apply Maps.PTree.elements_correct in H1.
-specialize (H4 v eq_refl).
-inversion H1.
 * inversion H; clear H.
 * simpl in H. destruct H; try contradiction.
-
--- destruct H3.
-++ destruct v. inversion H.
-
+destruct H3.
+destruct v. inversion H.
 destruct H0.
+--
 exists ({|
       var_type := Tsingle; var_name := _p; var_lobound := -22; var_hibound := 22
     |});subst;auto.
+--
 destruct (Maps.PTree.get i (leapfrog_vmap q_init p_init)); 
   try discriminate.
+++
 subst.
 specialize (H2 s eq_refl).
 destruct H2.
-**
-split; simpl; auto.
-rewrite H2. repeat (split; simpl; auto; try interval).
-** split; simpl; auto.
-rewrite H2. repeat (split; simpl; auto; try interval).
-
-- destruct (Maps.PTree.get i (leapfrog_vmap q_init p_init)); auto.
+** repeat (split; simpl; auto; try interval).
+** repeat (split; simpl; auto; try interval).
+++
+subst.
+simpl.
+repeat (split; simpl; auto; try interval).
++
+inversion H1.
+specialize (H4 v eq_refl).
+subst.
+simpl.
+repeat (split; simpl; auto; try interval).
+-
+destruct (Maps.PTree.get i (leapfrog_vmap p_init q_init)); auto.
 destruct H3.
 destruct H0; try discriminate.
 exists s; auto.

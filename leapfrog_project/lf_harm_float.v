@@ -35,10 +35,10 @@ Definition F (x : ftype Tsingle) : ftype Tsingle := -x.
 
 (* Single step of Verlet integration *)
 Definition leapfrog_stepF (ic : ftype Tsingle * ftype Tsingle) : ftype Tsingle * ftype Tsingle :=
-  let x  := fst ic in let v:= snd ic in 
-  let x' := (x + h * v) + ((1/2) * (h * h)) * F x in
-  let v' :=  v +  (1/2 * h) * (F x + F x') in 
-  (x', v').
+  let p  := fst ic in let q := snd ic in 
+  let q' := (q + h * p) + (0.5 * (h * h)) * F q in
+  let p' :=  p +  (0.5 * h) * (F q + F q') in 
+  (p', q').
 
 
 (** Iterations **)
