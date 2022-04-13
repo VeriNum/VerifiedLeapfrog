@@ -8,7 +8,7 @@ endif
 
 COQFLAGS= -Q $(VCFLOAT_LOC) vcfloat $(VST_Q)
 
-all: _CoqProject verif_lfharm.vo
+all: _CoqProject main.vo
 
 _CoqProject: Makefile
 	echo $(COQFLAGS) >_CoqProject
@@ -24,6 +24,8 @@ lf_harm_float.vo: lf_harm_float.v
 lf_harm_real.vo: lf_harm_real.v real_lemmas.vo
 
 lf_harm_real_theorems.vo: lf_harm_real_theorems.v real_lemmas.vo lf_harm_real.vo 
+main.vo: main.v verif_lfharm.vo lf_harm_float.vo lf_harm_theorems.vo
+
 
 lfharm.v: lfharm.c
 	$(CC_LOC)/clightgen -normalize $<
