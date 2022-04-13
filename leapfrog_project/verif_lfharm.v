@@ -29,7 +29,7 @@ Definition lfstep_spec :=
     SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_stepF (x,v)))) xp; 
           data_at Tsh tfloat (Vsingle (snd(leapfrog_stepF (x,v)))) vp ).
 
-Definition integrate_spec := 
+Definition integrate_spec_lowlevel := 
   DECLARE _integrate
   WITH xp: val, vp: val
   PRE [ tptr tfloat , tptr tfloat ]
@@ -49,7 +49,7 @@ Definition main_spec :=
   POST [ tint ]
        PROP() RETURN (Vint (Int.repr 0)) SEP(TT).
 
-Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec; main_spec].
+Definition Gprog : funspecs := [force_spec; lfstep_spec; integrate_spec_lowlevel; main_spec].
 
 Lemma body_force: semax_body Vprog Gprog f_force force_spec.
 Proof.
@@ -79,7 +79,7 @@ replace (1/2)%F32 with (0.5)%F32
 auto.
 Qed.
 
-Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
+Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec_lowlevel.
 Proof.
 start_function.
 subst MORE_COMMANDS; unfold abbreviate; canonicalize_float_constants.
@@ -98,10 +98,8 @@ pose (step n := iternF (q_init, p_init) (Z.to_nat n)).
                    temp lfharm._x xp; temp lfharm._v vp)
    SEP (data_at Tsh tfloat (Vsingle (fst (step n))) xp;
           data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.
-- 
-  entailer!.
-- 
-  forward_call.
+- entailer!.
+- forward_call.
   apply H; lia.
   forward.
   autorewrite with float_elim in *.
@@ -114,11 +112,10 @@ pose (step n := iternF (q_init, p_init) (Z.to_nat n)).
   replace (iternF (q_init, p_init) (S (Z.to_nat i))) with 
   ((step (i + 1)%Z)).
   cancel.
-+ unfold step. f_equal. lia.
-+ unfold step. destruct (iternF (q_init, p_init) (Z.to_nat i)).
-auto.
--
-   change (iternF(q_init, p_init) 100) with (step 100%Z).
+ + unfold step. f_equal. lia.
+ + unfold step. destruct (iternF (q_init, p_init) (Z.to_nat i)).
+     auto.
+- change (iternF(q_init, p_init) 100) with (step 100%Z).
    forward.
 Qed.
 

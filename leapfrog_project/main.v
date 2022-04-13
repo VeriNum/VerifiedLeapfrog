@@ -6,7 +6,7 @@ Require Import verif_lfharm.
 Require Import lf_harm_float lf_harm_theorems.
 Require Import vcfloat.FPSolve.
 
-Definition integrate_spec_highlevel := 
+Definition integrate_spec := 
   DECLARE _integrate
   WITH xp: val, vp: val
   PRE [ tptr tfloat , tptr tfloat ]
@@ -20,7 +20,7 @@ Definition integrate_spec_highlevel :=
     SEP(data_at Tsh tfloat (Vsingle (fst xv)) xp; 
           data_at Tsh tfloat (Vsingle (snd xv)) vp ).
 
-Lemma subsume_integrate: funspec_sub (snd integrate_spec) (snd integrate_spec_highlevel).
+Lemma subsume_integrate: funspec_sub (snd integrate_spec_lowlevel) (snd integrate_spec).
 Proof.
 apply NDsubsume_subsume.
 split; auto.
@@ -43,7 +43,7 @@ entailer!.
 Qed.
 
 Theorem body_integrate_highlevel :
-   semax_body Vprog Gprog f_integrate integrate_spec_highlevel.
+   semax_body Vprog Gprog f_integrate integrate_spec.
 Proof.
 eapply semax_body_funspec_sub.
 apply body_integrate.
