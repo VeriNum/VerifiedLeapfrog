@@ -408,7 +408,7 @@ field_simplify.
 symmetry; apply Rprod_norm_plus_minus_eq.
 Qed. 
 
-Definition total_error_100 (xv: ftype Tsingle * ftype Tsingle) :=
+Definition accurate_harmonic_oscillator_100 (xv: ftype Tsingle * ftype Tsingle) :=
   forall pt qt: R -> R,
   let t0 := 0 in
   let n := 100%nat in 
@@ -418,8 +418,8 @@ Definition total_error_100 (xv: ftype Tsingle * ftype Tsingle) :=
   Harmonic_oscillator_system pt qt ω t0 ->
   ∥ (pt tn, qt tn) - (FT2R (snd xv), FT2R (fst xv)) ∥ <= 0.0223.
 
-Corollary yes_total_error_100: 
-          total_error_100 (iternF (q_init,p_init) 100).
+Corollary yes_accurate_harmonic_oscillator_100: 
+          accurate_harmonic_oscillator_100 (iternF (q_init,p_init) 100).
 Proof.
 intros.
 red; intros.
