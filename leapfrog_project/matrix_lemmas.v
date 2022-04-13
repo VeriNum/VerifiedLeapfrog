@@ -160,7 +160,7 @@ Definition eigenvectors (n:nat) (M: @matrix C n n) (L: matrix n 1%nat)
 
 Definition max_vec_pred (n:nat) (L: @matrix C n 1%nat) (cmax : C) := 
   (forall i,  (i < n)%nat -> Cmod (coeff_mat Hierarchy.zero L i 0) <= Cmod cmax) /\ 
-  (exists i,  (i < n)%nat -> cmax = (coeff_mat Hierarchy.zero L i 0)).
+  (exists i,  (i < n)%nat /\ cmax = (coeff_mat Hierarchy.zero L i 0)).
 
 Definition max_eigenvalue (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat) 
   (p: eigenval_pred n M V L) (s2: sig (max_vec_pred n L)): C := proj1_sig s2.
