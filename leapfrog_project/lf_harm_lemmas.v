@@ -215,18 +215,18 @@ rewrite <- reflect_reify_q.
 assert (EV1: expr_valid q' = true) by auto.
 pose proof rndval_with_cond_correct2 q' EV1
   leapfrog_bmap (leapfrog_vmap f f0) H.
-Time destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
+destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
 (* this takes a moment to solve *)
-Time solve_Forall_conds.
+solve_Forall_conds; interval.
 -
 rewrite <- reflect_reify_p.
 assert (EV1: expr_valid p' = true) by auto.
 pose proof rndval_with_cond_correct2 p' EV1
   leapfrog_bmap (leapfrog_vmap f f0) H.
 (* this takes a moment to print *)
-Time destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
+destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
 (* this takes a moment to solve *)
-Time solve_Forall_conds.
+solve_Forall_conds; interval.
 Qed.
 
 
