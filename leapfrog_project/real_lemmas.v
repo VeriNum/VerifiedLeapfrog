@@ -5,6 +5,13 @@ From Flocq Require Import Core.
 
 Require Import vcfloat.RAux.
 
+Require Import Interval.Tactic.
+
+Import Coq.Logic.FunctionalExtensionality.
+
+Set Bullet Behavior "Strict Subproofs". 
+
+
 Lemma Rabs_triang_aux : 
   forall a b c : R,
   Rabs a + Rabs b <= c ->
@@ -314,18 +321,28 @@ rewrite Rabs_mult.
 nra.
 Qed.
 
-
-Definition Rprod_minus (x y : R * R) : R * R :=
+Definition Rprod : Type := R * R.
+Declare Scope Rprod.
+Delimit Scope Rprod with Rprod.
+Bind Scope Rprod with Rprod.
+  
+Definition Rprod_minus (x y : Rprod) : Rprod :=
   (Rminus (fst x) (fst y), Rminus (snd x) (snd y)).
 
-Definition Rprod_plus (x y : R * R) : R * R :=
+Definition Rprod_plus (x y : Rprod) : Rprod :=
   (Rplus (fst x) (fst y), Rplus (snd x) (snd y)).
 
-Definition Rprod_norm (x : R * R) : R  :=
-  sqrt ( (fst x) ^ 2 +  (snd x) ^ 2).
+Definition Rprod_norm (x : Rprod) : R  :=
+  sqrt ( fst x ^ 2 +  snd x ^ 2).
 
-Lemma Rprod_triang_ineq x y: 
-Rprod_norm ( Rprod_plus x y) <= Rprod_norm x + Rprod_norm y.
+Notation " L1 - L2 " := (Rprod_minus L1 L2) (at level 50, left associativity) : Rprod.
+
+Notation " L1 + L2 " := (Rprod_plus L1 L2) (at level 50,  left associativity) : Rprod.
+
+Notation "∥ L ∥" := (Rprod_norm L%Rprod) (at level 10, L at level 90) : R_scope.
+Notation "∥·∥" := Rprod_norm (only parsing) : R_scope.
+
+Lemma Rprod_triang_ineq x y: ∥ x + y ∥ <=  ∥ x ∥ + ∥ y ∥.
 Proof.
 destruct x, y.
 unfold Rprod_plus, Rprod_norm, fst, snd.
@@ -360,8 +377,7 @@ rewrite <- Rsqr_pow2.
 apply Rle_0_sqr.
 Qed.
 
-Lemma Rprod_norm_plus_minus_eq x y z:
-Rprod_norm ( Rprod_minus x y) = Rprod_norm ( Rprod_plus (Rprod_minus x z) (Rprod_minus z y)).
+Lemma Rprod_norm_plus_minus_eq x y z:  ∥ x - y ∥ = ∥ (x - z) + (z - y) ∥.
 Proof.
 intros.
 destruct x, y, z.
@@ -371,10 +387,406 @@ nra.
 Qed.
 
 
-Lemma Rnorm_pos x:
-0 <= Rprod_norm x.
+Lemma Rnorm_pos x: 0 <= ∥ x ∥.
 Proof.
 unfold Rprod_norm.
 apply sqrt_pos.
+Qed.
+
+Lemma Rprod_plus_assoc :
+forall a b c : Rprod,  ( (a+b)+c = a+(b+c) )%Rprod. 
+Proof.
+intros.
+unfold Rprod_plus.
+simpl. f_equal; nra.
+Qed.
+
+Lemma Rprod_plus_sym :
+forall a b : Rprod,  ( a + b = b + a )%Rprod.
+Proof.
+intros.
+unfold Rprod_plus.
+f_equal; nra.
+Qed.
+
+Lemma sum_pow_mult_l:
+  forall a : R,
+  forall n : nat,
+  a * sum_f 0 n (fun m => a ^ m ) = 
+  sum_f 1 (S n) (fun m => a ^ m ).
+Proof.
+intros.
+replace (a * sum_f 0 n (fun m => a ^ m ) )
+with 
+( sum_f 0 n (fun m => a ^ m * a )).
++ replace (fun m : nat => a ^ m * a) with 
+(fun m : nat => a ^ (m+1)).
+induction n.
+++ unfold sum_f. simpl. nra.
+++ set (yy:=sum_f 0 (S n) (fun m : nat => a ^ (m + 1))).
+rewrite sum_f_n_Sm. rewrite <- IHn. subst yy.
+rewrite sum_f_n_Sm. repeat f_equal. ring. 
+apply Nat.le_0_l.
+rewrite <- Nat.succ_le_mono.
+apply Nat.le_0_l.
+++ apply functional_extensionality.
+intros. replace (x+1)%nat 
+  with (S x) by ring.
+simpl; nra.
++  induction n.
+++ unfold sum_f. simpl. nra.
+++  rewrite sum_f_n_Sm. rewrite IHn.
+rewrite sum_f_n_Sm. field_simplify. nra. 
+apply Nat.le_0_l. apply Nat.le_0_l.
+Qed.
+
+Lemma sum_pow_mult_r : 
+  forall a : R,
+  forall n : nat,
+  sum_f 0 n (fun m => a ^ m ) * a = 
+  sum_f 1 (S n) (fun m => a ^ m ).
+Proof.
+intros.
+rewrite Rmult_comm.
+apply sum_pow_mult_l.
+Qed.
+
+Lemma sum_pow_first :
+  forall a : R,
+  forall n : nat,
+  sum_f 0 (S n) (fun m => a ^ m ) = 
+  sum_f 1 (S n) (fun m => a ^ m ) + 1.
+Proof.
+intros.
+induction n. 
++ unfold sum_f. simpl. nra.
++ 
+match goal with |-context[?a = ?b]=>
+set (yy:= a)
+end.
+rewrite sum_f_n_Sm.
+rewrite Rplus_assoc.
+rewrite Rplus_comm.
+rewrite Rplus_comm in IHn.
+rewrite Rplus_assoc.
+rewrite <- IHn.
+subst yy.
+rewrite sum_f_n_Sm.
+rewrite IHn.
+field_simplify. nra.
+apply Nat.le_0_l.
+rewrite <- Nat.succ_le_mono.
+apply Nat.le_0_l.
+Qed.
+
+Definition error_sum error n: R:=
+ match n with 
+  | 0 => 0
+  | S n' => sum_f 0 n' (fun m => error ^ m )
+end.
+
+Lemma error_sum_aux n (er: R):
+  error_sum er n + er ^ n = error_sum er (S n).
+Proof.
+intros.
+induction n. 
++  simpl. unfold sum_f. simpl. nra.
++ unfold error_sum.
+rewrite sum_f_n_Sm; auto.
+apply Nat.le_0_l.
+Qed.
+
+Lemma error_sum_aux2 er n:
+  er * error_sum er n + 1  = error_sum er (S n).
+Proof.
+intros.
+induction n. 
++  simpl. unfold sum_f. rewrite Rmult_0_r. simpl. nra.
++ unfold error_sum.
+rewrite Rmult_comm.
+rewrite sum_pow_mult_r.
+rewrite sum_pow_first.
+nra.
+Qed.
+
+Lemma Rmax_mult_le_pos a b:
+0 <=a -> 
+0 <= b ->  
+a * b <= Rmax a b ^2.
+Proof.
+intros.
+cbv [Rmax]. destruct Rle_dec.  
+eapply Rle_trans.
+apply Rmult_le_compat_r; auto.
+apply r. nra.
+apply Rnot_le_lt in n.
+eapply Rle_trans.
+apply Rmult_le_compat_l; auto.
+apply Rlt_le in n.
+apply n. nra.
+Qed.
+
+Lemma Rmax_mult_le_neg  a b:
+a <= 0 -> 
+b <= 0 ->  
+a * b <= Rmin a b ^2.
+Proof.
+intros.
+cbv [Rmin]. destruct Rle_dec.  
+eapply Rle_trans.
+assert (a * b <= a * a) by nra.
+apply H1. nra.
+apply Rnot_le_lt in n.
+eapply Rle_trans.
+assert (a * b <= b * b) by nra.
+apply H1. nra.
+Qed.
+
+Lemma bounded_one_plus_pow:  
+forall x n,
+0 <= x ->
+(1 + x)^n <= exp ( INR n * x).
+Proof.
+intros.
+induction n.
++ simpl. rewrite Rmult_0_l.
+rewrite exp_0; nra.
++ 
+rewrite <- tech_pow_Rmult.
+eapply Rle_trans.
+eapply Rmult_le_compat_l; try nra.
+apply IHn.
+eapply Rle_trans.
+pose proof exp_ineq1_le x.
+eapply Rmult_le_compat_r; try nra.
+pose proof exp_pos (INR n * x).
+apply Rlt_le in H1; auto.
+apply H0.
+rewrite <- exp_plus.
+rewrite S_INR.
+apply Req_le.
+f_equal.
+nra.
+Qed.
+
+(* apparently this is already covered by Constant Coq.Reals.PartSum.tech3*)
+Theorem geo_series_closed_form:
+forall r k ,
+r <> 1 ->
+sum_f 0 k (fun m => r ^ m ) = (1-(r^(S k)))/(1-r).
+Proof.
+intros.
+induction k.
++ unfold sum_f. simpl. field_simplify. nra. lra. 
++ rewrite sum_f_n_Sm .
+++ rewrite IHk.
+match goal with|- context [?a/?aa + ?b = _] =>
+replace  b with 
+((r ^ S k)*(1-r)/(1-r))
+end.
+field_simplify; try nra.
+replace  (- r ^ S k * r) with
+(- r ^ S (S k) ).
+nra.
+simpl. nra.
+field_simplify; try nra.
+++ apply Nat.le_0_l.
+Qed.
+
+Lemma mult_pos : 
+forall a b, 0 < a * b -> 0 <= a -> 0 < b.
+Proof.
+intros; nra.
+Qed.
+
+Lemma is_lim_exp_pow: 
+forall n ,
+is_lim (fun y : R => exp (INR n * y)) 0 1.
+Proof.
+intros.
+induction n.
++ simpl. 
+apply (is_lim_ext (fun y : R => exp 0)  (fun y : R => exp (0 * y))).
+intros. rewrite Rmult_0_l; auto. 
+replace (exp 0) with 1.
+apply is_lim_const.
+field_simplify. symmetry; (apply exp_0).
++ rewrite S_INR. 
+apply (is_lim_ext (fun y : R => exp ((INR n * y + y) )) 
+    (fun y : R => exp ((INR n + 1) * y))).
+intros. f_equal. nra.
+apply ( is_lim_ext (fun y : R => exp (INR n * y) * exp y)  
+    (fun y : R => exp ((INR n * y + y) ))).
+intros. rewrite <- exp_plus; nra.
+pose proof (is_lim_mult (fun x => exp (INR n * x)) (fun x => exp x) 0 1 1 IHn) .
+assert (is_lim (fun x : R => exp x) 0 1).
+pose proof Lim_exp 0. simpl in H0.
+pose proof (Lim_correct) (fun y : R => exp y) 0 (ex_lim_exp 0).
+rewrite exp_0 in H0.
+rewrite H0 in H1; auto.
+assert (ex_Rbar_mult 1 1).
+unfold ex_Rbar_mult; nra.
+specialize (H H0 H1).
+apply (is_lim_ext (fun y : R => (fun x : R => exp (INR n * x)) y * (fun x : R => exp x) y)
+    (fun y : R => exp (INR n * y) * exp y)) in H.
+simpl in H. rewrite Rmult_1_l in H. apply H.
+intros. f_equal.
+Qed.
+
+Lemma square_abs :
+forall x : R, x ^ 2 = (Rabs x) ^ 2.
+Proof.
+intros. 
+pose proof Rsqr_abs x.
+assert (x  ^ 2 = Rsqr x).
+unfold Rsqr; nra.
+rewrite pow2_abs.
+rewrite H0; nra.
+Qed.
+
+Lemma sqrt_le : 
+forall a b, 
+a ^ 2 <= b ->
+Rabs a <= sqrt b.
+Proof.
+intros.
+replace b with (sqrt b ^2) in H.
+replace (a ^ 2) with (Rsqr a) in H by (unfold Rsqr; nra).
+replace (sqrt b ^ 2) with (Rsqr (sqrt b)) in H by (unfold Rsqr; nra).
+apply Rsqr_le_abs_0 in H. 
+pose proof Rabs_pos_eq (sqrt b) (sqrt_pos b). rewrite <- H0.
+auto.
+apply pow2_sqrt.
+eapply Rle_trans. 
+2 : apply H.
+apply square_pos.
+Qed.
+
+Lemma Rprod_minus_comm : forall a b, ∥ a - b ∥ = ∥ b - a ∥.
+Proof.
+intros. 
+unfold Rprod_norm, Rprod_minus.
+destruct a; destruct b; unfold fst, snd.
+f_equal. simpl. nra.
+Qed.
+
+Lemma Rprod_triang_inv : forall a b, ∥a∥ - ∥b∥ <= ∥ a - b ∥.
+Proof.
+intros.
+assert ( ∥ a ∥ = ∥ (a-b)+b ∥ ).
+  - unfold Rprod_norm, Rprod_plus, Rprod_minus.
+  destruct a; destruct b. f_equal. unfold fst, snd. nra.
+-
+rewrite H.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply Rprod_triang_ineq.
+apply Req_le. rewrite Rprod_minus_comm.
+nra.
+Qed.
+
+Lemma error_sum_le_Sn :
+  forall a n,
+  0 <= a ->  
+  error_sum a n <=
+  error_sum a (S n).
+Proof.
+intros.
+pose proof error_sum_aux n a.
+rewrite <- H0.
+rewrite Rplus_comm.
+apply Rle_minus_l.
+field_simplify.
+apply pow_le; nra.
+Qed.
+
+Lemma error_sum_pos:
+forall a n , 
+0 <= a -> 
+0 <=   error_sum a n.
+Proof.
+intros.
+induction n.
++ simpl; nra.
++ pose proof (error_sum_aux n a).
+rewrite <- H0.
+rewrite Rplus_comm.
+apply Rle_plus.
+apply pow_le; auto.
+apply IHn.
+Qed.
+
+Lemma error_sum_le_trans_aux :
+  forall a,
+  forall m n,
+  (n <= m)%nat -> 
+  ( 1 <= a) ->  
+  error_sum a (S n) <=
+  error_sum a (S m).
+Proof.
+intros.
+pose proof (error_sum_aux m a).
+rewrite <- H1.
+pose proof (error_sum_aux n a).
+rewrite <- H2.
+clear H1 H2.
+induction m.
+- assert (n = 0)%nat by lia. subst; simpl; nra.
+- assert ((n = S m)%nat \/ ((n < S m)%nat)) by lia.
+destruct H1. 
++ subst ; apply Req_le; auto.
++ assert  (n <= m)%nat by lia.
+specialize (IHm H2).
+eapply Rle_trans.
+apply IHm.
+eapply Rle_trans.
+apply Rplus_le_compat_l.
+assert (m <= S m)%nat by lia.
+pose proof Rle_pow a m (S m) H0 H3.
+apply H4.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply error_sum_le_Sn; nra.
+apply Req_le.
+auto.
+Qed.
+
+Lemma error_sum_le_trans :
+  forall a,
+  forall m n,
+  (n <= m)%nat -> 
+  ( 1 <= a) ->  
+  error_sum a n <=
+  error_sum a m.
+Proof.
+intros.
+destruct n.
+- simpl. apply error_sum_pos; nra.
+- destruct m.
++ lia.
++ apply error_sum_le_trans_aux; try lia; lra.
+Qed.
+
+Lemma error_sum_GS :
+forall n,
+forall h,
+0 < h -> 
+error_sum (1 + h) n = ((1 + h) ^ n - 1) / h.
+Proof.
+intros.
+induction n.
+- simpl. nra.
+- unfold error_sum.
+assert (1 + h <> 1) by nra.
+pose proof geo_series_closed_form (1 + h) n H0.
+rewrite H1. 
+replace (((1 - (1 + h) ^ S n) / (1 - (1 + h))))
+with (( (1 + h) ^ S n - 1) / h).
+field_simplify;
+repeat nra.
+set (aa:=(1 + h) ^ S n).
+apply Stdlib.Rdiv_eq_reg.
+nra.
+all : nra.
 Qed.
 

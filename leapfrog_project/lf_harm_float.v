@@ -1,99 +1,104 @@
-(* This file defines a functional model for the C
-   program.  *)
-
+From Coq Require Import ZArith Reals Psatz.
 From Flocq Require Import Binary Bits Core.
-From compcert.lib Require Import IEEE754_extra Coqlib Floats Zbits Integers.
+From compcert.lib Require Import IEEE754_extra
+ (* Coqlib Floats Zbits Integers*).
 
-Require Import float_lib.
+Require Import vcfloat.FPCore vcfloat.Reify vcfloat.Float_notations.
+Set Bullet Behavior "Strict Subproofs". 
 
 Local Open Scope float32_scope.
 
-(* Linear forcing function *)
-Definition F (x : float32) : float32 := -x.
+Section WITHNANS.
+Context {NANS: Nans}.
 
-(* Time step*)
-Definition h := 1 / 32.
-Definition half_h := 1 / 64.
-Definition pow2_h := 1/1024.
-Definition half_pow2_h := 1/2048.
-
-
-(* Single step of integration*)
-Definition leapfrog_step' ( ic : float32 * float32) : float32 * float32 :=
-  let x  := fst ic in let v:= snd ic in 
-  let x' := x + h * v + half_pow2_h * F x in
-  let v' :=  v +  half_h * (F x + F x')  in 
-  (x', v').
+(** A single step of integration can modeled as either 
+(1) a transition matrix update to the vector (p,q) of momentum "p" and position "q", as
+  given in "leapfrog_stepF"
+-or-
+(2) the "typical" velocity verlet scheme, as given in "leapfrog_stepF_ver" **)
 
 
-(* Single step of integration*)
-Definition leapfrog_step ( ic : float32 * float32) : float32 * float32 :=
+(** Compute one time-step: given "ic" which is a pair of momentum "q" and position "p" ,
+  calculate the new position and mometum after time "h" has elapsed. **)
+
+Definition h : ftype Tsingle := 1 / 32.   (* Time-step: 1/32 of a second *)
+Definition ω : ftype Tsingle := 1.
+
+(* Linear force function *)
+Definition F_alt (x : ftype Tsingle) : ftype Tsingle := -((ω*ω)*x).
+Definition F (x : ftype Tsingle) : ftype Tsingle := -x.
+(* We will use F rather than F_alt in the floating-point functional model,
+  because the C program omits the multiplication by 1.0*1.0.  
+  You might think that (1.0*1.0)*x is the same as x, but we do
+  not wish to use the identity (1.0*x=x)  _in the floats_;  we want
+  to match exactly the computation that the C program does. *)
+
+(* Single step of Verlet integration *)
+Definition leapfrog_stepF (ic : ftype Tsingle * ftype Tsingle) : ftype Tsingle * ftype Tsingle :=
   let x  := fst ic in let v:= snd ic in 
   let x' := (x + h * v) + ((1/2) * (h * h)) * F x in
   let v' :=  v +  (1/2 * h) * (F x + F x') in 
   (x', v').
 
 
-Lemma lf_funs_eq ( ic : float32 * float32):
-leapfrog_step' ic = leapfrog_step ic.
-Proof.
-unfold leapfrog_step', leapfrog_step, F, half_pow2_h, h, half_h.
-replace (1 / 2048) with (1 / 2 * (1 / 32 * (1 / 32))); auto.
-replace (1 / 64) with (1 / 2 * (1 / 32)); auto.
-all: apply B2R_inj; auto.
-Qed.
-
+(** Iterations **)
 
 (* Main *)
-Fixpoint leapfrog' ( ic : float32 * float32) (n : nat) : float32 * float32:=
+Fixpoint iternF (ic: ftype Tsingle * ftype Tsingle) (n : nat): ftype Tsingle * ftype Tsingle:=
   match n with
   | 0%nat => ic
   | S n' =>
-    let  ic' := leapfrog_step' ic in
-    leapfrog' ic' n'
-  end.
-
-(* assumes inputs of (p, w * q, w, n) *)
-(* output q' will therefore be scaled appropriately *)
-Fixpoint leapfrogF (p q : float32) (n : nat): float32 * float32:=
-  match n with
-  | 0%nat => (p , q)
-  | S n' =>
-    let q' := (1 - half_pow2_h) * q + (h * p) in
-    let p' := (1 - half_pow2_h) * p - (half_h * (2 - half_pow2_h)) * q in 
-  leapfrogF p' q' n'
+    let ic' := leapfrog_stepF ic in
+  iternF  ic' n'
 end.
+
+
+(** Lemmas **)
+
 
 Lemma lfstep_lfn:
   forall n ic ,
-  leapfrog_step' (leapfrog' ic n) = leapfrog' (leapfrog_step' ic) n.
+  leapfrog_stepF (iternF ic n) = iternF (leapfrog_stepF ic) n.
 Proof.
 induction n. 
 - auto.
 - simpl. auto. 
 Qed.
 
-Lemma lfn_eq_lfstep:
+
+Lemma step_iternF:
   forall n ic ,
-  leapfrog' ic (S n) = leapfrog_step' (leapfrog' ic n).
+  iternF  ic (S n) = leapfrog_stepF (iternF ic n).
 Proof.
 induction n.
 - auto.
 - intros. rewrite -> IHn. simpl. 
-replace (leapfrog_step' (leapfrog' ic n)) with (leapfrog' (leapfrog_step' ic) n). destruct (leapfrog_step' ic). 
+replace (leapfrog_stepF (iternF _ _ )) with (iternF (leapfrog_stepF ic) n). 
+  destruct (leapfrog_stepF ic). 
 all: symmetry; apply lfstep_lfn. 
 Qed.
 
-
-Definition iternF  (n:nat) (x v :float32) :=  leapfrog' (x%F32, v%F32) n.
-
-
-Lemma step_iternF : 
-  forall n : nat,
-  forall x v : float32,
-  (iternF (S n) x v) = leapfrog_step' (iternF n x v).
+Lemma Ziter_itern:  (* Delete this lemma?  doesn't seem to be used. *)
+  forall x v i,
+  (Z.iter i leapfrog_stepF (x, v)) = iternF (x, v) (Z.to_nat i).
 Proof.
-intros; unfold iternF; 
-rewrite ?lfn_eq_lfstep; 
-congruence.
+intros.
+destruct (Z_le_dec 0 i).
+-
+ pattern i at 1; rewrite <- (Z2Nat.id i)  by auto.
+ clear.
+ set (xv := (x,v)). clearbody xv.
+revert xv; induction (Z.to_nat i); intros.
+ + reflexivity.
+ + rewrite inj_S. rewrite Zbits.Ziter_succ by lia. simpl iternF.
+     rewrite IHn.
+     apply lfstep_lfn.
+-
+  rewrite Zbits.Ziter_base by lia.
+  destruct i; try lia. simpl. auto.
 Qed.
+
+
+End WITHNANS.
+
+
