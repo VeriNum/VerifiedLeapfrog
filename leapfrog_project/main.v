@@ -32,7 +32,6 @@ inv H. inv H4. inv H5.
 pose proof yes_iternF_is_finite.
 destruct (H 100%nat ltac:(lia)).
 pose proof yes_total_error_100.
-change initial_x with q_init. change initial_v with p_init.
 set (xv := iternF (q_init, p_init) 100) in *.
 clearbody xv.
 unfold_for_go_lower; normalize.
@@ -52,4 +51,26 @@ apply subsume_integrate.
 repeat constructor; intro H; simpl in H; decompose [or] H; try discriminate; auto.
 Qed.
 
+(* Print Assumptions body_integrate_highlevel. *)
+
+Lemma body_main: semax_body Vprog Gprog f_main main_spec.
+Proof.
+start_function.
+forward_call. apply yes_iternF_is_finite.
+forget (iternF (q_init, p_init) 100)  as a.
+forward.
+cancel.
+Qed.
+
+#[export] Existing Instance NullExtension.Espec.
+
+Lemma prog_correct:
+  semax_prog prog tt Vprog Gprog.
+Proof.
+  prove_semax_prog.
+  semax_func_cons body_force.
+  semax_func_cons body_lfstep.
+  semax_func_cons body_integrate.
+  semax_func_cons body_main.
+Qed.
 

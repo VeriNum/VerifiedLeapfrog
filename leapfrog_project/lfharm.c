@@ -52,4 +52,3 @@ int main(void)
     integrate (&x, &v);
     return 0;
 }
-
