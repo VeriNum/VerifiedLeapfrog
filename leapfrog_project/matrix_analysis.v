@@ -66,91 +66,6 @@ Definition eigenvector_matrix (h : R) : @matrix C 2 2 :=
    mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then fst (eV_1 h) else
     if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then fst (eV_2 h) else 1).
 
-(*
-Definition lambda_1 (h : R) : R := (1 -0.5 * h^2 -  h * sqrt(h - 2) * 0.5 * sqrt(h + 2)). 
-Definition lambda_2 (h : R) : R := (1 -0.5 * h^2 +  h * sqrt(h - 2) * 0.5 * sqrt(h + 2)).
-Search (Nat.eqb).
-Definition eigenvalue_matrix (h : R) : @matrix R 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ((Nat.eqb i 0) && (Nat.eqb j 0) ) then lambda_1 h else
-    if ( (Nat.eqb i 1) && (Nat.eqb j 1) ) then lambda_2 h else 0).
-
-
-Definition eV_1 (h: R) : R * R := (( -0.5 * sqrt(h^2 - 4)) , 1).
-Definition eV_2 (h: R) : R * R := (( 0.5 * sqrt(h^2 - 4)) , 1).
-Definition eigenvector_matrix (h : R) : @matrix R 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then fst (eV_1 h) else
-    if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then fst (eV_2 h) else 1).
-
-*)
-(*
-Lemma eigenval_check_1 (h : R) :
-  coeff_mat Hierarchy.zero (eigenvalue_matrix h) 0 0 = -h^2/2 - h*sqrt(h - 2)*sqrt(h + 2)/2 + 1.
-Proof.
-unfold eigenvalue_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl; unfold lambda_1.
-field_simplify.
-nra.
-Qed.
-
-Lemma eigenval_check_2 (h : R) :
-  coeff_mat Hierarchy.zero (eigenvalue_matrix h) 1 1 = -h^2/2 + h*sqrt(h - 2)*sqrt(h + 2)/2 + 1.
-Proof.
-unfold eigenvalue_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl. unfold lambda_2.
-field_simplify.
-nra.
-Qed.
-
-Lemma eigenval_check_3 (h : R) :
-  coeff_mat Hierarchy.zero (eigenvalue_matrix h) 1 0 = 0 /\
-  coeff_mat Hierarchy.zero (eigenvalue_matrix h) 0 1 = 0.
-Proof.
-split.
-unfold eigenvalue_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl; nra. 
-unfold eigenvalue_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl; nra. 
-Qed.
-
-
-
-Lemma eigenvec_check_1 (h : R) :
-  coeff_mat Hierarchy.zero (eigenvector_matrix h) 0 0 = -sqrt(h^2 - 4)/2.
-Proof.
-unfold eigenvector_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl; unfold eV_1.
-field_simplify.
-nra.
-Qed.
-
-Lemma eigenvec_check_2 (h : R) :
-  coeff_mat Hierarchy.zero (eigenvector_matrix h) 0 1 = sqrt(h^2 - 4)/2.
-Proof.
-unfold eigenvector_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl; unfold eV_2.
-field_simplify.
-nra.
-Qed.
-
-Lemma eigenvec_check_3 (h : R) :
-  coeff_mat Hierarchy.zero (eigenvector_matrix h) 1 1 = 1 /\
-  coeff_mat Hierarchy.zero (eigenvector_matrix h) 1 0 = 1.
-Proof.
-split.
-unfold eigenvector_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl; nra.
-unfold eigenvector_matrix. 
-rewrite coeff_mat_bij; try lia. 
-simpl; nra.
-Qed.
-*)
 
 Lemma mult_aux1 (a b : R ) :
   @mult C_Ring (a , 0) (0 , b) = (0 , a * b).
@@ -466,20 +381,20 @@ with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
 f_equal; try nra.
 field_simplify.
 rewrite pow2_sqrt; try nra.
-admit (*h * h - 2 <> 0*).
-admit (*h * h - 2 <> 0*).
+all : cbv; nra.
 +
 subst.
 simpl.
-cbv [mult Cmult]; simpl.
+repeat cbv [mult Cmult plus Cplus]; simpl.
 rewrite ?mult_aux1.
 rewrite ?mult_aux2. 
 rewrite ?mult_aux3.
-cbv [mult Cmult]; simpl. repeat rewrite Rmult_0_r; unfold C0.
-cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
-repeat rewrite Rmult_1_r. repeat rewrite Rplus_0_r.
+repeat cbv [mult Cmult plus Cplus C0]; simpl.
+repeat rewrite Rmult_0_r.
+repeat rewrite Rplus_0_r.
+repeat rewrite Rmult_1_r. 
+repeat rewrite Rplus_0_r.
 repeat rewrite Rminus_0_r.
-cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
 repeat rewrite Rplus_0_l.
 rewrite Rmult_assoc.
 rewrite Rmult_assoc.
@@ -489,10 +404,9 @@ rewrite <- sqrt_mult; try nra.
 replace (((h * h + 4) * (h * (h * (h * h)) - 4 * (h * h) + 16))) 
 with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
 f_equal; try nra.
-field_simplify.
+field_simplify. 
 rewrite pow2_sqrt; try nra.
-admit (*h * h - 2 <> 0*).
-admit (*h * h - 2 <> 0*).
+all : cbv; nra.
 -
 assert (B: j = 0%nat \/ j = 1%nat) by lia;
 destruct B. 
@@ -517,11 +431,31 @@ rewrite <- sqrt_mult; try nra.
 replace (((h * h + 4) * (h * (h * (h * h)) - 4 * (h * h) + 16))) 
 with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
 f_equal; try nra.
-field_simplify.
-Search ( _ = _ / _).
-rewrite pow2_sqrt; try nra.
-admit (*h * h - 2 <> 0*).
-admit (*h * h - 2 <> 0*).
+simpl. cbv -[sqrt]. field.
+all : cbv; nra. 
++
+subst.
+simpl.
+cbv [mult Cmult]; simpl.
+rewrite ?mult_aux1.
+rewrite ?mult_aux2. 
+rewrite ?mult_aux3.
+cbv [mult Cmult]; simpl. repeat rewrite Rmult_0_r; unfold C0.
+cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
+repeat rewrite Rmult_1_r. repeat rewrite Rplus_0_r.
+repeat rewrite Rminus_0_r.
+cbv [plus Cplus]; simpl. repeat rewrite Rplus_0_r.
+repeat rewrite Rplus_0_l.
+repeat rewrite Rmult_1_l.
+repeat rewrite Rmult_0_l.
+symmetry.
+rewrite Rmult_assoc.
+rewrite <- sqrt_mult; try nra.
+replace (((h * h + 4) * (h * (h * (h * h)) - 4 * (h * h) + 16))) 
+with ((h * (h * (h * (h * (h * h)))) + 64)) by nra.
+f_equal; try nra.
+simpl. cbv -[sqrt]. field.
+all : cbv; nra. 
 Qed.
 
 (* define P D such that P D invP *)
