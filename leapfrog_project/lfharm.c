@@ -8,8 +8,7 @@
  * FORCE: compute force for harmonic oscillator, unity mass.
  */
 
-float force(float x)
-{
+float force(float x) {
   return - /* 1.0f * */ x;
 }
 
@@ -17,8 +16,7 @@ float force(float x)
  * LFSTEP: one step of integration.
  */
 
-void lfstep(float *x, float *v, float h)
-{
+void lfstep(float *x, float *v, float h) {
   float a;
 
   a = force(*x);
@@ -38,12 +36,10 @@ void integrate(float *x, float *v) {
     h = 1.0f / 32.0f;				/* timestep */
 
     /* integration loop */
-    for (n = 0; n < max_step; n++)
-    {
+    for (n = 0; n < max_step; n++)  {
 	   lfstep(x, v, h);			/* integration step */
 	   t = t + h;
     }
-
 }
   
 int main(void)
