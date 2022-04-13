@@ -408,12 +408,31 @@ field_simplify.
 symmetry; apply Rprod_norm_plus_minus_eq.
 Qed. 
 
-Theorem iternF_is_finite:
-  forall n : nat,  ( n <= 100)%nat->
-  (is_finite _ _  (fst(iternF (q_init,p_init)  n)) = true) /\
-  (is_finite _ _  (snd(iternF (q_init,p_init)  n)) = true).
+Definition total_error_100 (xv: ftype Tsingle * ftype Tsingle) :=
+  forall pt qt: R -> R,
+  let t0 := 0 in
+  let n := 100%nat in 
+  let tn := t0 + INR n * h in
+  pt t0 = FT2R p_init ->
+  qt t0 = FT2R q_init ->
+  Harmonic_oscillator_system pt qt ω t0 ->
+  ∥ (pt tn, qt tn) - (FT2R (snd xv), FT2R (fst xv)) ∥ <= 0.0223.
+
+Corollary yes_total_error_100: 
+          total_error_100 (iternF (q_init,p_init) 100).
 Proof.
 intros.
+red; intros.
+eapply Rle_trans.
+apply total_error; auto.
+clear.
+unfold local_round_off, Rprod_norm, fst,snd,h.
+interval.
+Qed.
+
+Theorem yes_iternF_is_finite: iternF_is_finite.
+Proof.
+hnf; intros.
 pose proof global_error bmd_init n H.
 destruct H0 as (A & _).
  lazymatch goal with

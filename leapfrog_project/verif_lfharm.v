@@ -6,12 +6,9 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 Open Scope logic.
 
 From vcfloat Require Import FPSolve Float_notations.
-Require Import lf_harm_float lf_harm_lemmas lf_harm_theorems.
+Require Import lf_harm_float (*lf_harm_lemmas lf_harm_theorems*).
 
 Set Bullet Behavior "Strict Subproofs". 
-
-
-
 
 Definition force_spec :=
  DECLARE _force
@@ -39,7 +36,7 @@ Definition integrate_spec :=
   DECLARE _integrate
   WITH xp: val, vp: val
   PRE [ tptr tfloat , tptr tfloat ]
-    PROP()
+    PROP(iternF_is_finite)
     PARAMS (xp; vp)
     SEP(data_at_ Tsh tfloat xp; data_at_ Tsh tfloat vp )
   POST [ tvoid ]
@@ -62,8 +59,6 @@ Proof.
 start_function.
 forward.
 Qed.
-
-
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
 Proof.
@@ -92,7 +87,6 @@ replace (BMULT Tsingle 0.5%F32 (BMULT Tsingle h h)) with
 auto.
 Qed.
 
-
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec.
 Proof.
 start_function.
@@ -116,7 +110,7 @@ pose (step n := iternF (initial_x, initial_v) (Z.to_nat n)).
   entailer!.
 - 
   forward_call.
-  apply iternF_is_finite; lia.
+  apply H; lia.
   forward.
   autorewrite with float_elim in *.
   entailer!.
@@ -136,6 +130,7 @@ auto.
    forward.
 Qed.
 
+(*
 Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
@@ -144,7 +139,7 @@ forget (iternF (initial_x, initial_v) 100)  as a.
 forward.
 cancel.
 Qed.
-
+*)
 
 
 

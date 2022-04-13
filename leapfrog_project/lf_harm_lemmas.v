@@ -20,11 +20,6 @@ Section WITHNANS.
 Context {NANS: Nans}.
 
 
-(* The initial conditions of the momentum "p" and position "q" specified for the integration scheme*)
-Definition p_init: ftype Tsingle :=  0%F32.
-Definition q_init: ftype Tsingle :=  1%F32.
-
-
 (** Calculate a new momentum, as a function of momentum p and position q *)
 Definition leapfrog_step_p q p  := snd (leapfrog_stepF (q,p)).
 (** Calculate a new posisition, as a function of momentum p and position q *)
