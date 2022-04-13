@@ -15,7 +15,7 @@ Definition integrate_spec_highlevel :=
     SEP(data_at_ Tsh tfloat xp; data_at_ Tsh tfloat vp )
   POST [ tvoid ]
    EX (xv: float32*float32),
-    PROP(total_error_100 xv)
+    PROP(accurate_harmonic_oscillator_100 xv)
     RETURN()
     SEP(data_at Tsh tfloat (Vsingle (fst xv)) xp; 
           data_at Tsh tfloat (Vsingle (snd xv)) vp ).
@@ -31,7 +31,7 @@ Intros. simpl in H.
 inv H. inv H4. inv H5.
 pose proof yes_iternF_is_finite.
 destruct (H 100%nat ltac:(lia)).
-pose proof yes_total_error_100.
+pose proof yes_accurate_harmonic_oscillator_100.
 set (xv := iternF (q_init, p_init) 100) in *.
 clearbody xv.
 unfold_for_go_lower; normalize.
