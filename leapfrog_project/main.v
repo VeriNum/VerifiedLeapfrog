@@ -4,7 +4,7 @@ Require Import real_lemmas.
 Require Import lfharm.
 Require Import verif_lfharm.
 Require Import lf_harm_float lf_harm_theorems.
-Require Import vcfloat.FPSolve.
+Require Import vcfloat.FPCompCert.
 
 Definition integrate_spec := 
   DECLARE _integrate

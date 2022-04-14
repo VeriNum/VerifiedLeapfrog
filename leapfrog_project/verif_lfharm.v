@@ -5,7 +5,7 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
 Open Scope logic.
 
-From vcfloat Require Import FPSolve Float_notations.
+From vcfloat Require Import FPCompCert Float_notations.
 Require Import lf_harm_float.
 
 Set Bullet Behavior "Strict Subproofs". 

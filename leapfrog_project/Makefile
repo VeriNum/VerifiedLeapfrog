@@ -15,8 +15,6 @@ _CoqProject: Makefile
 
 float_lib.vo: float_lib.v
 
-vcfloat.vo: vcfloat.v
-
 real_lemmas.vo: real_lemmas.v 
 
 lf_harm_float.vo: lf_harm_float.v
@@ -30,11 +28,10 @@ main.vo: main.v verif_lfharm.vo lf_harm_float.vo lf_harm_theorems.vo
 lfharm.v: lfharm.c
 	$(CC_LOC)/clightgen -normalize $<
 
-lf_harm_lemmas.vo: lf_harm_lemmas.v lf_harm_float.vo lf_harm_real.vo lf_harm_real_theorems.vo vcfloat.vo real_lemmas.vo
+lf_harm_lemmas.vo: lf_harm_lemmas.v lf_harm_float.vo lf_harm_real.vo lf_harm_real_theorems.vo real_lemmas.vo
 
-lf_harm_theorems.vo: lf_harm_theorems.v  lf_harm_float.vo lf_harm_real.vo lf_harm_real_theorems.vo vcfloat.vo real_lemmas.vo lf_harm_lemmas.vo 
+lf_harm_theorems.vo: lf_harm_theorems.v  lf_harm_float.vo lf_harm_real.vo lf_harm_real_theorems.vo real_lemmas.vo lf_harm_lemmas.vo 
 verif_lfharm.vo: lfharm.vo lf_harm_float.vo lf_harm_lemmas.vo lf_harm_theorems.vo
-
 
 %.vo: %.v
 	coqc $(COQFLAGS) -I . $<
