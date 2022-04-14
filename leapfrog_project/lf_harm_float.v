@@ -104,8 +104,8 @@ Definition q_init: ftype Tsingle :=  1%F32.
 
 Definition iternF_is_finite : Prop :=
   forall n : nat,  ( n <= 100)%nat->
-  (is_finite _ _  (fst(iternF (q_init,p_init)  n)) = true) /\
-  (is_finite _ _  (snd(iternF (q_init,p_init)  n)) = true).
+  (is_finite _ _  (fst(iternF (p_init,q_init)  n)) = true) /\
+  (is_finite _ _  (snd(iternF (p_init,q_init)  n)) = true).
 
 End WITHNANS.
 

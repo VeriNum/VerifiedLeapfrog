@@ -407,12 +407,31 @@ field_simplify.
 symmetry; apply Rprod_norm_plus_minus_eq.
 Qed. 
 
-Theorem iternF_is_finite:
-  forall n : nat,  ( n <= 100)%nat->
-  (is_finite _ _  (fst(iternF (p_init,q_init)  n)) = true) /\
-  (is_finite _ _  (snd(iternF (p_init,q_init)  n)) = true).
+Definition accurate_harmonic_oscillator_100 (pq: ftype Tsingle * ftype Tsingle) :=
+  forall pt qt: R -> R,
+  let t0 := 0 in
+  let n := 100%nat in 
+  let tn := t0 + INR n * h in
+  pt t0 = FT2R p_init ->
+  qt t0 = FT2R q_init ->
+  Harmonic_oscillator_system pt qt ω t0 ->
+  ∥ (pt tn, qt tn) - (FT2R (fst pq), FT2R (snd pq)) ∥ <= 0.0223.
+
+Corollary yes_accurate_harmonic_oscillator_100: 
+          accurate_harmonic_oscillator_100 (iternF (p_init,q_init) 100).
 Proof.
 intros.
+red; intros.
+eapply Rle_trans.
+apply total_error; auto.
+clear.
+unfold local_round_off, Rprod_norm, fst,snd,h.
+interval.
+Qed.
+
+Theorem yes_iternF_is_finite: iternF_is_finite.
+Proof.
+red; intros.
 pose proof global_error bmd_init n H.
 destruct H0 as (A & _).
  lazymatch goal with

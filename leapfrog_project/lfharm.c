@@ -4,47 +4,46 @@
 
 #include <math.h>
 
+struct state {float p, q;};
+
 /*
  * FORCE: compute force for harmonic oscillator, unity mass.
  */
 
-float force(float x) {
-  return - /* 1.0f * */ x;
+float force(float q) {
+  return -q;
 }
 
 /*
  * LFSTEP: one step of integration.
  */
 
-void lfstep(float *x, float *v, float h) {
+void lfstep(struct state *s, float h) {
   float a;
 
-  a = force(*x);
-  *x = *x + h * *v + (0.5f * (h * h)) * a;		/* position step */
-  *v = *v + (0.5f * h) * (a + force(*x));		/* velocity step */
+  a = force(s->q);
+  s->q = s->q + h * s->p + (0.5f * (h * h)) * a;	/* position step */
+  s->p = s->p + (0.5f * h) * (a + force(s->q));		/* velocity step */
 }
 
-void integrate(float *x, float *v) {
+void integrate(struct state *s) {
     int n, max_step, nstep;
     float t, h;
 
-    /* initial conditions */
-    *x = 1.0f; *v = 0.0f; t = 0.0f;
+    s->q = 1.0f; s->p = 0.0f; t = 0.0f;     /* initial conditions */
 
-    /* integration parameters */
-    max_step = 100;				/* number of integration steps */
-    h = 1.0f / 32.0f;				/* timestep */
+    max_step = 100;	                /* number of integration steps */
+    h = 1.0f / 32.0f;			/* timestep */
 
     /* integration loop */
-    for (n = 0; n < max_step; n++)  {
-	   lfstep(x, v, h);			/* integration step */
+    for (n = 0; n < max_step; n++) {
+	   lfstep(s, h);
 	   t = t + h;
     }
 }
   
-int main(void)
-{
-    float x, v;
-    integrate (&x, &v);
+int main(void) {
+    struct state s;
+    integrate (&s);
     return 0;
 }
