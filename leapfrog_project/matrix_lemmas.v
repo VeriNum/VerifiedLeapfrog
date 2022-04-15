@@ -22,19 +22,33 @@ Require Import Coq.Logic.FunctionalExtensionality.
 Definition C0: C := (0,0).
 Definition C1: C := (1,0).
 
-(* the transpose of a matrix *)
+
+(* matrix transpose *)
 Definition matrix_conj_transpose (n:nat) (M: @matrix C n n) := 
-  mk_matrix n n (fun i j => Cconj (coeff_mat Hierarchy.zero M j i)).
+  mk_matrix n n (fun i j => Cconj (coeff_mat Hierarchy.zero M j i))
+.
 
 
-(* complex matrix and vector with of zeros *)
+(* multiply a vector by a complex number *)
+Definition coeff_mult (a : C) (n:nat) (V: @matrix C n 1%nat) : @matrix C n n :=
+  @mk_matrix C n n (fun i j => 
+      Cmult a (@coeff_mat C n 1%nat Hierarchy.zero V i j))
+.
 
+
+(* complex zero matrix and zero vector *)
 Definition M0 (n:nat) : @matrix C n n := Mzero. 
-Definition V0 (n:nat) : @matrix C n 1%nat := mk_matrix n 1%nat (fun _ _ => C0).
+Definition V0 (n:nat) : @matrix C n 1%nat := mk_matrix n 1%nat (fun _ _ => C0)
+.
 
+
+(* identity *)
 Definition M_ID (n:nat) : @matrix C n n := 
-  mk_matrix n n (fun i j => if (eqb i j) then C1 else C0).
+  mk_matrix n n (fun i j => if (eqb i j) then C1 else C0)
+.
 
+
+(* ID MATRIX & ZERO MATRIX LEMMAS*)
 Lemma M_ID_equiv_M1 :
   forall n : nat, M_ID n = Mone.
 Proof.
@@ -90,7 +104,6 @@ apply coeff_mat_bij;lia.
 Qed.
 
 
-
 Lemma Mcong_transpose_zero (n: nat) (M: @matrix C n n) :
 matrix_conj_transpose n M = (M0 n) <-> M = (M0 n).
 Proof.
@@ -116,64 +129,84 @@ rewrite Ropp_0; auto.
 Qed.
 
 
-
 Lemma M0_coeff_zero (n: nat) :
-forall i j, @coeff_mat C n n (@zero C_AbelianGroup) (M0 n) i j = 0.
-Admitted.
-
-
-Definition diag_pred (n: nat) (M: @matrix C n n) := 
-  forall i j, (i < n)%nat /\ (j < n)%nat /\ (i <> j)%nat -> (@coeff_mat C n n Hierarchy.zero M i j) = zero.
-
-Definition vec_to_diag (n:nat) (V: @matrix C n 1%nat) : @matrix C n n :=
-  (@mk_matrix C n n (fun i j => if (eqb i j) then 
-      (@coeff_mat C n 1%nat Hierarchy.zero V i 0) else C0)).  
-
-Definition coeff_mult (a : C) (n:nat) (V: @matrix C n 1%nat) : @matrix C n n :=
-  @mk_matrix C n n (fun i j => 
-      Cmult a (@coeff_mat C n 1%nat Hierarchy.zero V i j)).
-
-(* V has columns that are eigenvectors of M, and M has elements that
-  are the corresponding eigenvalues *)
-Definition eigenval_pred (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat) : Prop := 
-  let LAM:= vec_to_diag n L in 
-  (Mmult M V) = (Mmult V LAM) /\ 
-  (forall j, (j < n)%nat -> (exists i, (i < n)%nat /\ ((@coeff_mat C n n Hierarchy.zero V i j) <> 0 ))) /\
-  (Mmult M V = M0 n <-> M = M0 n)
-.  
-
-
-Definition eigenvalues (n:nat) (M V: @matrix C n n) 
-  (s: sig (eigenval_pred n M V)): (@matrix C n 1%nat) := proj1_sig s. 
-
-Definition eigenvectors (n:nat) (M: @matrix C n n) (L: matrix n 1%nat) 
-  (s: sig (fun x => (eigenval_pred n M x L))) : (@matrix C n n):= proj1_sig s.
-
-
-Definition two_norm_pred (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat) (mod_lambda_max : R) := 
-  MTM = Mmult (matrix_conj_transpose n M) M  /\
-  eigenval_pred n MTM V L /\
-  (forall i,  (i < n)%nat -> Cmod (coeff_mat Hierarchy.zero L i 0) <= mod_lambda_max) /\ 
-  (exists i,  (i < n)%nat /\ mod_lambda_max = Cmod (coeff_mat Hierarchy.zero L i 0)).
-
-Definition two_norm_sqr (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat):= 
-  {l : R | two_norm_pred n M MTM V L l}.
-
-
-(* two_norm_sqr satifies matrix norm properties *)
-Lemma two_norm_sqr_pos (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat) :
-  forall (l : two_norm_sqr n M MTM V L),
-  0 <= proj1_sig l.
-Proof.
+forall i j, (i < n)%nat /\ (j < n)%nat -> @coeff_mat C n n (@zero C_AbelianGroup) (M0 n) i j = 0.
 intros.
-destruct l. simpl.
-unfold two_norm_pred in t; destruct t as (A & B & C & D).
-destruct D as (i & D1 & D2).
-subst.
-apply Cmod_ge_0.
+unfold M0, Mzero. apply coeff_mat_bij; lia.
 Qed.
 
 
+Lemma eq_M0_iff (n: nat) (M : @matrix C n n) :
+  M = M0 n <-> forall i j, ((i < n)%nat /\ (j < n)%nat) -> (@coeff_mat C_Ring n n zero M i j) = zero.
+Proof.
+split; intros.
+- 
+subst. unfold M0, Mzero.
+apply coeff_mat_bij; try lia; auto.
+- 
+destruct n.
++ 
+destruct M; auto.
++
+unfold M0, Mzero.
+pose proof @mk_matrix_bij C_Ring (S n) (S n) zero M as Hm.
+rewrite <- Hm.
+apply mk_matrix_ext => i j Hi Hj.
+apply H; auto.
+Qed.
+
+
+
+Lemma neq_M0_implies_aux1 (n: nat) (M1 : @matrix C n n) (M2 : @matrix C (S n) (S n)):
+  (M1 = M0 n -> False) ->
+  (forall i j, ((i < n)%nat /\ (j < n)%nat) -> (coeff_mat zero M2 i j) = (coeff_mat zero M1 i j)) -> 
+  (M2 = M0 (S n) -> False).
+Proof.
+intros.
+contradiction H; clear H.
+rewrite eq_M0_iff in H1.
+apply eq_M0_iff; intros. 
+specialize (H0 i j H).
+assert (HS: (i < S n)%nat /\ (j < S n)%nat) by lia.
+specialize (H1 i j HS).
+etransitivity. symmetry. eassumption.
+auto.
+Qed.
+(* end ID and 0 matrix lemmas *)
+
+
+
+(*******************)
+(* DIAGONAL MATRICES *)
+
+(* a matrix is diagonal if *)
+Definition diag_pred (n: nat) (M: @matrix C n n) := 
+  forall i j, (i < n)%nat /\ (j < n)%nat /\ (i <> j)%nat -> (@coeff_mat C n n Hierarchy.zero M i j) = zero
+.
+
+
+(* construct a diagonal matrix from a vector *)
+Definition vec_to_diag (n:nat) (V: @matrix C n 1%nat) : @matrix C n n :=
+  (@mk_matrix C n n (fun i j => if (eqb i j) then 
+      (@coeff_mat C n 1%nat Hierarchy.zero V i 0) else C0))
+.  
+
+
+(* vec_to_diag construction is a diagonal matrix *)
+Lemma vec_to_diag_pred (n: nat) (L: matrix n 1%nat) :
+  diag_pred n (vec_to_diag n L).
+Proof.
+unfold diag_pred, vec_to_diag; intros.
+rewrite coeff_mat_bij; try lia.
+destruct H as (A & B & C).
+apply Nat.eqb_neq in C.
+destruct eqb; auto; try discriminate.
+Qed.
+
+
+
+
+(* COMPLEX NUMBER LEMMAS *)
 Lemma Czero_sqs (x : C) :
   0<= Cmod x /\ Cmod x <= 0 -> Cmod x = 0.
 Proof.
@@ -182,7 +215,6 @@ intros.
 destruct H.
 apply Rle_antisym; auto.
 Qed.
-
 
 
 Lemma cmod_le_0 x: 
@@ -196,6 +228,37 @@ apply Czero_sqs.
 split; auto.
 Qed.
 
+
+Lemma mult_aux1 (a b : R ) :
+  @mult C_Ring (a , 0) (0 , b) = (0 , a * b).
+Proof.
+cbv. f_equal;
+nra.
+Qed.
+
+Lemma mult_aux2 (a b c: R ) :
+  @mult C_Ring (a , 0) (c , b) = (a * c , a * b).
+Proof.
+cbv. f_equal;
+rewrite Rmult_0_l; nra.
+Qed.
+
+Lemma mult_aux3 (a b c: R ) :
+  @mult C_Ring (0 , a) (b , c) = (-a * c , a * b).
+Proof.
+cbv. f_equal;
+rewrite Rmult_0_l; nra.
+Qed.
+
+
+
+Lemma Rmult_le (a b :R):
+  0 <= a * b ->  0 < a ->  0 <= b .
+Proof.
+intros.
+nra.
+Qed.
+(* end complex number lemmas *)
 
 
 (* multiplying two diagonal matrices preserves diag predicate*)
@@ -446,124 +509,84 @@ rewrite sum_n_n.
 unfold mult, Ring.mult; simpl; auto.
 Qed.
 
-Lemma eq_M0_iff (n: nat) (M : @matrix C n n) :
-  M = M0 n <-> forall i j, ((i < n)%nat /\ (j < n)%nat) -> (@coeff_mat C_Ring n n zero M i j) = zero.
+
+
+
+
+
+(**************************)
+(* MATRIX POWERS *)
+Fixpoint Mpow (m n: nat) (M: @matrix C m m): matrix m m:=  
+  match n with
+    | 0 => (M_ID m) 
+    | S n' => Mmult (Mpow m n' M) M  
+  end.
+
+Lemma Mpow_comm (m n : nat) (M: @matrix C m m) :
+Mmult M (Mpow m n M) = Mmult (Mpow m n M) M .
 Proof.
-split; intros.
+induction n.
 - 
-subst. unfold M0, Mzero.
-apply coeff_mat_bij; try lia; auto.
-- 
-destruct n.
-+ 
-destruct M; auto.
-+
-unfold M0, Mzero.
-pose proof @mk_matrix_bij C_Ring (S n) (S n) zero M as Hm.
-rewrite <- Hm.
-apply mk_matrix_ext => i j Hi Hj.
-apply H; auto.
-Qed.
-
-
-
-Lemma neq_M0_implies_aux1 (n: nat) (M1 : @matrix C n n) (M2 : @matrix C (S n) (S n)):
-  (M1 = M0 n -> False) ->
-  (forall i j, ((i < n)%nat /\ (j < n)%nat) -> (coeff_mat zero M2 i j) = (coeff_mat zero M1 i j)) -> 
-  (M2 = M0 (S n) -> False).
-Proof.
-intros.
-contradiction H; clear H.
-rewrite eq_M0_iff in H1.
-apply eq_M0_iff; intros. 
-specialize (H0 i j H).
-assert (HS: (i < S n)%nat /\ (j < S n)%nat) by lia.
-specialize (H1 i j HS).
-(*rewrite <- H0; auto.*) (*QUESTION*)
-Admitted.
-
-
-
-Lemma Cmult_integral (a b : C):
-  Cmult a b = C0 -> a = C0 \/ b = C0.
-Admitted.
-
-
-Lemma vec_to_diag_pred (n: nat) (L: matrix n 1%nat) :
-  diag_pred n (vec_to_diag n L).
-Proof.
-unfold diag_pred, vec_to_diag; intros.
-rewrite coeff_mat_bij; try lia.
-destruct H as (A & B & C).
-apply Nat.eqb_neq in C.
-destruct eqb; auto; try discriminate.
-Qed.
-
-
-
-Lemma two_norm_M0 (n : nat) (V: @matrix C n n) (L: matrix n 1%nat):
-  forall (l : two_norm_sqr n (M0 n) (M0 n) V L),
-  0 = proj1_sig l.
-Proof.
-intros.
-destruct l; simpl.
-destruct t as (A & B & C & D).
-destruct B as (B1 & B2 & B3).
-pose proof 
-  Mmult_diagonal_implies n V (vec_to_diag n L) Mzero (vec_to_diag_pred n L).
-destruct D as (j &Hj &D2); subst.
-specialize (B2 j Hj).
-destruct B2 as (i &Hi & HV).
-replace (Mmult (M0 n) V) with (@Mzero C_Ring n n) in B1 by (symmetry; apply Mmult_Mzero_l). 
-assert ((i < n)%nat /\ (j < n)%nat ) by lia.
-symmetry in B1.
-specialize (H B1 i j H0). 
-assert (@coeff_mat C_Ring n n zero Mzero i j = C0) by (apply M0_coeff_zero).
-rewrite H1 in H.
-symmetry in H.
-pose proof (  Cmult_integral (coeff_mat zero V i j) (coeff_mat zero (vec_to_diag n L) j j) H) as P.
-destruct P; try contradiction.
-unfold vec_to_diag in H2.
-rewrite coeff_mat_bij in H2; try lia. 
-replace 0 with (Cmod C0) by (apply Cmod_0).
-f_equal.
-rewrite <- H2.
-pose proof Nat.eqb_eq j j; destruct H3.
-specialize (H4 eq_refl).
-destruct eqb; try discriminate; auto.
-Qed.
-
-
-(* definiteness of the two-norm for invertible matrices *) 
-Lemma two_norm_sqr_definite (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat) :
-  (forall i, (@coeff_mat C n 1%nat Hierarchy.zero L i 0) <> C0) (* M is invertible iff all elements of L are non-zero *) -> 
-  forall (l : two_norm_sqr n M MTM V L),
-  0 = proj1_sig l <-> (forall i j, (i < n)%nat /\ (j < n)%nat -> (@coeff_mat C n n Hierarchy.zero M i j) = 0).
-Proof.
-intros. 
-intros; split; intros.
-- 
-destruct l.
-simpl in H0; subst.
-destruct t as (A & B & C & D).
-destruct D as (ii & Hii & D).
-symmetry in D.
-apply Cmod_eq_0 in D.
-specialize (H ii).
-rewrite D in H.
-contradiction.
+simpl.
+rewrite M_ID_equiv_M1.
+rewrite Mmult_one_l; auto.
+rewrite Mmult_one_r; auto.
 -
-apply eq_M0_iff in H0. subst.
-assert (MTM = M0 n).
-+ destruct l; destruct t as (A & _).
-replace (matrix_conj_transpose n (M0 n)) with (M0 n) in A by
-  (symmetry; rewrite Mcong_transpose_zero;auto).
-rewrite Mmult_Mzero_l in A; subst; auto.
-+
-subst.
-apply two_norm_M0.
+unfold Mpow; fold Mpow.
+rewrite <- IHn at 2.
+rewrite <- Mmult_assoc.
+auto.
 Qed.
 
 
+Lemma Mpow_pows_plus (m n n': nat) (M: @matrix C m m) : 
+ Mmult (Mpow m n M) (Mpow m n' M) = Mpow m (n + n') M.
+Proof.
+intros.
+induction n.
+- 
+simpl.
+rewrite M_ID_equiv_M1.
+rewrite Mmult_one_l; auto.
+-
+simpl.
+rewrite <- IHn.
+rewrite <- Mmult_assoc.
+rewrite <- Mmult_assoc.
+f_equal.
+apply Mpow_comm.
+Qed.
+
+
+Lemma Mpow_Sn_l (m n: nat) (M: @matrix C m m) :
+ Mmult M (Mpow m n M) = Mpow m (S n) M.
+Proof.
+unfold Mpow; fold Mpow.
+apply Mpow_comm.
+Qed.
+
+
+
+Lemma Mpow_mult_vec_swap (m n: nat) (M: @matrix C m m) (V: @matrix C m m) :
+  Mmult M (Mmult (Mpow m n M) V) =
+  Mmult (Mmult (Mpow m n M) M) V.
+Proof.
+induction n.
+- 
+simpl; auto.
+rewrite M_ID_equiv_M1.
+rewrite Mmult_one_l.
+rewrite Mmult_one_l; auto.
+-
+unfold Mpow; fold Mpow.
+rewrite <- IHn.
+rewrite <- Mpow_comm.
+rewrite <- Mmult_assoc.
+rewrite <- Mmult_assoc.
+f_equal.
+rewrite Mmult_assoc.
+rewrite  Mpow_comm.
+rewrite  Mmult_assoc; auto.
+Qed.
 
 Close Scope R_scope. 
