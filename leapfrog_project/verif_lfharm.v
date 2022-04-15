@@ -5,42 +5,44 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 
 Open Scope logic.
 
-From vcfloat Require Import FPSolve Float_notations.
-Require Import lf_harm_float (*lf_harm_lemmas lf_harm_theorems*).
+From vcfloat Require Import FPCompCert Float_notations.
+Require Import lf_harm_float.
 
 Set Bullet Behavior "Strict Subproofs". 
 
 Definition force_spec :=
  DECLARE _force
- WITH  x : ftype Tsingle
- PRE [ tfloat ] PROP() PARAMS(Vsingle x) SEP()
- POST [ tfloat ] PROP() RETURN (Vsingle (F x)) SEP().
+ WITH  q : ftype Tsingle
+ PRE [ tfloat ] PROP() PARAMS(Vsingle q) SEP()
+ POST [ tfloat ] PROP() RETURN (Vsingle (F q)) SEP().
+
+Definition floats_to_vals (pq: ftype Tsingle * ftype Tsingle) : val*val :=
+ (Vsingle (fst pq), Vsingle (snd pq)).
+Definition t_state := Tstruct _state noattr.
 
 Definition lfstep_spec := 
   DECLARE _lfstep
-  WITH xp: val, x: ftype Tsingle, vp: val, v: ftype Tsingle
-  PRE [ tptr tfloat , tptr tfloat , tfloat ]
-    PROP(Binary.is_finite 24 128 x = true)
-    PARAMS (xp; vp; Vsingle h)
-    SEP(data_at Tsh tfloat (Vsingle x) xp; data_at Tsh tfloat (Vsingle v) vp )
+  WITH s: val, pq: ftype Tsingle * ftype Tsingle
+  PRE [ tptr t_state, tfloat ]
+    PROP(Binary.is_finite 24 128 (snd pq) = true)
+    PARAMS (s; Vsingle h)
+    SEP(data_at Tsh t_state (floats_to_vals pq) s)
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst(leapfrog_stepF (x,v)))) xp; 
-          data_at Tsh tfloat (Vsingle (snd(leapfrog_stepF (x,v)))) vp ).
+    SEP(data_at Tsh t_state (floats_to_vals (leapfrog_stepF pq)) s ).
 
 Definition integrate_spec_lowlevel := 
   DECLARE _integrate
-  WITH xp: val, vp: val
-  PRE [ tptr tfloat , tptr tfloat ]
+  WITH s: val
+  PRE [ tptr t_state ]
     PROP(iternF_is_finite)
-    PARAMS (xp; vp)
-    SEP(data_at_ Tsh tfloat xp; data_at_ Tsh tfloat vp )
+    PARAMS (s)
+    SEP(data_at_ Tsh t_state s)
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst(iternF (q_init,p_init) 100))) xp; 
-          data_at Tsh tfloat (Vsingle (snd(iternF (q_init,p_init) 100))) vp ).
+    SEP(data_at Tsh t_state (floats_to_vals (iternF (p_init,q_init) 100)) s).
 
 Definition main_spec :=
  DECLARE _main
@@ -71,12 +73,9 @@ forward.
 forward_call.
 forward.
 forward.
-entailer!. 
 autorewrite with float_elim in *.
-unfold leapfrog_stepF, fst, snd.
-replace (1/2)%F32 with (0.5)%F32
-  by (compute_binary_floats; auto).
-auto.
+unfold leapfrog_stepF, floats_to_vals, fst, snd.
+entailer!.
 Qed.
 
 Lemma body_integrate: semax_body Vprog Gprog f_integrate integrate_spec_lowlevel.
@@ -89,33 +88,27 @@ forward.
 forward.
 forward.
 autorewrite with float_elim in *. 
-pose (step n := iternF (q_init, p_init) (Z.to_nat n)).
+pose (step n := iternF (p_init, q_init) (Z.to_nat n)).
  forward_for_simple_bound 100%Z (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);
                    temp _max_step (Vint (Int.repr 100));
                    temp _t (Vsingle (Z.iter n (BPLUS Tsingle h) (0%F32))); 
-                   temp lfharm._x xp; temp lfharm._v vp)
-   SEP (data_at Tsh tfloat (Vsingle (fst (step n))) xp;
-          data_at Tsh tfloat (Vsingle (snd (step n))) vp))%assert.
+                   temp lfharm._s s)
+   SEP (data_at Tsh t_state (floats_to_vals (step n)) s))%assert.
 - entailer!.
-- forward_call.
+- forward_call (s, step i).
   apply H; lia.
   forward.
   autorewrite with float_elim in *.
   entailer!.
   fold (Z.succ i); rewrite Zbits.Ziter_succ by lia.
   rewrite BPLUS_commut by reflexivity; auto.
-  replace (fst (step i), snd (step i)) with
-  (iternF (q_init, p_init) (Z.to_nat i)).
-  rewrite <- step_iternF.
-  replace (iternF (q_init, p_init) (S (Z.to_nat i))) with 
-  ((step (i + 1)%Z)).
-  cancel.
- + unfold step. f_equal. lia.
- + unfold step. destruct (iternF (q_init, p_init) (Z.to_nat i)).
-     auto.
-- change (iternF(q_init, p_init) 100) with (step 100%Z).
+  unfold step at 2.
+  replace (Z.to_nat (i+1)) with (S (Z.to_nat i)) by lia.
+  rewrite step_iternF.
+  apply derives_refl.
+- change (iternF(p_init, q_init) 100) with (step 100%Z).
    forward.
 Qed.
 

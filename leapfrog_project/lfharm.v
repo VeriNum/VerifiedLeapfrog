@@ -83,9 +83,11 @@ Definition _main : ident := $"main".
 Definition _max_step : ident := $"max_step".
 Definition _n : ident := $"n".
 Definition _nstep : ident := $"nstep".
+Definition _p : ident := $"p".
+Definition _q : ident := $"q".
+Definition _s : ident := $"s".
+Definition _state : ident := $"state".
 Definition _t : ident := $"t".
-Definition _v : ident := $"v".
-Definition _x : ident := $"x".
 Definition _t'1 : ident := 128%positive.
 Definition _t'2 : ident := 129%positive.
 Definition _t'3 : ident := 130%positive.
@@ -97,18 +99,17 @@ Definition _t'7 : ident := 134%positive.
 Definition f_force := {|
   fn_return := tfloat;
   fn_callconv := cc_default;
-  fn_params := ((_x, tfloat) :: nil);
+  fn_params := ((_q, tfloat) :: nil);
   fn_vars := nil;
   fn_temps := nil;
   fn_body :=
-(Sreturn (Some (Eunop Oneg (Etempvar _x tfloat) tfloat)))
+(Sreturn (Some (Eunop Oneg (Etempvar _q tfloat) tfloat)))
 |}.
 
 Definition f_lfstep := {|
   fn_return := tvoid;
   fn_callconv := cc_default;
-  fn_params := ((_x, (tptr tfloat)) :: (_v, (tptr tfloat)) :: (_h, tfloat) ::
-                nil);
+  fn_params := ((_s, (tptr (Tstruct _state noattr))) :: (_h, tfloat) :: nil);
   fn_vars := nil;
   fn_temps := ((_a, tfloat) :: (_t'2, tfloat) :: (_t'1, tfloat) ::
                (_t'7, tfloat) :: (_t'6, tfloat) :: (_t'5, tfloat) ::
@@ -117,17 +118,29 @@ Definition f_lfstep := {|
 (Ssequence
   (Ssequence
     (Ssequence
-      (Sset _t'7 (Ederef (Etempvar _x (tptr tfloat)) tfloat))
+      (Sset _t'7
+        (Efield
+          (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+            (Tstruct _state noattr)) _q tfloat))
       (Scall (Some _t'1)
         (Evar _force (Tfunction (Tcons tfloat Tnil) tfloat cc_default))
         ((Etempvar _t'7 tfloat) :: nil)))
     (Sset _a (Etempvar _t'1 tfloat)))
   (Ssequence
     (Ssequence
-      (Sset _t'5 (Ederef (Etempvar _x (tptr tfloat)) tfloat))
+      (Sset _t'5
+        (Efield
+          (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+            (Tstruct _state noattr)) _q tfloat))
       (Ssequence
-        (Sset _t'6 (Ederef (Etempvar _v (tptr tfloat)) tfloat))
-        (Sassign (Ederef (Etempvar _x (tptr tfloat)) tfloat)
+        (Sset _t'6
+          (Efield
+            (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+              (Tstruct _state noattr)) _p tfloat))
+        (Sassign
+          (Efield
+            (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+              (Tstruct _state noattr)) _q tfloat)
           (Ebinop Oadd
             (Ebinop Oadd (Etempvar _t'5 tfloat)
               (Ebinop Omul (Etempvar _h tfloat) (Etempvar _t'6 tfloat)
@@ -139,13 +152,22 @@ Definition f_lfstep := {|
                   tfloat) tfloat) (Etempvar _a tfloat) tfloat) tfloat))))
     (Ssequence
       (Ssequence
-        (Sset _t'4 (Ederef (Etempvar _x (tptr tfloat)) tfloat))
+        (Sset _t'4
+          (Efield
+            (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+              (Tstruct _state noattr)) _q tfloat))
         (Scall (Some _t'2)
           (Evar _force (Tfunction (Tcons tfloat Tnil) tfloat cc_default))
           ((Etempvar _t'4 tfloat) :: nil)))
       (Ssequence
-        (Sset _t'3 (Ederef (Etempvar _v (tptr tfloat)) tfloat))
-        (Sassign (Ederef (Etempvar _v (tptr tfloat)) tfloat)
+        (Sset _t'3
+          (Efield
+            (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+              (Tstruct _state noattr)) _p tfloat))
+        (Sassign
+          (Efield
+            (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+              (Tstruct _state noattr)) _p tfloat)
           (Ebinop Oadd (Etempvar _t'3 tfloat)
             (Ebinop Omul
               (Ebinop Omul
@@ -158,16 +180,22 @@ Definition f_lfstep := {|
 Definition f_integrate := {|
   fn_return := tvoid;
   fn_callconv := cc_default;
-  fn_params := ((_x, (tptr tfloat)) :: (_v, (tptr tfloat)) :: nil);
+  fn_params := ((_s, (tptr (Tstruct _state noattr))) :: nil);
   fn_vars := nil;
   fn_temps := ((_n, tint) :: (_max_step, tint) :: (_nstep, tint) ::
                (_t, tfloat) :: (_h, tfloat) :: nil);
   fn_body :=
 (Ssequence
-  (Sassign (Ederef (Etempvar _x (tptr tfloat)) tfloat)
+  (Sassign
+    (Efield
+      (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+        (Tstruct _state noattr)) _q tfloat)
     (Econst_single (Float32.of_bits (Int.repr 1065353216)) tfloat))
   (Ssequence
-    (Sassign (Ederef (Etempvar _v (tptr tfloat)) tfloat)
+    (Sassign
+      (Efield
+        (Ederef (Etempvar _s (tptr (Tstruct _state noattr)))
+          (Tstruct _state noattr)) _p tfloat)
       (Econst_single (Float32.of_bits (Int.repr 0)) tfloat))
     (Ssequence
       (Sset _t (Econst_single (Float32.of_bits (Int.repr 0)) tfloat))
@@ -190,13 +218,10 @@ Definition f_integrate := {|
                 (Ssequence
                   (Scall None
                     (Evar _lfstep (Tfunction
-                                    (Tcons (tptr tfloat)
-                                      (Tcons (tptr tfloat)
-                                        (Tcons tfloat Tnil))) tvoid
-                                    cc_default))
-                    ((Etempvar _x (tptr tfloat)) ::
-                     (Etempvar _v (tptr tfloat)) :: (Etempvar _h tfloat) ::
-                     nil))
+                                    (Tcons (tptr (Tstruct _state noattr))
+                                      (Tcons tfloat Tnil)) tvoid cc_default))
+                    ((Etempvar _s (tptr (Tstruct _state noattr))) ::
+                     (Etempvar _h tfloat) :: nil))
                   (Sset _t
                     (Ebinop Oadd (Etempvar _t tfloat) (Etempvar _h tfloat)
                       tfloat))))
@@ -209,23 +234,24 @@ Definition f_main := {|
   fn_return := tint;
   fn_callconv := cc_default;
   fn_params := nil;
-  fn_vars := ((_x, tfloat) :: (_v, tfloat) :: nil);
+  fn_vars := ((_s, (Tstruct _state noattr)) :: nil);
   fn_temps := nil;
   fn_body :=
 (Ssequence
   (Ssequence
     (Scall None
-      (Evar _integrate (Tfunction
-                         (Tcons (tptr tfloat) (Tcons (tptr tfloat) Tnil))
+      (Evar _integrate (Tfunction (Tcons (tptr (Tstruct _state noattr)) Tnil)
                          tvoid cc_default))
-      ((Eaddrof (Evar _x tfloat) (tptr tfloat)) ::
-       (Eaddrof (Evar _v tfloat) (tptr tfloat)) :: nil))
+      ((Eaddrof (Evar _s (Tstruct _state noattr))
+         (tptr (Tstruct _state noattr))) :: nil))
     (Sreturn (Some (Econst_int (Int.repr 0) tint))))
   (Sreturn (Some (Econst_int (Int.repr 0) tint))))
 |}.
 
 Definition composites : list composite_definition :=
-nil.
+(Composite _state Struct
+   (Member_plain _p tfloat :: Member_plain _q tfloat :: nil)
+   noattr :: nil).
 
 Definition global_definitions : list (ident * globdef fundef type) :=
 ((___compcert_va_int32,

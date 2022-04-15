@@ -4,21 +4,20 @@ Require Import real_lemmas.
 Require Import lfharm.
 Require Import verif_lfharm.
 Require Import lf_harm_float lf_harm_theorems.
-Require Import vcfloat.FPSolve.
+Require Import vcfloat.FPCompCert.
 
 Definition integrate_spec := 
   DECLARE _integrate
-  WITH xp: val, vp: val
-  PRE [ tptr tfloat , tptr tfloat ]
+  WITH s: val
+  PRE [ tptr t_state ]
     PROP()
-    PARAMS (xp; vp)
-    SEP(data_at_ Tsh tfloat xp; data_at_ Tsh tfloat vp )
+    PARAMS (s)
+    SEP(data_at_ Tsh t_state s)
   POST [ tvoid ]
-   EX (xv: float32*float32),
-    PROP(accurate_harmonic_oscillator_100 xv)
+   EX (pq: float32*float32),
+    PROP(accurate_harmonic_oscillator_100 pq)
     RETURN()
-    SEP(data_at Tsh tfloat (Vsingle (fst xv)) xp; 
-          data_at Tsh tfloat (Vsingle (snd xv)) vp ).
+    SEP(data_at Tsh t_state (floats_to_vals pq) s).
 
 Lemma subsume_integrate: funspec_sub (snd integrate_spec_lowlevel) (snd integrate_spec).
 Proof.
@@ -26,19 +25,19 @@ apply NDsubsume_subsume.
 split; auto.
 unfold snd.
 hnf; intros.
-split; auto. intros [x v] [? ?]. Exists (x,v) emp.
+split; auto. intros s [? ?]. Exists s emp.
 Intros. simpl in H.
-inv H. inv H4. inv H5.
+inv H. inv H4.
 pose proof yes_iternF_is_finite.
-destruct (H 100%nat ltac:(lia)).
+destruct (H 100%nat ltac:(lia)) as [_ ?].
 pose proof yes_accurate_harmonic_oscillator_100.
-set (xv := iternF (q_init, p_init) 100) in *.
-clearbody xv.
+set (pq := iternF (p_init, q_init) 100) in *.
+clearbody pq.
 unfold_for_go_lower; normalize.
-inv H5.
+inv H2.
 simpl; entailer!.
 intros.
-Exists xv.
+Exists pq.
 entailer!.
 Qed.
 
@@ -57,7 +56,7 @@ Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
 forward_call. apply yes_iternF_is_finite.
-forget (iternF (q_init, p_init) 100)  as a.
+forget (iternF (p_init, q_init) 100)  as a.
 forward.
 cancel.
 Qed.
