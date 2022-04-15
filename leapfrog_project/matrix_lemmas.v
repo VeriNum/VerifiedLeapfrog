@@ -104,6 +104,25 @@ apply coeff_mat_bij;lia.
 Qed.
 
 
+Lemma Mmult_M0_vec (n: nat) (V: @matrix C n 1%nat) :
+  @Mmult C_Ring n n 1%nat (M0 n) V  = Mzero.
+Proof.
+apply mk_matrix_ext => i j Hi Hj.
+pose proof @sum_n_ext_loc C_Ring
+  (fun l : nat => @mult C_Ring (@coeff_mat C_Ring n n (@zero C_Ring) (M0 n) i l)
+     (@coeff_mat C_Ring n 1 (@zero C_Ring) V l j)) 
+  (fun l : nat => mult zero (coeff_mat zero V l j))
+  (pred n).
+rewrite H; clear H; try apply sum_n_m_const_zero.
+- 
+rewrite sum_n_mult_l; apply mult_zero_l.
+-
+intros.
+f_equal.
+apply coeff_mat_bij;lia.
+Qed.
+
+
 Lemma Mcong_transpose_zero (n: nat) (M: @matrix C n n) :
 matrix_conj_transpose n M = (M0 n) <-> M = (M0 n).
 Proof.

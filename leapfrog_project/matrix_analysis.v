@@ -30,7 +30,7 @@ Definition vec_two_norm (u : @matrix C 2 1%nat) : R :=
 Definition matrix_two_norm_sig (A : @matrix C 2 2) (v : @matrix C 2 1%nat) := 
   { x : C | let ATA := Mmult (matrix_conj_transpose 2 A) A in
             (Mmult ATA v = vec_coeff_mult x 2 v ) /\ (* x/v is an eigenvalue/eigenvector of ATA *)
-            (forall i, (i < 2)%nat /\ (@coeff_mat C 2 1%nat Hierarchy.zero v i 0 <> 0 )) (* eigenvalue is non-zero*) /\ 
+            (forall i, (i < 2)%nat ->  (@coeff_mat C 2 1%nat Hierarchy.zero v i 0 <> 0 )) (* eigenvalue is non-zero*) /\ 
             (forall (u : @matrix C 2 1%nat), vec_two_norm (Mmult A u) <= sqrt (Cmod x) * vec_two_norm u) /\ (* x is max *)
             (0 < (Cmod x)) (* x is positive (iff ATA is non-singular)*)}.
 
@@ -105,6 +105,35 @@ rewrite Rplus_0_l.
 rewrite sqrt_0; auto.
 Qed.
 
+Lemma Cdiv_zero (a : C):
+  a <> 0 -> Cdiv 0 a = C0.
+Proof.
+intros. 
+cbv [Cdiv Cinv].
+destruct a.
+unfold C0, fst, snd.
+apply pair_equal_spec. unfold fst, snd; simpl.
+repeat rewrite Rmult_0_l; nra.
+Qed.
+
+Lemma Cmult_zero (a b : C) :
+  Cmult a b = 0 -> b <> 0 -> a = 0.
+Proof.
+intros.
+assert (H1 : Cdiv (Cmult a b) b = Cdiv 0 b) by (rewrite H; auto).
+assert (H2 : Cdiv (Cmult a b) b = Cmult a (Cdiv b b)).
+destruct b; destruct a.
+cbv [Cmult Cdiv]; simpl.
+apply pair_equal_spec. nra.
+rewrite H2 in H1.
+replace (Cdiv b b ) with C1 in H1.
+replace (Cmult a C1) with a in H1.
+rewrite Cdiv_zero in H1; auto.
+cbv [C1 Cmult]; destruct a; simpl; apply pair_equal_spec;split; nra.
+replace (Cdiv b b) with (b * / b)%C.
+rewrite Cinv_r; auto.
+cbv [Cmult Cdiv]. apply pair_equal_spec;split; nra.
+Qed.
 
 
 Lemma two_norm_M0 (v : @matrix C 2 1%nat) :
@@ -112,8 +141,36 @@ Lemma two_norm_M0 (v : @matrix C 2 1%nat) :
     0 =  sqrt (Cmod (proj1_sig l)).
 Proof.
 intros.
-destruct l; simpl in a; simpl.
-Admitted.
+destruct l as (lam_max & H1 & H2 & H3 & H4); simpl.
+assert (vec_coeff_mult lam_max 2 v = V0 2).
+-
+replace (matrix_conj_transpose 2 (M0 2)) with (M0 2) in H1.
+rewrite Mmult_Mzero_l in H1.
+replace (@Mmult C_Ring 2 2 1 (@Mzero C_Ring 2 2) v) with (V0 2) in H1.
++
+apply mk_matrix_ext => i j Hi Hj.
+unfold V0, vec_coeff_mult in H1.
+rewrite <- mk_matrix_ext in H1.
+specialize (H1 i j Hi Hj).
+destruct H1; auto.
++
+rewrite Mmult_M0_vec; simpl; auto.
++
+symmetry.
+apply Mcong_transpose_zero; auto.
+-
+unfold vec_coeff_mult, V0 in H.
+rewrite <- mk_matrix_ext in H.
+assert (A: (0 < 2)%nat) by lia.
+assert (B: (0 < 1)%nat) by lia.
+specialize (H 0%nat 0%nat A B).
+specialize (H2 0%nat A).
+apply Cmult_zero in H; auto; subst.
+rewrite Cmod_0.
+rewrite sqrt_0; nra.
+Qed.
+
+
 
 Lemma matrix_two_norm_sig_definite (A : @matrix C 2 2) (v : @matrix C 2 1%nat) :
     forall (l : matrix_two_norm_sig  A v),
@@ -653,9 +710,22 @@ generalize (Rinv_neq_0_compat b HB).
 pose proof Req_dec (a / b) 0 as Hy; destruct Hy; try auto.
 Qed.
 
+
+Lemma h_sqrt2_lemma (h : R) : 
+0 <= h < sqrt 2 ->
+0 <= h * h  < 2.
+Proof.
+intros.
+destruct H; split; auto.
+replace ( h * h) with (h^2) by nra.
+apply square_pos.
+assert ( h * h < sqrt 2  * sqrt 2) by nra.
+rewrite sqrt_def in H1; try nra.
+Qed.
+
 Theorem t_matrix_two_norm_eq:
   forall (h : R),
-  0 <= h * h  < 2 ->  (* this additional restriction on h is required 
+  0 <= h < sqrt 2 ->  (* this additional restriction on h is required 
   by the eigenvectors of MTM_ev_2; this restriction is noted in the literature 
   following empirical analysis of the scheme, but I haven't seen the reason behind 
   it discussed explicitly *)
@@ -682,7 +752,7 @@ unfold fst, snd in H1.
 apply pair_equal_spec in H1; destruct H1 as (H1A & H1B).
 unfold MTM_lambda_2.
 symmetry in H1B.
-assert (0<= h< sqrt 2) by admit.
+assert (h * (h * 1) - 2 <> 0) by (pose proof h_sqrt2_lemma h H; nra).
 assert (0.25 * (h * (h * (h * 1)) - 8 * h - sqrt (h * (h * (h * (h * (h * (h * 1))))) + 64)) /
     (h * (h * 1) - 2) <> 0).
 apply sep_0_div; split; try nra.
@@ -690,7 +760,9 @@ apply Rlt_not_eq.
 try interval.
 apply Rmult_integral in H1B.
 destruct H1B as [C | D]; try contradiction.
-Admitted.
+apply Rmult_eq_reg_r in H1A; auto.
+subst; auto.
+Qed.
 
 
 Lemma two_norm_t_matrix_eq :
@@ -709,7 +781,7 @@ Qed.
 
 Lemma t_matrix_norm_sub_mult :
   forall (h : R),
-  0 <= h * h < 2 -> 
+  0 <= h < sqrt 2 ->
   forall (l : matrix_two_norm_sig  (t_matrix h) (MTM_eV_2_vector h)),
   forall (y : @matrix C 2 1%nat),
   vec_two_norm (Mmult (t_matrix h) y) <= sqrt (Cmod (MTM_lambda_2 h)) * vec_two_norm y.
@@ -789,7 +861,7 @@ Qed.
 Lemma matrix_analysis_method_bound_n : 
   forall p q h: R,
   forall n : nat, 
-    0 < ω*h * ω*h < 2 -> 
+  0 < ω * h < sqrt 2 ->
   forall (l : matrix_two_norm_sig  (t_matrix h) (MTM_eV_2_vector h)),
   let Mn := Mpow 2 n (t_matrix h) in
   vec_two_norm  (Mmult Mn (s_vector (p, q))) <= 
@@ -814,7 +886,7 @@ with
 ( Mmult (t_matrix h) (Mmult (Mpow 2 n (t_matrix h)) (s_vector (p, q)))).
 destruct (Mmult (Mpow 2 n (t_matrix h)) (s_vector (p, q))).
 eapply Rle_trans.
-unfold ω in H;  rewrite Rmult_1_l in H; rewrite Rmult_1_r in H.
+unfold ω in H.  rewrite Rmult_1_l in H. 
 apply t_matrix_norm_sub_mult; auto; try nra.
 simpl.
 rewrite Rmult_assoc.
@@ -823,6 +895,15 @@ apply IHn.
 rewrite Mmult_assoc.
 rewrite Mpow_comm; auto.
 Qed.
+
+
+Lemma h_bnd_lem :
+0 < ω * h < sqrt 2.
+Proof.
+split; unfold h; unfold ω; try nra.
+interval.
+Qed.
+
 
 Theorem matrix_analysis_method_bound_fixed_h_n : 
   forall p q: R,
@@ -833,7 +914,7 @@ Theorem matrix_analysis_method_bound_fixed_h_n :
       (4503616807272450 / 4503599627370496) ^ n * vec_two_norm (s_vector (p,q)).
 Proof.
 intros.
-assert (Hbnd: 0 < ω * h * ω * h < 2) by (unfold h; unfold ω; nra).
+pose proof h_bnd_lem as Hbnd.
 pose proof matrix_analysis_method_bound_n p q h n Hbnd l.
 pose proof two_norm_t_matrix_eq.
 simpl in H.
