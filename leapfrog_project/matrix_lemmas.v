@@ -16,18 +16,8 @@ Require Import Interval.Tactic.
 Set Bullet Behavior "Strict Subproofs". 
 
 
-(* logical bits and assumptions*)
-Lemma Prop1 : forall A: nat ->  nat -> Prop, (~ exists x y , ((A x y) -> False)) -> (forall x y, ~~(A x y)).
-Proof. firstorder. Qed.
-
 Require Import Coq.Logic.FunctionalExtensionality.
 
-Axiom LEM: forall A: Prop, A \/ ~ A.  
-
-Lemma DNE : forall A, ~ ~ A -> A. 
-Proof. intros; pose proof LEM A; firstorder. Qed.
-
-(* end logical bits *)
 
 Definition C0: C := (0,0).
 Definition C1: C := (1,0).
@@ -125,12 +115,10 @@ repeat rewrite coeff_mat_bij; try lia; simpl.
 rewrite Ropp_0; auto.
 Qed.
 
+
+
 Lemma M0_coeff_zero (n: nat) :
 forall i j, @coeff_mat C n n (@zero C_AbelianGroup) (M0 n) i j = 0.
-Admitted.
-
-Lemma V0_coeff_zero (n: nat) :
-forall i j, @coeff_mat C n 1%nat (@zero C_AbelianGroup) (V0 n) i j = 0.
 Admitted.
 
 
@@ -149,7 +137,11 @@ Definition coeff_mult (a : C) (n:nat) (V: @matrix C n 1%nat) : @matrix C n n :=
   are the corresponding eigenvalues *)
 Definition eigenval_pred (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat) : Prop := 
   let LAM:= vec_to_diag n L in 
-   (Mmult M V) = (Mmult V LAM) /\ (V = (M0 n) -> False).
+  (Mmult M V) = (Mmult V LAM) /\ 
+  (forall j, (j < n)%nat -> (exists i, (i < n)%nat /\ ((@coeff_mat C n n Hierarchy.zero V i j) <> 0 ))) /\
+  (Mmult M V = M0 n <-> M = M0 n)
+.  
+
 
 Definition eigenvalues (n:nat) (M V: @matrix C n n) 
   (s: sig (eigenval_pred n M V)): (@matrix C n 1%nat) := proj1_sig s. 
@@ -158,24 +150,27 @@ Definition eigenvectors (n:nat) (M: @matrix C n n) (L: matrix n 1%nat)
   (s: sig (fun x => (eigenval_pred n M x L))) : (@matrix C n n):= proj1_sig s.
 
 
-Definition max_vec_pred (n:nat) (L: @matrix C n 1%nat) (cmax : C) := 
-  (forall i,  (i < n)%nat -> Cmod (coeff_mat Hierarchy.zero L i 0) <= Cmod cmax) /\ 
-  (exists i,  (i < n)%nat /\ cmax = (coeff_mat Hierarchy.zero L i 0)).
+Definition two_norm_pred (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat) (mod_lambda_max : R) := 
+  MTM = Mmult (matrix_conj_transpose n M) M  /\
+  eigenval_pred n MTM V L /\
+  (forall i,  (i < n)%nat -> Cmod (coeff_mat Hierarchy.zero L i 0) <= mod_lambda_max) /\ 
+  (exists i,  (i < n)%nat /\ mod_lambda_max = Cmod (coeff_mat Hierarchy.zero L i 0)).
 
-Definition max_eigenvalue (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat) 
-  (p: eigenval_pred n M V L) (s2: sig (max_vec_pred n L)): C := proj1_sig s2.
-
-Definition two_norm_sqr (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat):= 
-  let MTM := (Mmult (matrix_conj_transpose n M) M) in
-  max_eigenvalue n MTM V L.
+Definition two_norm_sqr (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat):= 
+  {l : R | two_norm_pred n M MTM V L l}.
 
 
-(* prove that definition of two_norm_sqr satifies matrix norm properties *)
-Lemma two_norm_sqr_pos (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat) :
-  forall p1 p2,
-  0 <= Cmod (two_norm_sqr n M V L p1 p2).
+(* two_norm_sqr satifies matrix norm properties *)
+Lemma two_norm_sqr_pos (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat) :
+  forall (l : two_norm_sqr n M MTM V L),
+  0 <= proj1_sig l.
 Proof.
-intros. apply Cmod_ge_0.
+intros.
+destruct l. simpl.
+unfold two_norm_pred in t; destruct t as (A & B & C & D).
+destruct D as (i & D1 & D2).
+subst.
+apply Cmod_ge_0.
 Qed.
 
 
@@ -201,12 +196,6 @@ apply Czero_sqs.
 split; auto.
 Qed.
 
-
-Lemma vec_to_diag_M0 (n : nat) (L: matrix n 1%nat):
-vec_to_diag n L = M0 n -> L = V0 n.
-Proof.
-intros.
-Admitted.
 
 
 (* multiplying two diagonal matrices preserves diag predicate*)
@@ -458,7 +447,7 @@ unfold mult, Ring.mult; simpl; auto.
 Qed.
 
 Lemma eq_M0_iff (n: nat) (M : @matrix C n n) :
-  M = M0 n <-> forall i j, ((i < n)%nat /\ (j < n)%nat) -> (coeff_mat zero M i j) = zero.
+  M = M0 n <-> forall i j, ((i < n)%nat /\ (j < n)%nat) -> (@coeff_mat C_Ring n n zero M i j) = zero.
 Proof.
 split; intros.
 - 
@@ -477,9 +466,10 @@ apply H; auto.
 Qed.
 
 
+
 Lemma neq_M0_implies_aux1 (n: nat) (M1 : @matrix C n n) (M2 : @matrix C (S n) (S n)):
   (M1 = M0 n -> False) ->
-  (forall i j, (i < n)%nat /\ (j < n)%nat -> (coeff_mat zero M2 i j) = (coeff_mat zero M1 i j)) -> 
+  (forall i j, ((i < n)%nat /\ (j < n)%nat) -> (coeff_mat zero M2 i j) = (coeff_mat zero M1 i j)) -> 
   (M2 = M0 (S n) -> False).
 Proof.
 intros.
@@ -494,70 +484,8 @@ Qed.
 
 
 
-Lemma neq_M0_implies (n: nat) (M : @matrix C n n) :
-   (M <> M0 n) ->    
-   exists i j, (coeff_mat zero M i j) <> C0.
-Proof.
-intros.
-assert (~ ~ exists i j, (coeff_mat zero M i j) <> C0).
-unfold not at 1 3; intros.
-apply H; clear H.
-apply (@coeff_mat_ext C_Ring n n zero); intros.
-pose proof Prop1 (fun i j => (coeff_mat zero M i j = C0)) . 
-specialize (H H0); clear H0.
-specialize (H i j).
-apply DNE in H; rewrite H.
-rewrite M0_coeff_zero; auto.
-apply DNE in H0; auto.
-Qed.
-
 Lemma Cmult_integral (a b : C):
   Cmult a b = C0 -> a = C0 \/ b = C0.
-Admitted.
-
-
-
-(*[ a b ] [ x 0 ]   [ ax by ] 
-  [ c d ] [ 0 y ] = [ cx dy ] *)
-Lemma Mmult_diagonal_implies_zero (n: nat) (M L: @matrix C n n) :
-  diag_pred n L -> 
-  Mmult M L = M0 n ->
-  (M = M0 n -> False) ->    
-  L = M0 n.
-Proof.
-intros.
-apply neq_M0_implies in H1; destruct H1 as (i & j&  H1). 
-pose proof Mmult_diagonal_implies n  M L (M0 n) H H0.
-replace L with (mk_matrix n n (coeff_mat zero L)) by
-  (apply mk_matrix_bij).
-unfold M0, Mzero.
-apply mk_matrix_ext=> ii jj Hii Hjj.
-assert (A: i = ii \/ i <> ii) by lia; destruct A;
-assert (B: j = jj \/ j <> jj) by lia; destruct B.
-- 
-subst.
-assert (C: ii = jj \/ ii <> jj) by lia; destruct C.
-+ 
-subst.
-assert (D: (jj < n)%nat /\ (jj < n)%nat) by lia.
-specialize (H2 jj jj D).
-rewrite M0_coeff_zero in H2.
-symmetry in H2.
-apply Cmult_integral in H2; destruct H2; try contradiction.
-rewrite H2; auto.
-+
-unfold diag_pred in H.
-specialize (H ii jj); auto.
--
-Admitted.
-
-Lemma Mmult_Mzero_implies (n: nat) (V L: @matrix C n n) :
-  (V = M0 n -> False) -> 
-  diag_pred n L -> 
-  Mmult V L = (M0 n) -> L = (M0 n).
-Proof.
-intros.
-pose proof Mmult_diagonal_implies n L V (M0 n).
 Admitted.
 
 
@@ -572,90 +500,82 @@ destruct eqb; auto; try discriminate.
 Qed.
 
 
+
 Lemma two_norm_M0 (n : nat) (V: @matrix C n n) (L: matrix n 1%nat):
-  forall p1 p2, 
-  0 = Cmod (two_norm_sqr n (M0 n) V L p1 p2).
+  forall (l : two_norm_sqr n (M0 n) (M0 n) V L),
+  0 = proj1_sig l.
 Proof.
 intros.
-unfold two_norm_sqr, max_eigenvalue. 
-destruct p2. simpl.
-rewrite Mmult_Mzero_r in p1.
-destruct p1.
-rewrite Mmult_Mzero_l in H.
-unfold max_vec_pred in m.
-symmetry in H.
+destruct l; simpl.
+destruct t as (A & B & C & D).
+destruct B as (B1 & B2 & B3).
 pose proof 
-  Mmult_diagonal_implies n V (vec_to_diag n L) Mzero (vec_to_diag_pred n L) H.
+  Mmult_diagonal_implies n V (vec_to_diag n L) Mzero (vec_to_diag_pred n L).
+destruct D as (j &Hj &D2); subst.
+specialize (B2 j Hj).
+destruct B2 as (i &Hi & HV).
+replace (Mmult (M0 n) V) with (@Mzero C_Ring n n) in B1 by (symmetry; apply Mmult_Mzero_l). 
+assert ((i < n)%nat /\ (j < n)%nat ) by lia.
+symmetry in B1.
+specialize (H B1 i j H0). 
+assert (@coeff_mat C_Ring n n zero Mzero i j = C0) by (apply M0_coeff_zero).
+rewrite H1 in H.
+symmetry in H.
+pose proof (  Cmult_integral (coeff_mat zero V i j) (coeff_mat zero (vec_to_diag n L) j j) H) as P.
+destruct P; try contradiction.
+unfold vec_to_diag in H2.
+rewrite coeff_mat_bij in H2; try lia. 
+replace 0 with (Cmod C0) by (apply Cmod_0).
+f_equal.
+rewrite <- H2.
+pose proof Nat.eqb_eq j j; destruct H3.
+specialize (H4 eq_refl).
+destruct eqb; try discriminate; auto.
+Qed.
 
 
-Admitted.
-
-
-Lemma two_norm_sqr_definite (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat) :
-  forall p1 p2,
-  0 = Cmod (two_norm_sqr n M V L p1 p2) <-> (forall i j, (@coeff_mat C n n Hierarchy.zero M i j) = 0).
+(* definiteness of the two-norm for invertible matrices *) 
+Lemma two_norm_sqr_definite (n:nat) (M MTM V: @matrix C n n) (L: matrix n 1%nat) :
+  (forall i, (@coeff_mat C n 1%nat Hierarchy.zero L i 0) <> C0) (* M is invertible iff all elements of L are non-zero *) -> 
+  forall (l : two_norm_sqr n M MTM V L),
+  0 = proj1_sig l <-> (forall i j, (i < n)%nat /\ (j < n)%nat -> (@coeff_mat C n n Hierarchy.zero M i j) = 0).
 Proof.
 intros. 
 intros; split; intros.
 - 
-unfold eigenval_pred in p1. 
-unfold two_norm_sqr, max_eigenvalue, max_vec_pred in H.
-destruct p2. simpl in H.
-symmetry in H.
-apply Cmod_eq_0 in H.
-subst x.
-unfold vec_to_diag in p1.
-replace        (@mk_matrix C n n
-          (fun i j : nat =>
-           if i =? j
-           then @coeff_mat C n 1 (@zero C_AbelianGroup) L i 0
-           else C0)) with (M0 n) in p1.
-rewrite Mmult_Mzero_r in p1.
-+ destruct p1.
-apply Mmult_Mzero_implies in H.
-destruct H; try contradiction.
-*   
-apply Mmult_Mzero_implies in H.
-destruct H. (*
--- 
-rewrite Mcong_transpose_zero in H.
-rewrite H.
-apply M0_coeff_zero.
--- 
-rewrite H.
-apply M0_coeff_zero.
-+ 
-unfold max_vec_pred in m.
-apply mk_matrix_ext => ii jj Hii Hjj.
-destruct eqb; auto.
-destruct m as (m & m2).
-specialize (m ii).
-symmetry.
-replace (Cmod 0) with 0 in m.
-apply cmod_le_0; auto.
-unfold Cmod, fst, snd; simpl. 
-rewrite Rmult_0_l.
-rewrite Rplus_0_l.
-symmetry.
-eapply sqrt_0.
+destruct l.
+simpl in H0; subst.
+destruct t as (A & B & C & D).
+destruct D as (ii & Hii & D).
+symmetry in D.
+apply Cmod_eq_0 in D.
+specialize (H ii).
+rewrite D in H.
+contradiction.
 -
-assert (M = M0 n).
-+ apply (coeff_mat_ext_aux zero zero) => i j Hi Hj.
-rewrite ?coeff_mat_bij => //=.
-+ subst. eapply two_norm_M0.
-*)
-Admitted.
+apply eq_M0_iff in H0. subst.
+assert (MTM = M0 n).
++ destruct l; destruct t as (A & _).
+replace (matrix_conj_transpose n (M0 n)) with (M0 n) in A by
+  (symmetry; rewrite Mcong_transpose_zero;auto).
+rewrite Mmult_Mzero_l in A; subst; auto.
++
+subst.
+apply two_norm_M0.
+Qed.
 
 
-Lemma two_norm_homogeneous (n:nat) (M V: @matrix C n n) (L: matrix n 1%nat) :
+
+Lemma two_norm_homogeneous (n:nat) (a : R) (M V MTM aV aMTM: @matrix C n n) (L aL: matrix n 1%nat) :
+  forall (l  : two_norm_sqr n M  MTM   V  L),
   forall a,   
-  forall p1 p2 p3 p4,
-  let aM := mk_matrix n n (fun i j => Cmult a (@coeff_mat C n n Hierarchy.zero M i j)) in
-    (two_norm_sqr n aM V L p1 p2) = (two_norm_sqr n M V L p3 p4).
+  let aM := mk_matrix n n (fun i j => Cmult (a,0) (@coeff_mat C n n Hierarchy.zero M i j)) in
+  forall (la : two_norm_sqr n aM aMTM aV aL),
+  a * proj1_sig l = proj1_sig la.
 Proof.
 intros.
 Admitted.
-
+(*
 Lemma two_norm_triang_ineq (n:nat) (M1 M2 V12 V1 V2: @matrix C n n) (L12 L1 L2: matrix n 1%nat) :
   forall p1 p2 p3 p4 p5 p6,
     Cmod (two_norm_sqr n (Mplus M1 M2) V12 L12 p1 p2) <= 
@@ -823,7 +743,7 @@ Admitted.
 
 *)
 
-
+*)
 
 
 Close Scope R_scope. 
