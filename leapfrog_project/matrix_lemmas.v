@@ -67,7 +67,6 @@ destruct eqb; try discriminate; auto.
 Qed.
 
 
-
 Lemma Mmult_Mzero_r (n: nat) (M: @matrix C n n) :
   @Mmult C_Ring n n n M Mzero  = Mzero.
 Proof.
@@ -222,7 +221,16 @@ apply Nat.eqb_neq in C.
 destruct eqb; auto; try discriminate.
 Qed.
 
-
+Lemma M_ID_diag (m: nat) : 
+diag_pred m (M_ID m).
+Proof.
+unfold diag_pred; intros.
+unfold M_ID.
+rewrite coeff_mat_bij; try auto; try lia.
+destruct H as (A & B & C).
+apply Nat.eqb_neq in C.
+destruct eqb; auto; try discriminate.
+Qed.
 
 
 (* COMPLEX NUMBER LEMMAS *)
@@ -278,6 +286,7 @@ intros.
 nra.
 Qed.
 (* end complex number lemmas *)
+
 
 
 (* multiplying two diagonal matrices preserves diag predicate*)
@@ -607,5 +616,239 @@ rewrite Mmult_assoc.
 rewrite  Mpow_comm.
 rewrite  Mmult_assoc; auto.
 Qed.
+
+
+(* for diagonal D, (P D Pinv)^n = P D^n Pinv *)
+Lemma Matrix_pow (m n: nat) (M: @matrix C m m) :
+  forall P Pinv D : (matrix m m ),
+  Mmult P Pinv = Mone -> 
+  Mmult Pinv P = Mone -> 
+  diag_pred m D = True -> 
+  Mmult P (Mmult D Pinv) = M -> 
+  Mpow m n M = Mmult P (Mmult (Mpow m n D) Pinv).
+Proof.
+intros.
+induction n.
+- simpl. replace (M_ID m) with (@Mone C_Ring m). rewrite Mmult_one_l. 
+rewrite H; auto. symmetry. 
+simpl; auto.
+replace (M_ID m) with (@Mone C_Ring m); rewrite <- M_ID_equiv_M1; auto.
+- unfold Mpow; fold Mpow.
+  rewrite IHn. rewrite <- H2. 
+  rewrite <- Mmult_assoc; auto.
+  rewrite <- Mmult_assoc; auto.
+  replace (@Mmult C_Ring m m m Pinv
+          (@Mmult C_Ring m m m P
+             (@Mmult C_Ring m m m D Pinv))) with
+  (@Mmult C_Ring m m m (@Mmult C_Ring m m m Pinv P)
+             (@Mmult C_Ring m m m D Pinv)).
+  rewrite H0.
+  rewrite Mmult_one_l. f_equal.
+  repeat rewrite Mmult_assoc; auto.
+  repeat rewrite Mmult_assoc; auto.
+Qed.
+
+
+Fixpoint Cpow (c: C) (n : nat) :=
+  match n with 
+    | 0 => C1 
+    | S n' => Cmult c (Cpow c n') 
+  end
+.
+
+Lemma Cpow_comm (a : C) (n : nat) :
+  (a * Cpow a n)%C =  (Cpow a n * a)%C.
+Proof.
+destruct a, Cpow. 
+cbv [Cmult fst snd].
+apply pair_equal_spec; split; try nra.
+Qed.
+
+Lemma Mpow_diag_is_diag (n m : nat) (D: @matrix C m m) :
+  diag_pred m D -> 
+(diag_pred m (Mpow m n D)).
+Proof.
+intros.
+induction n.
+-
+simpl.
+apply M_ID_diag.
+-
+unfold Mpow; fold Mpow.
+pose proof Matrix_diag_mult_diag m (Mpow m n D) D (@Mmult C_Ring m m m (Mpow m n D) D)
+   IHn H eq_refl; auto.
+Qed.
+
+
+(* for diagonal D, D^n is coeff matrix with components d_{ii}^n *)
+Lemma diag_mat_pow (m n: nat) (M: @matrix C m m) :
+  forall D : (matrix m m ),
+  diag_pred m D -> 
+  Mpow m n D = @mk_matrix C m m (fun i j => 
+      if i =? j then Cpow (@coeff_mat C m m Hierarchy.zero D i j) n else C0).
+Proof.
+intros.
+induction n.
+- 
+simpl. unfold M_ID; auto.
+-
+assert (diag_pred m (Mpow m n D)) by (apply Mpow_diag_is_diag; auto).
+unfold Mpow; fold Mpow.
+rewrite IHn.
+set ( D' :=
+(@mk_matrix C m m
+     (fun i j : nat =>
+      if i =? j
+      then Cpow (@coeff_mat C m m (@zero C_AbelianGroup) D i j) n
+      else C0))).
+replace (@Mmult C_Ring m m m D' D) with 
+(@mk_matrix C m m
+     (fun i j : nat =>
+      if i =? j
+      then (Cmult (@coeff_mat C  m m (@zero C_AbelianGroup) D' i j) 
+        (@coeff_mat C m m (@zero C_AbelianGroup) D i j)) 
+      else C0)).
+unfold D'.
+apply mk_matrix_ext => i j Hi Hj.
+rewrite coeff_mat_bij; try lia.
+destruct eqb.
+unfold Cpow. fold Cpow; rewrite Cpow_comm; auto.
+auto.
+assert (diag_pred m D').
+unfold diag_pred.
+subst D'.
+intros.
+rewrite coeff_mat_bij; try lia.
+destruct H1 as (A & B & C).
+apply Nat.eqb_neq in C.
+destruct eqb; try discriminate; cbv [C0]; auto.
+pose proof Matrix_diag_mult m D' D (@Mmult C_Ring m m m D' D) H1 H eq_refl. 
+apply mk_matrix_ext => ii jj Hii Hjj.
+assert (Hyp: (ii = jj)%nat \/ (ii <> jj)%nat) by lia; destruct Hyp.
++
+pose proof Nat.eqb_eq ii jj. 
+destruct H4. specialize (H5 H3).
+destruct eqb; try discriminate; subst.
+assert ( (jj = 0)%nat \/ (jj <> 0)%nat) by lia.
+destruct H3.
+*
+subst.
+assert (A: (0 <= 1)%nat) by lia;
+assert (B: (0 <= pred m)%nat) by lia;
+pose proof
+  @sum_n_m_Chasles C_Ring (fun l : nat =>
+   @mult C_Ring (@coeff_mat C_Ring m m (@zero C_Ring) D' 0 l)
+     (@coeff_mat C_Ring m m (@zero C_Ring) D l 0))
+  0 0 (pred m) A B.
+unfold sum_n.
+rewrite H3; clear H3.
+symmetry.
+match goal with |- context [plus ?a ?b = _] =>
+  assert (b = zero)
+end.
+-- 
+unfold diag_pred in *.
+pose proof (@sum_n_m_ext_loc C_Ring
+  (fun l : nat =>
+   @mult C_Ring (@coeff_mat C_Ring m m (@zero C_Ring) D' 0 l)
+     (@coeff_mat C_Ring m m (@zero C_Ring) D l 0))
+(fun _ : nat => zero) 1 (pred m)) as C.
+rewrite C; clear  C.
+rewrite sum_n_m_const_zero; auto.
+intros k Hk.
+assert (Hjk: (0 < m)%nat /\ (k < m)%nat /\ (0 <> k)%nat ) by lia.
+specialize (H1 0%nat k Hjk); rewrite H1.
+rewrite mult_zero_l; auto.
+--
+rewrite H3.
+rewrite sum_n_n.
+rewrite plus_zero_r.
+unfold mult, Ring.mult; simpl; auto.
+*
+assert (Ha: (0<=S(pred jj))%nat) by lia.
+assert (Hb: (pred jj <=  pred m)%nat) by lia.
+pose proof
+  @sum_n_m_Chasles C_Ring (fun l : nat =>
+   @mult C_Ring (@coeff_mat C_Ring m m (@zero C_Ring) D' jj l)
+     (@coeff_mat C_Ring m m (@zero C_Ring) D l jj ))
+  0 (pred jj) (pred m) Ha Hb as Hc.
+unfold sum_n.
+rewrite Hc; clear Hc.
+symmetry.
+match goal with |- context [plus ?a ?b = _] =>
+  assert (a = zero)
+end.
+--
+unfold diag_pred in *.
+pose proof (@sum_n_m_ext_loc C_Ring
+  (fun l : nat =>
+   @mult C_Ring (@coeff_mat C_Ring m m (@zero C_Ring) D' jj l)
+     (@coeff_mat C_Ring m m (@zero C_Ring) D l jj))
+(fun _ : nat => zero) 0 (pred jj)) as C.
+rewrite C; clear  C.
+rewrite sum_n_m_const_zero; auto.
+intros k Hk.
+assert (Hjk: ( jj < m)%nat /\ (k < m)%nat /\ ( jj <> k)%nat ) by lia.
+specialize (H1 jj k Hjk); rewrite H1.
+rewrite mult_zero_l; auto.
+--
+rewrite H6.
+rewrite plus_zero_l.
+replace (S (pred jj)) with jj by lia.
+clear Ha; clear Hb.
+assert (Ha: (jj <= S jj)%nat) by lia.
+assert (Hb: (jj <= pred m)%nat) by lia.
+pose proof
+  @sum_n_m_Chasles C_Ring (fun l : nat =>
+   @mult C_Ring (@coeff_mat C_Ring m m (@zero C_Ring) D' jj l)
+     (@coeff_mat C_Ring m m (@zero C_Ring) D l jj ))
+  jj jj (pred m)  Ha Hb as Hc.
+unfold sum_n.
+rewrite Hc; clear Hc.
+match goal with |- context [plus ?a ?b = _] =>
+  assert (b = zero)
+end.
+++
+unfold diag_pred in *.
+pose proof (@sum_n_m_ext_loc C_Ring
+  (fun l : nat =>
+   @mult C_Ring (@coeff_mat C_Ring m m (@zero C_Ring) D' jj l)
+     (@coeff_mat C_Ring m m (@zero C_Ring) D l jj))
+(fun _ : nat => zero) (S jj) (pred m)) as C.
+rewrite C; clear  C.
+rewrite sum_n_m_const_zero; auto.
+intros k Hk.
+assert (Hjk: ( jj < m)%nat /\ (k < m)%nat /\ ( jj <> k)%nat ) by lia.
+specialize (H1 jj k Hjk); rewrite H1.
+rewrite mult_zero_l; auto.
+++
+rewrite H7; clear H7.
+rewrite plus_zero_r.
+rewrite sum_n_n.
+unfold mult, Ring.mult; simpl; auto.
++
+pose proof (@sum_n_m_ext_loc C_Ring
+(fun l : nat => mult (@coeff_mat C_Ring m m (@zero C_Ring) D' ii l) (@coeff_mat C_Ring m m (@zero C_Ring) D l jj)) 
+(fun _ : nat => zero) 0 (pred m)).
+unfold sum_n.
+rewrite H4; clear H4.
+*
+apply Nat.eqb_neq in H3.
+destruct eqb; try discriminate.
+rewrite sum_n_m_const_zero.
+cbv [C0] ; auto.
+*
+unfold diag_pred in *. 
+intros.
+assert (HK: ii <> k \/ jj <> k) by lia; destruct HK as [A | B].
+--
+assert ((ii < m)%nat /\ (k < m)%nat /\ ii <> k) as Hk1 by lia.
+specialize (H1 ii k Hk1); rewrite H1; rewrite mult_zero_l; auto.
+--
+assert ((k < m)%nat /\ (jj < m)%nat /\ k <> jj) as Hk2 by lia.
+specialize (H k jj Hk2); rewrite H; rewrite mult_zero_r; auto.
+Qed.
+
+
 
 Close Scope R_scope. 
