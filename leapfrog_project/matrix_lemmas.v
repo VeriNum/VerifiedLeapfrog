@@ -29,10 +29,10 @@ Definition matrix_conj_transpose (n:nat) (M: @matrix C n n) :=
 .
 
 
-(* multiply a vector by a complex number *)
-Definition coeff_mult (a : C) (n:nat) (V: @matrix C n 1%nat) : @matrix C n n :=
-  @mk_matrix C n n (fun i j => 
-      Cmult a (@coeff_mat C n 1%nat Hierarchy.zero V i j))
+(* multiply a matrix by a complex number *)
+Definition mat_coeff_mult (a : C) (n m:nat) (V: @matrix C n m) : @matrix C n m :=
+  @mk_matrix C n m (fun i j => 
+      Cmult a (@coeff_mat C n m Hierarchy.zero V i j))
 .
 
 
