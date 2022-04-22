@@ -2,7 +2,7 @@
 local and global error, finiteness *)
 
 From vcfloat Require Import FPLang FPLangOpt RAux Rounding Reify Float_notations Automate.
-Require Import Interval.Tactic.
+Require Import IntervalFlocq3.Tactic.
 Import Binary.
 Import List ListNotations.
 Set Bullet Behavior "Strict Subproofs".
@@ -17,7 +17,7 @@ Section WITHNANS.
 
 Context {NANS: Nans}.
 
-Import Interval.Tactic.
+Import IntervalFlocq3.Tactic.
 
 Lemma prove_roundoff_bound_q:
   forall p q : ftype Tsingle,

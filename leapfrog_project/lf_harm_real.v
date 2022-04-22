@@ -4,7 +4,7 @@ Require Import real_lemmas.
 From Coquelicot Require Import Coquelicot.
 Set Bullet Behavior "Strict Subproofs". 
 
-Require Import Interval.Tactic.
+Require Import IntervalFlocq3.Tactic.
 
 Open Scope R_scope.
 

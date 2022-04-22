@@ -11,7 +11,7 @@ Require Import Init.Nat Arith.EqNat.
 
 From Coq Require Import ssreflect. 
 From Coquelicot Require Import Coquelicot.
-Require Import Interval.Tactic.
+Require Import IntervalFlocq3.Tactic.
 
 Set Bullet Behavior "Strict Subproofs". 
 

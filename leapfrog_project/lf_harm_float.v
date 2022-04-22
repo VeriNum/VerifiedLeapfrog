@@ -1,5 +1,5 @@
 From Coq Require Import ZArith Reals Psatz.
-From Flocq Require Import Binary Bits Core.
+From Flocq3 Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra
  (* Coqlib Floats Zbits Integers*).
 

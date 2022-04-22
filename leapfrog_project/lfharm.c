@@ -20,7 +20,6 @@ float force(float q) {
 
 void lfstep(struct state *s, float h) {
   float a;
-
   a = force(s->q);
   s->q = s->q + h * s->p + (0.5f * (h * h)) * a;	/* position step */
   s->p = s->p + (0.5f * h) * (a + force(s->q));		/* velocity step */
