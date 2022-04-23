@@ -95,8 +95,7 @@ Qed.
 
 
 
-(** Given any square matrix A ∈ Mn(C), the two norm of A is defined as the square root of 
-    the maximum non-zero eigenvalue of A'A *)
+(** Largest singular value of a square matrix A ∈ Mn(C) *)
 Definition max_sv_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
   let ATA := Mmult (matrix_conj_transpose n n A) A (* the Gram matrix A'A *) in
   exists (V Λ : @matrix C n n),
