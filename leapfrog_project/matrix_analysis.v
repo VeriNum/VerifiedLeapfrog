@@ -4,7 +4,7 @@
 *)
 
 From Coq Require Import ZArith Reals Psatz.
-From Coq Require Import Arith.Arith.
+From Coq Require Import Bool Arith.Arith.
 Require Import real_lemmas lf_harm_real matrix_lemmas lf_harm_real_theorems.
 
 
@@ -18,313 +18,147 @@ Set Bullet Behavior "Strict Subproofs".
 Require Import Coq.Logic.FunctionalExtensionality.
 
 
+
+Definition vec_two_norm (n: nat ) (u : @matrix C n 1) : R :=
+   sqrt (Cmod (@coeff_mat C 1%nat 1%nat Hierarchy.zero (Mmult (matrix_conj_transpose n 1 u) u) 0 0))
+.
+
 Definition vec_two_norm_2d (u : @matrix C 2 1) : R := 
-  Rprod_norm (Cmod (@coeff_mat C 2 1%nat Hierarchy.zero u 0 0), Cmod (@coeff_mat C 2 1 Hierarchy.zero u 1 0)). 
-
-
-Definition vec_two_norm (n: nat) (u : @matrix C n 1) : R :=
-   sqrt (sum_n (fun l : nat => (Cmod (@coeff_mat C n 1%nat Hierarchy.zero u l 0))^2) (pred n))
+  Rprod_norm (Cmod (@coeff_mat C 2 1%nat Hierarchy.zero u 0 0), Cmod (@coeff_mat C 2 1 Hierarchy.zero u 1 0))
 .
 
-Lemma two_norms_eq_2d (u : @matrix C 2 1%nat) :
-vec_two_norm_2d u = vec_two_norm _ u.
+
+Theorem two_norms_eq_2d (u : @matrix C 2 1%nat) :
+vec_two_norm 2 u = vec_two_norm_2d u .
 Proof.
-unfold vec_two_norm_2d, vec_two_norm, Rprod_norm.
-replace (Init.Nat.pred 2) with 1%nat by lia.
-rewrite sum_Sn.
+unfold vec_two_norm_2d, Rprod_norm, vec_two_norm, Mmult, matrix_conj_transpose.
+symmetry.
+unfold fst at 1.
+unfold snd at 1.
+symmetry.
+f_equal.
+rewrite coeff_mat_bij; try lia.
+etransitivity.
+apply Ceq_Cmod_eq.
+apply sum_Sn.
 rewrite sum_O.
-f_equal.
+simpl.
+repeat rewrite coeff_mat_bij; try lia.
+rewrite Cmult_comm.
+rewrite Cmod_Ccong.
+rewrite Cmult_comm.
+rewrite Cmod_Ccong.
+repeat rewrite Rmult_1_r.
+match goal with |-context[Cmod ?a * Cmod ?a] =>
+replace (Cmod a * Cmod a) with (Cmod a ^ 2)
+end.
+match goal with |-context[Cmod ?a * Cmod ?a] =>
+replace (Cmod a * Cmod a) with (Cmod a ^ 2)
+end.
+etransitivity.
+unfold Cmod.
+unfold RtoC.
+repeat rewrite pow2_sqrt.
+change plus with Cplus.
+repeat match goal with |-context[sqrt (fst (?a) ^2 + snd?b ^2)] =>
+replace (snd b) with 0
+end.
+rewrite pow_i; try lia.
+rewrite Rplus_0_r.
+cbv [Cplus].
+unfold fst at 1.
+apply sqrt_pow2.
+unfold fst at 1.
+unfold fst at 2.
+apply Rle_plus;
+apply sqr_plus_pos.
+simpl; try nra.
+apply sqr_plus_pos.
+apply sqr_plus_pos.
+unfold fst at 1.
+unfold fst at 2.
+fold Cmod.
+etransitivity.
+assert (fst (coeff_mat zero u 0 0) ^ 2 + snd (coeff_mat zero u 0 0) ^ 2 +
+(fst (coeff_mat zero u 1 0) ^ 2 + snd (coeff_mat zero u 1 0) ^ 2) = 
+(Cmod (coeff_mat zero u 0 0))^2  + (Cmod (coeff_mat zero u 1 0) )^2).
+unfold Cmod.
+repeat rewrite pow2_sqrt; try apply sqr_plus_pos; auto.
+apply H; auto.
+auto.
+auto.
+simpl.
+rewrite Rmult_1_r; auto.
+simpl.
+rewrite Rmult_1_r; auto.
 Qed.
 
-Definition non_zero_v (n : nat) (v : @matrix C n 1%nat) :=
-  (forall i, (i < n)%nat -> (@coeff_mat C n 1%nat Hierarchy.zero v i 0 <> 0 )) /\ (* eigenvector v ∈ Cn is non-zero *)
-  (0 < n)%nat (* v ∈ Cn is non-zero, so we rule out v ∈ C0 *)
+
+
+(** Given any square matrix A ∈ Mn(C), the two norm of A is defined as the square root of 
+    the maximum non-zero eigenvalue of A'A *)
+Definition max_sv_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
+  let ATA := Mmult (matrix_conj_transpose n n A) A (* the Gram matrix A'A *) in
+  exists (V Λ : @matrix C n n),
+         Mmult ATA V = Mmult V Λ
+      /\ is_orthogonal_matrix n V
+      /\ diag_pred n Λ   
+      /\ (forall i, (i < n)%nat ->  (Cmod (@coeff_mat C n n Hierarchy.zero Λ i i )) <= σ ) (* σ is max in Λ *)
 .
 
-(* Given any square matrix A ∈ Mn(C) and some nonzero vector v ∈ Cn,
-a complex number λ ∈ C is an eigenvalue of A if ...*)
-Definition matrix_two_norm_sig (n : nat) (A : @matrix C n n) (v : @matrix C n 1%nat | non_zero_v n v) := 
-  { λ : C | let ATA := Mmult (matrix_conj_transpose n A) A in
-            (Mmult ATA (proj1_sig v) = mat_coeff_mult λ n 1 (proj1_sig v) ) /\ (* x/v is an eigenvalue/eigenvector of ATA *)
-            (forall (u : @matrix C n 1%nat), vec_two_norm n (Mmult A u) <= sqrt (Cmod λ) * vec_two_norm n u) /\ (* x is max *)
-            (0 < (Cmod λ)) (* x is positive (iff ATA is non-singular)*)}.
 
-(* PROPERTY 1 : TWO NORM IS POSITIVE VALUED *)
-Lemma matrix_two_norm_sig_positive (n : nat ) (A : @matrix C n n) (v : @matrix C n 1%nat | non_zero_v n v) :
-    forall (l : matrix_two_norm_sig n A v),
-    0 <= sqrt ( Cmod (proj1_sig l)) .
+Definition basis_pred (n: nat ) (A : @matrix C n n) (u : @matrix C n 1%nat):= 
+  let ATA := Mmult (matrix_conj_transpose n n A) A in (* the Gram matrix A'A *)
+  forall (V Λ : @matrix C n n),
+         Mmult ATA V = Mmult V Λ
+      /\  is_orthogonal_matrix n V
+      /\ diag_pred n Λ ->
+  exists (a: @matrix C n 1%nat),  u = Mmult V a
+.
+
+
+Definition two_norm_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
+  forall (u : @matrix C n 1%nat), 
+  vec_two_norm n (Mmult A u) <=  σ * vec_two_norm n u 
+  /\ forall (s : R), vec_two_norm n (Mmult A u) <= s * vec_two_norm n u ->  σ <= s (* sqrt σ is inf *)
+.
+
+
+(** Any vector can be written as the sum of the eigenvectors
+  of a Hermitian matrix. We need this in order to satisfy the 
+  two norm predicate. **)
+Theorem vectors_in_basis (n : nat) : 
+ forall (x : @matrix C n 1%nat), 
+ forall (A: @matrix C n n), 
+ basis_pred n A  x.
 Proof.
 intros.
-apply sqrt_pos.
-Qed.
-
-Lemma eq_V0_iff (n: nat) (V : @matrix C n 1%nat) :
-  V = V0 n <-> forall i, (i < n)%nat -> (@coeff_mat C_Ring n 1%nat zero V i 0) = zero.
-Proof.
-split; intros.
-- 
-subst. unfold V0, Mzero.
-apply coeff_mat_bij; try lia; auto.
-- 
-destruct n.
-+ 
-destruct V; auto.
-+
-unfold V0, Mzero.
-pose proof @mk_matrix_bij C_Ring (S n) 1 zero V as Hm.
-rewrite <- Hm.
-apply mk_matrix_ext => i j Hi Hj.
-assert (j=0%nat) by lia.
-subst.
-apply H; auto.
-Qed.
-
-Lemma two_norm_zero_lem (A : @matrix C 2 2)  : 
-  A = M0 2 -> 
-  forall u : matrix 2 1, (vec_two_norm_2d (Mmult A u) = 0).
-Proof.
+unfold basis_pred.
 intros.
-assert ((Mmult A u) = V0 2).
-- 
-apply mk_matrix_ext => i j Hi Hj.
-unfold sum_n; simpl. 
-rewrite sum_n_Sm; try lia.
-rewrite sum_n_n.
-assert (A = M0 2) by auto.
-assert ((i < 2)%nat /\ (0 < 2)%nat) by lia.
-pose proof eq_M0_iff.
-eapply eq_M0_iff in H; try apply H1.
-assert ((i < 2)%nat /\ (1 < 2)%nat) by lia.
-eapply eq_M0_iff in H0; try apply H3.
-cbv [plus mult]; simpl.
-cbv [Cplus Cmult]; simpl.
-assert (@coeff_mat C 2 2 (@zero C_Ring) A i 1 = @zero C_Ring) by auto.
-assert (@coeff_mat C 2 2 (@zero C_Ring) A i 0 = @zero C_Ring) by auto.
-rewrite H4.
-rewrite H5.
-simpl; repeat rewrite Rmult_0_l.
-repeat rewrite Rminus_0_r.
-repeat rewrite Rplus_0_l.
-auto.
-- 
-rewrite H0.
-unfold vec_two_norm_2d.
-unfold V0, Rprod_norm, fst, snd, Cmod, C0. 
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-unfold fst, snd.
-repeat rewrite pow_i; try lia.
-rewrite Rplus_0_l.
-rewrite sqrt_0.
-repeat rewrite pow_i; try lia.
-rewrite Rplus_0_l.
-rewrite sqrt_0; auto.
-Qed.
-
-Lemma Cdiv_zero (a : C):
-  a <> 0 -> Cdiv 0 a = C0.
-Proof.
-intros. 
-cbv [Cdiv Cinv].
-destruct a.
-unfold C0, fst, snd.
-apply pair_equal_spec. unfold fst, snd; simpl.
-repeat rewrite Rmult_0_l; nra.
-Qed.
-
-Lemma Cmult_zero (a b : C) :
-  Cmult a b = 0 -> b <> 0 -> a = 0.
-Proof.
-intros.
-assert (H1 : Cdiv (Cmult a b) b = Cdiv 0 b) by (rewrite H; auto).
-assert (H2 : Cdiv (Cmult a b) b = Cmult a (Cdiv b b)).
-destruct b; destruct a.
-cbv [Cmult Cdiv]; simpl.
-apply pair_equal_spec. nra.
-rewrite H2 in H1.
-replace (Cdiv b b ) with C1 in H1.
-replace (Cmult a C1) with a in H1.
-rewrite Cdiv_zero in H1; auto.
-cbv [C1 Cmult]; destruct a; simpl; apply pair_equal_spec;split; nra.
-replace (Cdiv b b) with (b * / b)%C.
-rewrite Cinv_r; auto.
-cbv [Cmult Cdiv]. apply pair_equal_spec;split; nra.
+destruct H as (H1 & H2 & H3).
+exists (Mmult (matrix_conj_transpose n n V) x). 
+unfold is_orthogonal_matrix in H2; destruct H2 as (_ & H2).
+rewrite Mmult_assoc.
+rewrite H2.
+rewrite Mmult_one_l; auto.
 Qed.
 
 
-Lemma two_norm_M0_2d (v : @matrix C 2 1%nat | non_zero_v 2 v) :
-    forall (l : matrix_two_norm_sig 2 (M0 2) v),
-    0 =  sqrt (Cmod (proj1_sig l)).
-Proof.
-intros.
-destruct l as (lam_max & H1 & H2 & H3); simpl.
-destruct v as (v & Hv ). simpl in H1. 
-unfold non_zero_v in Hv. destruct Hv as (Hv & _).
-assert (mat_coeff_mult lam_max 2 1 v = V0 2).
--
-replace (matrix_conj_transpose 2 (M0 2)) with (M0 2) in H1.
-rewrite Mmult_Mzero_l in H1.
-replace (@Mmult C_Ring 2 2 1 (@Mzero C_Ring 2 2) v) with (V0 2) in H1.
-+
-apply mk_matrix_ext => i j Hi Hj.
-unfold V0, mat_coeff_mult in H1.
-rewrite <- mk_matrix_ext in H1.
-specialize (H1 i j Hi Hj).
-destruct H1; auto.
-+
-rewrite Mmult_M0_vec; simpl; auto.
-+
-symmetry.
-apply Mcong_transpose_zero; auto.
--
-unfold mat_coeff_mult, V0 in H.
-rewrite <- mk_matrix_ext in H.
-assert (A: (0 < 2)%nat) by lia.
-assert (B: (0 < 1)%nat) by lia.
-specialize (Hv 0%nat).
-specialize (H 0%nat 0%nat A B).
-apply Cmult_zero in H; auto; subst.
-rewrite Cmod_0.
-rewrite sqrt_0; nra.
-Qed.
-
-
-Lemma two_norm_M0 (n: nat) (v : @matrix C n 1%nat | non_zero_v n v) :
-    forall (l : matrix_two_norm_sig n (M0 n) v),
-    0 =  sqrt (Cmod (proj1_sig l)).
-Proof.
-intros.
-destruct l as (lam_max & H1 & H2 & H3); simpl.
-destruct v as (v & Hv ). simpl in H1. 
-unfold non_zero_v in Hv. destruct Hv as (Hv & Hv2).
-assert (mat_coeff_mult lam_max n 1 v = V0 n).
--
-replace (matrix_conj_transpose n (M0 n)) with (M0 n) in H1.
-rewrite Mmult_Mzero_l in H1.
-replace (@Mmult C_Ring  n n 1 (@Mzero C_Ring n n) v) with (V0 n) in H1.
-+
-apply mk_matrix_ext => i j Hi Hj.
-unfold V0, mat_coeff_mult in H1.
-rewrite <- mk_matrix_ext in H1.
-specialize (H1 i j Hi Hj).
-destruct H1; auto.
-+
-rewrite Mmult_M0_vec; simpl; auto.
-+
-symmetry.
-apply Mcong_transpose_zero; auto.
--
-unfold mat_coeff_mult, V0 in H.
-rewrite <- mk_matrix_ext in H.
-assert (A: (pred n < n)%nat) by lia.
-assert (B: (0 < 1)%nat) by lia.
-specialize (H (pred n)%nat 0%nat A B).
-specialize (Hv (pred n)%nat A).
-apply Cmult_zero in H; auto; subst.
-rewrite Cmod_0.
-rewrite sqrt_0; nra.
-Qed.
-
-
-(* PROPERTY 2: TWO NORM IS POSITIVE DEFINITE *)
-Lemma matrix_two_norm_sig_definite (n: nat) (A : @matrix C n n) (v : @matrix C n 1%nat | non_zero_v n v) :
-    forall (l : matrix_two_norm_sig n A v),
-    0 = sqrt ( Cmod (proj1_sig l)) <-> A = M0 n.
-Proof.
-intros; split.
-- 
-destruct l as (lam_max & H1 & H2 & H3); simpl.
-destruct v as (v & Hv ). simpl in H1. 
-unfold non_zero_v in Hv. destruct Hv as (Hv & Hv2).
-intros.
-symmetry in H.
-apply sqrt_eq_0 in H; try apply Cmod_ge_0.
-rewrite H in H3.
-pose proof Rlt_irrefl 0; contradiction.
--
-intros.
-subst.
-pose proof two_norm_M0 n v l.
-auto.
-Qed.
-
-Definition v1 (n:nat) : @matrix C n 1%nat := mk_matrix n 1%nat (fun _ _ => C1).
-
-Lemma mat_coeff_mult_eq (a b: C) (n m: nat) (A : @matrix C n m) : 
-  (mat_coeff_mult a n m A) = (mat_coeff_mult b n m A) -> a = b.
-Proof.
-Admitted.
-
-
-(* PROPERTY 3: TWO NORM IS HOMOGENEOUS *)
-Lemma matrix_two_norm_sig_HOMOGENEOUS (a : C) (n : nat) (A : @matrix C n n) (v : @matrix C n 1%nat | non_zero_v n v) :
-    forall (la : matrix_two_norm_sig n (mat_coeff_mult a n n A) v),
-    forall (l  : matrix_two_norm_sig n A  v),
-    sqrt ( Cmod (proj1_sig la)) = Cmod a * sqrt ( Cmod (proj1_sig l)).
-Proof.
-intros. 
-destruct l as (lam_max & H1 & H2 & H3); simpl.
-destruct la as (a_lam_max & H1a & H2a & H3a); simpl.
-destruct v as (v & Hv ). simpl in H1a. simpl in H1. 
-assert ( (Mmult (matrix_conj_transpose n (mat_coeff_mult a n n A))
-           (mat_coeff_mult a n n A)) = 
-        (Mmult (Mmult (mat_coeff_mult a n n (M_ID _)) (matrix_conj_transpose n A))
-           (Mmult (mat_coeff_mult a n n (M_ID _)) A))) by admit.
-assert ( 
-        (Mmult (Mmult (mat_coeff_mult a n n (M_ID _)) (matrix_conj_transpose n A))
-           (Mmult (mat_coeff_mult a n n (M_ID _)) A)) =
-(Mmult (Mmult (mat_coeff_mult a n n (M_ID _)) (mat_coeff_mult a n n (M_ID _)))
-        (Mmult (matrix_conj_transpose n A) A))) by admit.
-rewrite H in H1a.
-rewrite H0 in H1a.
-clear H; clear H0.
-rewrite <- Mmult_assoc in H1a.
-rewrite H1 in H1a.
-assert (Mmult
-        (Mmult (mat_coeff_mult a n n (M_ID n))
-           (mat_coeff_mult a n n (M_ID n)))
-        (mat_coeff_mult lam_max n 1 v) = 
-mat_coeff_mult (a * a * lam_max)%C n 1 v) by admit.
-rewrite H in H1a.
-clear H.
-apply mat_coeff_mult_eq in H1a.
-subst.
-cbv [Cmod]. 
-rewrite <- sqrt_mult_alt.
-f_equal.
-replace (fst a ^ 2 + snd a ^ 2) with
-(sqrt((fst a ^ 2 + snd a ^ 2) ^2)).
-rewrite <- sqrt_mult_alt.
-f_equal.
-destruct a , lam_max.
-cbv [Cmult Cplus].
-unfold fst, snd.
-field_simplify; nra.
-admit.
-admit.
-admit.
-Admitted. 
-
-
-
-
-(* the approximate transition matrix *)
+(** the leapfrog transition matrix *)
 Definition t_matrix (h: R) : @matrix C 2 2 := 
   let a := 0.5 * h^2 in 
   mk_matrix 2 2 (fun i j => if (Nat.eqb i j) then ((1 - a) , 0) else 
     if ( Nat.ltb j i)%nat then (h,0) else ((-0.5 * h * (2 - a)),0)) .
 
-(* ideal solution vector *)
+(** ideal solution vector *)
 Definition pq_vector (h: R) (p q : R -> R) (t : R) : @matrix C 2 1 := 
   mk_matrix 2 1 (fun i j => if (Nat.eqb i j) then (p t , 0) else (q t , 0)) .
 
-(* an arbitrary solution vector *)
+(** arbitrary solution vector *)
 Definition s_vector (ic: R * R) := @mk_matrix C 2 1%nat
   (fun i j => if (Nat.eqb i j) then ((fst ic),0) else ((snd ic),0)).
 
-(* the first component of the vector result of multiplication 
-of the transition matrix by an arbitrary vector is equal to the 
-first component of a leapfrog update. *)
+(** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_1:
   forall (ic : R * R) (h : R),  
   let Mx := Mmult (t_matrix h) (s_vector ic) in
@@ -334,9 +168,7 @@ intros. subst Mx. destruct ic. cbv.
 all : (f_equal; field_simplify; nra) .
 Qed.
 
-(* the second component of the vector result of multiplication 
-of the transition matrix by an arbitrary vector is equal to the 
-second component of a leapfrog update. *)
+(** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_2:
   forall (ic : R * R) (h : R), 
   let Mx := Mmult (t_matrix h) (s_vector ic) in
@@ -346,25 +178,65 @@ intros. subst Mx. destruct ic. cbv.
 all : (f_equal; field_simplify; nra) .
 Qed.
 
-
-Definition lambda_1 (h : R) : C := (1 -0.5 * h^2 , -h * sqrt(2 - h) * 0.5 * sqrt(h + 2)). 
-Definition lambda_2 (h : R) : C := (1 -0.5 * h^2 ,  h * sqrt(2 - h) * 0.5 * sqrt(h + 2)).
-
+(** The eigenvalues of the transition matrix *)
+Definition lambda_1 (h : R) : C := (1 -0.5 * h^2 , -h * sqrt(2 - h) * 0.5 * sqrt(h + 2))
+. 
+Definition lambda_2 (h : R) : C := (1 -0.5 * h^2 ,  h * sqrt(2 - h) * 0.5 * sqrt(h + 2))
+.
 Definition eigenvalue_vector (h : R) : @matrix C 2 1 :=
-mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then lambda_1 h else lambda_2 h).
-
+mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then lambda_1 h else lambda_2 h)
+.
 Definition eigenvalue_matrix (h : R) : @matrix C 2 2 :=
    mk_matrix 2 2 ( fun i j => if ((Nat.eqb i 0) && (Nat.eqb j 0) ) then lambda_1 h else
-    if ( (Nat.eqb i 1) && (Nat.eqb j 1) ) then lambda_2 h else 0).
-
-
-Definition eV_1 (h: R) : C * C := ((0 , -0.5 * sqrt(4 - h^2)) , C1).
-Definition eV_2 (h: R) : C * C := ((0 ,  0.5 * sqrt(4 - h^2)) , C1).
+    if ( (Nat.eqb i 1) && (Nat.eqb j 1) ) then lambda_2 h else 0)
+.
+(** The eigenvectors of the transition matrix *)
+Definition eV_1 (h: R) : C * C := ((0 , -0.5 * sqrt(4 - h^2)) , C1)
+.
+Definition eV_2 (h: R) : C * C := ((0 ,  0.5 * sqrt(4 - h^2)) , C1)
+.
 Definition eigenvector_matrix (h : R) : @matrix C 2 2 :=
    mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then fst (eV_1 h) else
-    if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then fst (eV_2 h) else 1).
+    if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then fst (eV_2 h) else 1)
+.
+(** We define the Gram matrix MTM for the transition matrix. The eigenvalues of the matrix MTM are the 
+    singular values of the transition matrix *)
+Definition MTM (h : R) : @matrix C 2 2 :=
+   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then (0.25 * h^4 + 1, 0) else
+    if ( negb (Nat.eqb i j) ) then (0.125 * h^3*(2 - h^2),0) else 
+    (0.0625 * h^6 - 0.25*h^4 + 1, 0))
+.
+(** The eigenvalues of MTM *)
+Definition MTM_lambda_1 (h : R) : R := (1 + 0.03125 * h ^ 6 - 0.03125 * h^3 * sqrt(h^2 + 4) * sqrt(h^4 - 4 * h^2 + 16)) 
+.
+Definition MTM_lambda_2 (h : R) : R := (1 + 0.03125 * h ^ 6 + 0.03125 * h^3 * sqrt(h^2 + 4) * sqrt(h^4 - 4 * h^2 + 16)) 
+.
+Definition MTM_eigenvalue_vector (h : R) : @matrix R 2 1 :=
+mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then MTM_lambda_1 h else MTM_lambda_2 h)
+.
+Definition MTM_eigenvalue_matrix (h : R) : @matrix C 2 2 :=
+   mk_matrix 2 2 ( fun i j => if ((Nat.eqb i 0) && (Nat.eqb j 0) ) then RtoC (MTM_lambda_1 h) else
+    if ( (Nat.eqb i 1) && (Nat.eqb j 1) ) then RtoC (MTM_lambda_2 h) else 0)
+.
 
+(** The eigenvectors of MTM, numbered to match their eigenvalues *)
+Definition MTM_eV_1 (h: R) : C * C := ((0.25 * (h^3 - 8*h + sqrt(h^6 + 64))/(h^2 - 2) ,0) , C1)
+.
+Definition MTM_eV_2 (h: R) : C * C := ((0.25 * (h^3 - 8*h - sqrt(h^6 + 64))/(h^2 - 2) ,0) , C1)
+.
 
+Definition MTM_eV1 (h : R) : @matrix C 2 1 :=
+  mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then fst (MTM_eV_1 h) else snd (MTM_eV_1 h))
+.
+Definition MTM_eV2 (h : R) : @matrix C 2 1 :=
+  mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then fst (MTM_eV_2 h) else snd (MTM_eV_2 h))
+.
+(** we use MTM_eigenvector_matrix as the matrix V in e.g. M V = V L , where V is the diagonal matrix of eigenvalues
+   and M is the transition matrix.*)
+Definition MTM_eigenvector_matrix (h : R) : @matrix C 2 2 :=
+   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then fst (MTM_eV_1 h) else
+    if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then fst (MTM_eV_2 h) else 1)
+.
 
 
 (* M * V = V * L *)
@@ -507,40 +379,8 @@ Qed.
 
 
 
-Definition MTM (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then (0.25 * h^4 + 1, 0) else
-    if ( negb (Nat.eqb i j) ) then (0.125 * h^3*(2 - h^2),0) else 
-    (0.0625 * h^6 - 0.25*h^4 + 1, 0)).
-
-
-
-Definition MTM_lambda_1 (h : R) : C := (1 + 0.03125 * h ^ 6 - 0.03125 * h^3 * sqrt(h^2 + 4) * sqrt(h^4 - 4 * h^2 + 16), 0) .
-Definition MTM_lambda_2 (h : R) : C := (1 + 0.03125 * h ^ 6 + 0.03125 * h^3 * sqrt(h^2 + 4) * sqrt(h^4 - 4 * h^2 + 16), 0) .
-
-Definition MTM_eigenvalue_vector (h : R) : @matrix C 2 1 :=
-mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then MTM_lambda_1 h else MTM_lambda_2 h).
-
-Definition MTM_eigenvalue_matrix (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ((Nat.eqb i 0) && (Nat.eqb j 0) ) then MTM_lambda_1 h else
-    if ( (Nat.eqb i 1) && (Nat.eqb j 1) ) then MTM_lambda_2 h else 0).
-
-Definition MTM_eV_1 (h: R) : C * C := ((0.25 * (h^3 - 8*h + sqrt(h^6 + 64))/(h^2 - 2) ,0) , C1).
-Definition MTM_eV_2 (h: R) : C * C := ((0.25 * (h^3 - 8*h - sqrt(h^6 + 64))/(h^2 - 2) ,0) , C1).
-
-Definition MTM_eV_1_vector (h : R) : @matrix C 2 1 :=
-  mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then fst (MTM_eV_1 h) else snd (MTM_eV_1 h)).
-
-Definition MTM_eV_2_vector (h : R) : @matrix C 2 1 :=
-  mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then fst (MTM_eV_2 h) else snd (MTM_eV_2 h)).
-
-Definition MTM_eigenvector_matrix (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then fst (MTM_eV_1 h) else
-    if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then fst (MTM_eV_2 h) else 1).
-
-  
-
 Lemma MTM_aux  (h : R) :
-  Mmult (matrix_conj_transpose _ (t_matrix h)) (t_matrix h) = MTM h.
+  Mmult (matrix_conj_transpose _ _ (t_matrix h)) (t_matrix h) = MTM h.
 Proof.
 unfold MTM.
 apply mk_matrix_ext => i j Hi Hj.
@@ -621,7 +461,7 @@ Qed.
 
   
 (* MTM * V = V * L *)
-Lemma MTM_eigens_correct (h : R) :
+Theorem MTM_eigens_correct (h : R) :
   0 < h  ^ 2 < 2 -> 
   Mmult (MTM h) (MTM_eigenvector_matrix h) = 
   Mmult (MTM_eigenvector_matrix h) (MTM_eigenvalue_matrix h).
@@ -740,11 +580,225 @@ simpl. cbv -[sqrt]. field.
 all : cbv; nra. 
 Qed.
 
-Corollary eigenvalues_MTM_correct_cor (h :R) :
-Mmult (MTM h) (MTM_eV_2_vector h) =
-     mat_coeff_mult (MTM_lambda_2 h) 2 1 (MTM_eV_2_vector h).
-Proof.
+
+Lemma Cmod_RtoC (a : R): 
+Cmod (RtoC a) = a.
 Admitted.
+
+
+(* if σ^2 is the largest singular value of A ∈ M(C^2) then σ is the two-norm of A *)
+Theorem max_sv_pred_implies_two_norm_pred   (A : @matrix C 2 2) (σ : R):
+  max_sv_pred 2 A (σ ^2) ->  two_norm_pred 2 A σ.
+Proof.
+intros.
+unfold two_norm_pred. split.
+- 
+pose proof vectors_in_basis 2 u A as Hb.
+unfold max_sv_pred in H.
+destruct H as (V & Λ & H1 & H2 & H3 & H4).
+unfold basis_pred in Hb.
+specialize (Hb V Λ).
+assert (exists a : matrix 2 1, u = Mmult V a).
++
+apply Hb; repeat (split; auto).
++
+clear Hb.
+destruct H as (a & Hu); subst.
+unfold vec_two_norm.
+repeat rewrite tranpose_rewrite.
+rewrite <- Mmult_assoc.
+rewrite <- Mmult_assoc.
+replace (Mmult (matrix_conj_transpose 2 2 A) (Mmult A (Mmult V a))) with
+(Mmult (Mmult (Mmult (matrix_conj_transpose 2 2 A) A) V) a).
+rewrite H1.
+replace (Mmult (matrix_conj_transpose 2 2 V) (Mmult (Mmult V Λ) a)) with
+(Mmult (Mmult (matrix_conj_transpose 2 2 V) V) (Mmult Λ a)).
+replace (Mmult (Mmult (matrix_conj_transpose 2 1 a) (matrix_conj_transpose 2 2 V)) (Mmult V a))
+with 
+(Mmult (matrix_conj_transpose 2 1 a) (Mmult (Mmult (matrix_conj_transpose 2 2 V) V) a)).
+destruct H2 as (H2 & _).
+rewrite H2.
+repeat rewrite Mmult_one_l.
+replace (Mmult Λ a)
+with 
+(mk_matrix 2 1 (fun i _ : nat =>
+  mult (coeff_mat zero Λ i i) (coeff_mat zero a i 0))).
+replace σ with (sqrt (σ^2)).
+rewrite <- sqrt_mult; try nra; try apply Cmod_ge_0.
+apply sqrt_le_1_alt.
+replace (σ^2) with (Cmod (σ^2)).
+rewrite <- Cmod_mult.
+unfold Mmult.
+repeat rewrite coeff_mat_bij; try lia.
+replace (Init.Nat.pred 2) with (S 0) by lia.
+repeat rewrite sum_Sn.
+repeat rewrite coeff_mat_bij; try lia.
+repeat rewrite sum_O.
+repeat rewrite coeff_mat_bij; try lia.
+repeat rewrite sum_Sn.
+repeat rewrite sum_O.
+change plus with Cplus.
+change mult with Cmult.
+unfold matrix_conj_transpose.
+repeat rewrite coeff_mat_bij; try lia.
+rewrite Cmult_comm.
+rewrite <- Cmult_assoc.
+rewrite C_sqr_ccong.
+rewrite Cmult_comm.
+rewrite Cplus_comm.
+rewrite Cmult_comm.
+rewrite <- Cmult_assoc.
+rewrite C_sqr_ccong.
+repeat rewrite C_sqr_ccong2.
+assert ( forall i : nat, (i < 2)%nat ->
+     (coeff_mat zero Λ i i) = RtoC (fst (coeff_mat zero Λ i i))) by admit.
+
+assert ((1 < 2)%nat) by lia.
+assert ((0 < 2)%nat) by lia.
+pose proof (H 0%nat H5).
+pose proof (H 1%nat H0).
+rewrite H6.
+rewrite H7.
+
+repeat rewrite <- RtoC_mult.
+repeat rewrite <- RtoC_plus.
+repeat rewrite <- RtoC_mult.
+repeat rewrite Cmod_R.
+
+rewrite Rmult_comm.
+apply Rabs_pos_le.
+apply Rle_plus.
+apply Rle_mult.
+apply sqr_plus_pos.
+admit. (*0 <= fst (coeff_mat zero Λ 1 1)*)
+apply Rle_mult.
+apply sqr_plus_pos.
+admit.
+apply Rle_mult.
+apply square_pos.
+admit. (*apply sqr_plus_pos.*)
+match goal with |-context [σ ^ 2 * (?a + ?b)]=>
+replace (σ ^ 2 * (a + b)) with
+( σ ^ 2 * a +  σ ^ 2 * b) by nra
+end.
+rewrite Rplus_comm.
+apply Rplus_le_compat.
+*
+rewrite Rmult_comm.
+apply Rmult_le_compat_r.
+apply sqr_plus_pos.
+specialize (H4 0%nat H5); try lia.
+eapply Rle_trans.
+2: apply H4.
+change ((@coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 0 0))
+with 
+(@coeff_mat (AbelianGroup.sort C_AbelianGroup) 2 2 (@zero C_AbelianGroup) Λ 0 0).
+rewrite H6 at 2; rewrite Cmod_R.
+apply Rle_abs.
+*
+rewrite Rmult_comm.
+apply Rmult_le_compat_r.
+apply sqr_plus_pos.
+specialize (H4 1%nat H0); try lia.
+eapply Rle_trans.
+2: apply H4.
+change ((@coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 1 1))
+with 
+(@coeff_mat (AbelianGroup.sort C_AbelianGroup) 2 2 (@zero C_AbelianGroup) Λ 1 1).
+rewrite H7 at 2; rewrite Cmod_R.
+apply Rle_abs.
+*
+rewrite Cmod_R.
+apply Rabs_pos_eq; nra.
+*
+rewrite sqrt_pow2; try nra.
+admit (*0 <= σ*).
+*
+unfold Mmult.
+apply mk_matrix_ext; intros.
+assert (j = 0)%nat by lia; subst.
+assert ( (i = 0)%nat \/ (i <> 0)%nat) by lia; destruct H5.
+--
+replace (Init.Nat.pred 2) with (S 0) by lia.
+rewrite sum_Sn.
+rewrite sum_O.
+unfold diag_pred in H3.
+subst.
+specialize (H3 0%nat 1%nat).
+Admitted.
+
+
+
+Lemma two_norm_pred_eq (h : R | 0 < h < sqrt 2): 
+ two_norm_pred 2 (t_matrix (proj1_sig h)) (sqrt (MTM_lambda_2 (proj1_sig h))).
+Proof.
+apply ( max_sv_pred_implies_two_norm_pred
+  (t_matrix (proj1_sig h)) (sqrt (MTM_lambda_2 (proj1_sig h)))).
+unfold max_sv_pred.
+destruct h as (h & Hh).
+exists (MTM_eigenvector_matrix h), (MTM_eigenvalue_matrix h).
+simpl.
+repeat split.
+-
+rewrite MTM_aux.
+assert (0 < h ^ 2 < 2) by admit.
+apply (MTM_eigens_correct h H).
+-
+admit.
+-
+admit.
+-
+unfold diag_pred, MTM_eigenvalue_matrix.
+intros; rewrite coeff_mat_bij; try lia.
+assert (Hi: (i = 0)%nat \/ (i <> 0)%nat) by lia; destruct Hi.
++ 
+subst.
+assert ((j =? 0) = false).
+destruct H as (H & A & B).
+apply Nat.eqb_neq; auto.
+rewrite H0. unfold RtoC; auto.
++
+apply Nat.eqb_neq in H0. 
+rewrite H0. 
+simpl.
+assert (Hi: (i = 1)%nat \/ (i <> 1)%nat) by lia; destruct Hi.
+*
+subst.
+assert ((j =? 1) = false).
+destruct H as (H & A & B).
+apply Nat.eqb_neq; auto.
+rewrite H1. unfold RtoC; auto.
+*
+apply Nat.eqb_neq in H1.
+rewrite H1. unfold RtoC; auto.
+-
+intros.
+rewrite Rmult_1_r.
+unfold Cmod.
+rewrite <- sqrt_mult_alt.
+apply sqrt_le_1_alt.
+assert (Hi: (i = 1)%nat \/ (i = 0)%nat) by lia; destruct Hi.
++ 
+subst.
+unfold MTM_eigenvalue_matrix; simpl; nra.
++ 
+subst.
+unfold MTM_eigenvalue_matrix; simpl.
+rewrite Rmult_0_l.
+rewrite Rplus_0_r.
+rewrite Rmult_1_r.
+apply Rmult_le_compat.
+admit. (* 0 <= MTM_lambda_2 h *)
+admit. (* 0 <= MTM_lambda_2 h *)
+admit (*MTM_lambda_1 h <= MTM_lambda_2 h*).
+admit (*MTM_lambda_1 h <= MTM_lambda_2 h*).
++
+admit. (* 0 <= MTM_lambda_2 h *)
+Admitted.
+
+Definition two_norm_t_matrix (h : R | 0 < h < sqrt 2):=
+  proj1_sig (exist (two_norm_pred 2 (t_matrix (proj1_sig h))) (sqrt (MTM_lambda_2 (proj1_sig h))) (two_norm_pred_eq h))
+.
 
 
 Lemma eig_mod_eq_1 (h: R):
@@ -804,29 +858,9 @@ f_equal.
 field_simplify; nra.
 Qed.
 
-Lemma sep_0_div (a b : R) :
-  a <> 0 /\ b <> 0 -> a/b <> 0.
-Proof.
-intros.
-replace (a / b) with (a * / b) by nra.
-destruct H as (HA & HB).
-generalize (Rinv_neq_0_compat b HB).
-pose proof Req_dec (a / b) 0 as Hy; destruct Hy; try auto.
-Qed.
 
 
 
-Lemma h_sqrt2_lemma (h : R) : 
-0 < h < sqrt 2 ->
-0 < h * h  < 2.
-Proof.
-intros.
-destruct H; split; auto.
-replace ( h * h) with (h^2) by nra.
-apply pow2_gt_0; try nra.
-assert ( h * h < sqrt 2  * sqrt 2) by nra.
-rewrite sqrt_def in H1; try nra.
-Qed.
 
 
 Lemma MTM_eV_2_sep_0 (h  : R) : 
@@ -866,99 +900,13 @@ apply pair_equal_spec in H0.
 destruct H; destruct H0; auto.
 Qed.
 
-Lemma fst_MTM_eV_2_vector_nz (h : R): 
-  0 < h < sqrt 2 ->
-fst (MTM_eV_2 h) <> C0.
-Proof.
-intros.
-cbv -[MTM_eV_2]; intros.
-unfold MTM_eV_2 in H0.
-apply pair_equal_spec in H0.
-assert (h * (h * 1) - 2 <> 0) by (pose proof h_sqrt2_lemma h H; nra).
-assert (0.25 * (h * (h * (h * 1)) - 8 * h - sqrt (h * (h * (h * (h * (h * (h * 1))))) + 64)) /
-    (h * (h * 1) - 2) <> 0).
-apply sep_0_div; split; try nra.
-apply Rlt_not_eq.
-interval.
-destruct H0.
-destruct H2.
-apply H0.
-Qed.
-
-
-
-Lemma MTM_eV_2_vector_nz (h : R | 0 < h < sqrt 2) : 
-  non_zero_v 2 (MTM_eV_2_vector (proj1_sig h)). 
-Proof.
-unfold non_zero_v, MTM_eV_2_vector.
-destruct h.
-split; intros; try lia.
-assert ( (i = 0)%nat \/ (i = 1)%nat) by lia.
-destruct H0; subst.
--
-rewrite coeff_mat_bij; try lia.
-rewrite Nat.eqb_refl.
-apply fst_MTM_eV_2_vector_nz; auto.
--
-rewrite coeff_mat_bij; try lia.
-rewrite Nat.eqb_compare. simpl.
-cbv; intros. apply pair_equal_spec in H0; 
-destruct H0. 
-pose proof R1_neq_R0.
-try contradiction.
-Qed.
-
-
-
-Definition MTM_eV_2_v (h : R | 0 < h < sqrt 2) : {v : matrix 2 1 | non_zero_v 2 v}:= 
-  exist (non_zero_v 2) (MTM_eV_2_vector (proj1_sig h)) (MTM_eV_2_vector_nz h).
-
-Theorem t_matrix_two_norm_eq:
-  forall h : {h : R | 0 < h < sqrt 2},
- (* this additional restriction on h is required 
-  for the eigenvectors of MTM_ev_2 to be non-zero*)
-  forall (l : matrix_two_norm_sig 2  (t_matrix (proj1_sig h)) (MTM_eV_2_v h)),
-  proj1_sig l = (MTM_lambda_2 (proj1_sig h)).
-Proof.
-intros.
-destruct h as (h & Hh). 
-destruct l as (lam_max & H1 & H2 & H3); simpl in *; simpl.
-rewrite MTM_aux in H1.
-rewrite eigenvalues_MTM_correct_cor in H1.
-unfold mat_coeff_mult in H1.
-assert (A : (0 <2)%nat) by lia.
-assert (B : (0 <1)%nat) by lia.
-eapply mk_matrix_ext in H1; try apply A; try apply B.
-cbv [Cmult MTM_lambda_2 MTM_eV_2_vector MTM_eV_2] in H1.
-rewrite coeff_mat_bij in H1; try lia.
-simpl in H1.
-repeat rewrite Rmult_0_r in H1.
-repeat rewrite Rmult_0_l in H1.
-repeat rewrite Rplus_0_l in H1.
-repeat rewrite Rminus_0_r in H1.
-destruct lam_max.
-unfold fst, snd in H1.
-apply pair_equal_spec in H1; destruct H1 as (H1A & H1B).
-unfold MTM_lambda_2.
-symmetry in H1B.
-assert (h * (h * 1) - 2 <> 0) by (pose proof h_sqrt2_lemma h Hh; nra).
-assert (0.25 * (h * (h * (h * 1)) - 8 * h - sqrt (h * (h * (h * (h * (h * (h * 1))))) + 64)) /
-    (h * (h * 1) - 2) <> 0).
-apply sep_0_div; split; try nra.
-apply Rlt_not_eq.
-try interval.
-apply Rmult_integral in H1B.
-destruct H1B as [C | D]; try contradiction.
-apply Rmult_eq_reg_r in H1A; auto.
-subst; auto.
-Qed.
 
 
 Lemma two_norm_t_matrix_eq :
 sqrt (Cmod (MTM_lambda_2 h)) <= 4503616807272450 / 4503599627370496
 (* <= 1.000003814704542 *).
 Proof.
-unfold MTM_lambda_2, Cmod, fst, snd, h.
+unfold MTM_lambda_2, RtoC, Cmod, fst, snd, h.
 match goal with |-context [sqrt (sqrt ?a) <= ?b] =>
   field_simplify a
 end.
@@ -969,30 +917,30 @@ apply H.
 Qed.
 
 Lemma t_matrix_norm_sub_mult :
-  forall h : {h : R | 0 < h < sqrt 2},
-  forall (l : matrix_two_norm_sig 2 (t_matrix (proj1_sig h)) (MTM_eV_2_v h)),
+  forall (h : R | 0 < h < sqrt 2),
   forall (y : @matrix C 2 1%nat),
-  vec_two_norm_2d (Mmult (t_matrix (proj1_sig h)) y) <= sqrt (Cmod (MTM_lambda_2 (proj1_sig h))) * vec_two_norm_2d  y.
+  vec_two_norm_2d (Mmult (t_matrix (proj1_sig h)) y) <= (two_norm_t_matrix h) * vec_two_norm_2d y.
 Proof.
 intros.
-pose proof t_matrix_two_norm_eq h l as Hyp; rewrite <- Hyp.
-destruct l as (lam_max & H1 & H2 & H3); simpl in *.
-repeat rewrite two_norms_eq_2d.
-apply H2.
+pose proof two_norm_pred_eq h.
+unfold two_norm_pred in H.
+specialize (H y).
+destruct H as (H1 & H2).
+unfold two_norm_t_matrix. simpl.
+repeat rewrite <- two_norms_eq_2d.
+apply H1.
 Qed.
 
 Lemma matrix_analysis_local_truncation_error:
   forall p q : R -> R,
   forall t0 tn: R,
-  forall h : {h : R | 0 <  h < sqrt 2},
+  forall (h  :R | 0 <  h < sqrt 2),
   Harmonic_oscillator_system p q ω t0 ->  
-  forall (l : matrix_two_norm_sig 2  (t_matrix (proj1_sig h)) (MTM_eV_2_v h)),
   vec_two_norm_2d (Mplus (pq_vector (proj1_sig h) p q (tn + (proj1_sig h))) (Mopp (Mmult (t_matrix (proj1_sig h)) (s_vector (p tn, q tn))))) <= 
       (proj1_sig h)^3 * vec_two_norm_2d (s_vector (p t0, q t0)).
 Proof.
 intros ? ? ? ? ? HSY; intros.
 destruct h as (h & Hh). simpl in *.
-destruct l as (lam_max & H1 & H2 & H3); simpl in *; simpl.
 unfold vec_two_norm_2d.
 unfold Mplus, Mopp, Mmult; simpl in *.
 rewrite coeff_mat_bij; try lia.
@@ -1049,12 +997,10 @@ end.
 Qed.
 
 
-
 Lemma matrix_analysis_method_bound_n : 
   forall p q : R,
   forall n : nat, 
   forall h : {h : R | 0 <  h < sqrt 2},
-  forall (l : matrix_two_norm_sig 2  (t_matrix (proj1_sig h)) (MTM_eV_2_v h)),
   let Mn := Mpow 2 n (t_matrix (proj1_sig h)) in
   vec_two_norm_2d  (Mmult Mn (s_vector (p, q))) <= 
       (sqrt (Cmod (MTM_lambda_2 (proj1_sig h)))) ^ n * vec_two_norm_2d (s_vector (p,q)).
@@ -1080,11 +1026,18 @@ with
   (Mmult (Mpow 2 n (t_matrix (@proj1_sig R (fun h1 : R => 0 < h1 < sqrt 2) h))) (s_vector (p, q)))).
 destruct (@Mmult C_Ring 2 2 1 (Mpow 2 n (t_matrix (@proj1_sig R (fun h1 : R => 0 < h1 < sqrt 2) h))) (s_vector (p, q))).
 eapply Rle_trans.
-apply t_matrix_norm_sub_mult; auto; try nra.
-simpl.
-rewrite Rmult_assoc.
-apply Rmult_le_compat_l; try apply sqrt_pos.
+pose proof t_matrix_norm_sub_mult h (t, t0).
+apply H.
+eapply Rle_trans.
+apply Rmult_le_compat_l.
+unfold two_norm_t_matrix; simpl.
+apply sqrt_pos.
 apply IHn.
+unfold two_norm_t_matrix.
+simpl.
+rewrite Cmod_RtoC.
+apply Req_le.
+rewrite Rmult_assoc; auto.
 rewrite Mmult_assoc.
 rewrite Mpow_comm; auto.
 Qed.
@@ -1102,14 +1055,13 @@ Theorem matrix_analysis_method_bound_fixed_h_n :
   forall p q: R,
   forall n : nat, 
   let j := (exist (fun x => 0 < x < sqrt 2) h) h_bnd_lem in
-  forall (l : matrix_two_norm_sig 2  (t_matrix (proj1_sig j)) (MTM_eV_2_v j)),
   let Mn := Mpow 2 n (t_matrix  h ) in
   vec_two_norm_2d  (Mmult Mn (s_vector (p, q))) <= 
       (4503616807272450 / 4503599627370496) ^ n * vec_two_norm_2d (s_vector (p,q)).
 Proof.
 intros.
 pose proof h_bnd_lem as Hbnd.
-pose proof matrix_analysis_method_bound_n p q n j l.
+pose proof matrix_analysis_method_bound_n p q n j.
 pose proof two_norm_t_matrix_eq.
 simpl in H.
 eapply Rle_trans.
@@ -1120,13 +1072,6 @@ apply pow_incr; split; auto.
 apply sqrt_pos.
 Qed.
 
-(* define P, Pinv, D 
-show that t_matrix = P D Pinv 
-prove remaining properties of norm!
-show that, if eigs are 1, then || D^k|| is equal to 1 
-show that ||t_matrix|| <= ||p||D||Pinv|| =  ||p|| ||Pinv||
-give eigenvalues of P and Pinv 
-give bound *)
 
 
 Close Scope R_scope. 

@@ -24,9 +24,14 @@ Definition C1: C := (1,0).
 
 
 (* matrix transpose *)
-Definition matrix_conj_transpose (n:nat) (M: @matrix C n n) := 
-  mk_matrix n n (fun i j => Cconj (coeff_mat Hierarchy.zero M j i))
+Definition matrix_conj_transpose (n m:nat) (M: @matrix C n m) : @matrix C m n := 
+  mk_matrix m n (fun i j => Cconj (coeff_mat Hierarchy.zero M j i))
 .
+
+Lemma tranpose_rewrite (n m :nat) (A: @matrix C n n) (B: @matrix C n m): 
+(matrix_conj_transpose n m (Mmult A B)) = 
+Mmult (matrix_conj_transpose n m B) (matrix_conj_transpose n n A).
+Admitted.
 
 
 (* multiply a matrix by a complex number *)
@@ -35,6 +40,23 @@ Definition mat_coeff_mult (a : C) (n m:nat) (V: @matrix C n m) : @matrix C n m :
       Cmult a (@coeff_mat C n m Hierarchy.zero V i j))
 .
 
+Lemma mat_coeff_mult_eq (a b: C) (n m: nat) (A : @matrix C n m) : 
+  (mat_coeff_mult a n m A) = (mat_coeff_mult b n m A) -> a = b.
+Proof.
+Admitted.
+
+
+Lemma zero_d_matrices_eq (x y : @matrix C 0 1%nat) :
+  x = y.
+Proof.
+destruct x , y; auto.
+Qed.
+
+
+
+(*********************************)
+(* ID MATRIX & ZERO MATRIX       *)
+(*********************************)
 
 (* complex zero matrix and zero vector *)
 Definition M0 (n:nat) : @matrix C n n := Mzero. 
@@ -47,8 +69,10 @@ Definition M_ID (n:nat) : @matrix C n n :=
   mk_matrix n n (fun i j => if (eqb i j) then C1 else C0)
 .
 
+(* vector of ones *)
+Definition v1 (n:nat) : @matrix C n 1%nat := mk_matrix n 1%nat (fun _ _ => C1).
 
-(* ID MATRIX & ZERO MATRIX LEMMAS*)
+
 Lemma M_ID_equiv_M1 :
   forall n : nat, M_ID n = Mone.
 Proof.
@@ -123,7 +147,7 @@ Qed.
 
 
 Lemma Mcong_transpose_zero (n: nat) (M: @matrix C n n) :
-matrix_conj_transpose n M = (M0 n) <-> M = (M0 n).
+matrix_conj_transpose n n M = (M0 n) <-> M = (M0 n).
 Proof.
 split; intros.
 -
@@ -190,7 +214,37 @@ specialize (H1 i j HS).
 etransitivity. symmetry. eassumption.
 auto.
 Qed.
+
+
+Lemma eq_V0_iff (n: nat) (V : @matrix C n 1%nat) :
+  V = V0 n <-> forall i, (i < n)%nat -> (@coeff_mat C_Ring n 1%nat zero V i 0) = zero.
+Proof.
+split; intros.
+- 
+subst. unfold V0, Mzero.
+apply coeff_mat_bij; try lia; auto.
+- 
+destruct n.
++ 
+destruct V; auto.
++
+unfold V0, Mzero.
+pose proof @mk_matrix_bij C_Ring (S n) 1 zero V as Hm.
+rewrite <- Hm.
+apply mk_matrix_ext => i j Hi Hj.
+assert (j=0%nat) by lia.
+subst.
+apply H; auto.
+Qed.
 (* end ID and 0 matrix lemmas *)
+
+
+(******************)
+(** ORTHOGONAL MATRICES *)
+Definition is_orthogonal_matrix (n: nat ) (Q : @matrix C n n) := 
+  Mmult (matrix_conj_transpose n n Q) Q = Mone /\ 
+  Mmult Q (matrix_conj_transpose n n Q) = Mone
+.
 
 
 
@@ -244,6 +298,45 @@ apply Rle_antisym; auto.
 Qed.
 
 
+Lemma Ceq_Cmod_eq (x y : C):
+  x = y -> Cmod x = Cmod y.
+Proof.
+intros; subst; auto.
+Qed.
+
+Lemma C_sqr_ccong  (c : C) :
+(Cmult c (Cconj c)) = fst(c)^2 + snd(c)^2.
+Proof.
+destruct c.
+unfold Cconj.
+cbv [Cmult RtoC].
+simpl.
+apply pair_equal_spec; split; nra.
+Qed.
+
+Lemma C_sqr_ccong2  (c : C) :
+(Cmult (Cconj c) c ) = fst(c)^2 + snd(c)^2.
+Proof.
+destruct c.
+unfold Cconj.
+cbv [Cmult RtoC].
+simpl.
+apply pair_equal_spec; split; nra.
+Qed.
+
+Lemma Cmod_Ccong  (c : C) :
+(Cmult c (Cconj c)) = (Cmod c)^2.
+Proof.
+destruct c.
+unfold Cconj, Cmod.
+cbv [Cmult RtoC].
+simpl.
+apply pair_equal_spec; split; try nra.
+repeat rewrite Rmult_1_r.
+rewrite sqrt_def; try nra.
+Qed.
+
+
 Lemma cmod_le_0 x: 
 Cmod x <= 0 -> x = 0.
 Proof.
@@ -284,6 +377,38 @@ Lemma Rmult_le (a b :R):
 Proof.
 intros.
 nra.
+Qed.
+
+
+
+Lemma Cdiv_zero (a : C):
+  a <> 0 -> Cdiv 0 a = C0.
+Proof.
+intros. 
+cbv [Cdiv Cinv].
+destruct a.
+unfold C0, fst, snd.
+apply pair_equal_spec. unfold fst, snd; simpl.
+repeat rewrite Rmult_0_l; nra.
+Qed.
+
+Lemma Cmult_zero (a b : C) :
+  Cmult a b = 0 -> b <> 0 -> a = 0.
+Proof.
+intros.
+assert (H1 : Cdiv (Cmult a b) b = Cdiv 0 b) by (rewrite H; auto).
+assert (H2 : Cdiv (Cmult a b) b = Cmult a (Cdiv b b)).
+destruct b; destruct a.
+cbv [Cmult Cdiv]; simpl.
+apply pair_equal_spec. nra.
+rewrite H2 in H1.
+replace (Cdiv b b ) with C1 in H1.
+replace (Cmult a C1) with a in H1.
+rewrite Cdiv_zero in H1; auto.
+cbv [C1 Cmult]; destruct a; simpl; apply pair_equal_spec;split; nra.
+replace (Cdiv b b) with (b * / b)%C.
+rewrite Cinv_r; auto.
+cbv [Cmult Cdiv]. apply pair_equal_spec;split; nra.
 Qed.
 (* end complex number lemmas *)
 

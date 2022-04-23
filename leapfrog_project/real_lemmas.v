@@ -790,3 +790,45 @@ nra.
 all : nra.
 Qed.
 
+Lemma sep_0_div (a b : R) :
+  a <> 0 /\ b <> 0 -> a/b <> 0.
+Proof.
+intros.
+replace (a / b) with (a * / b) by nra.
+destruct H as (HA & HB).
+generalize (Rinv_neq_0_compat b HB).
+pose proof Req_dec (a / b) 0 as Hy; destruct Hy; try auto.
+Qed.
+
+Lemma h_sqrt2_lemma (h : R) : 
+0 < h < sqrt 2 ->
+0 < h * h  < 2.
+Proof.
+intros.
+destruct H; split; auto.
+replace ( h * h) with (h^2) by nra.
+apply pow2_gt_0; try nra.
+assert ( h * h < sqrt 2  * sqrt 2) by nra.
+rewrite sqrt_def in H1; try nra.
+Qed.
+
+Lemma fst_eq (a b c d: R *  R):
+ a = b -> fst (a,c) = fst (b,d).
+Proof.
+intros.
+simpl.
+auto.
+Qed.
+
+
+Lemma sqrt_norm :
+  forall x : R, sqrt (x^2) = (@norm R_AbsRing _ x).
+Proof.
+intros.
+unfold norm.
+etransitivity.
+replace (x ^ 2) with (x²) .
+apply sqrt_Rsqr_abs.
+unfold Rsqr; simpl; nra.
+simpl; auto.
+Qed.
