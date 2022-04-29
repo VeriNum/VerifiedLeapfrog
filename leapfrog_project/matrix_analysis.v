@@ -6,7 +6,7 @@
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Bool Arith.Arith.
 Require Import real_lemmas lf_harm_real matrix_lemmas lf_harm_real_theorems.
-
+Require vcfloat.Prune.
 
 From Coquelicot Require Import Coquelicot.
 Require Import IntervalFlocq3.Tactic.
@@ -507,10 +507,6 @@ repeat rewrite Rminus_0_r. repeat rewrite Rplus_0_r.
 f_equal; try nra.
 Qed.
 
-
-
-
-  
 (* MTM * V = V * L *)
 Theorem MTM_eigens_correct (h : R) :
   0 < h  < 1.4 -> 
@@ -582,7 +578,11 @@ apply Rmult_integral_contrapositive_currified.
 interval with ( i_bisect h, i_taylor h, i_degree 3).
 interval with ( i_bisect h, i_taylor h, i_degree 3).
 *
-(* TODO : Andrew *) admit.
+
+set (x := sqrt _). clearbody x.
+match goal with |- ?e = _ => Prune.cancel_terms e end.
+auto.
+
 *
 interval with ( i_bisect h, i_taylor h, i_degree 3).
 *
