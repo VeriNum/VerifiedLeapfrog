@@ -802,11 +802,10 @@ Qed.
 
 Lemma h_sqrt2_lemma (h : R) : 
 0 < h < sqrt 2 ->
-0 < h * h  < 2.
+0 < h^2  < 2.
 Proof.
 intros.
 destruct H; split; auto.
-replace ( h * h) with (h^2) by nra.
 apply pow2_gt_0; try nra.
 assert ( h * h < sqrt 2  * sqrt 2) by nra.
 rewrite sqrt_def in H1; try nra.

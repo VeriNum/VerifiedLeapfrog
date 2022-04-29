@@ -192,7 +192,7 @@ all : (f_equal; field_simplify; nra) .
 Qed.
 
 
-(** equivalence between matrix update and leapfrog iterations*)
+(** equivalence between matrix updates and leapfrog iterations*)
 Lemma transition_matrix_pow_equiv:
   forall (ic : R * R) (h : R) (n : nat), 
   let Mx := Mmult (Mpow 2 n (t_matrix h)) (s_vector ic) in
@@ -530,7 +530,7 @@ destruct A.
 -
 assert (B: j = 0%nat \/ j = 1%nat) by lia;
 destruct B. 
-+
++ (* case i = 0 , j = 0 *)
 subst.
 simpl.
 change mult with Cmult.
@@ -581,7 +581,20 @@ end.
 apply Rmult_integral_contrapositive_currified.
 interval with ( i_bisect h, i_taylor h, i_degree 3).
 interval with ( i_bisect h, i_taylor h, i_degree 3).
-
+*
+(* TODO : Andrew *) admit.
+*
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+*
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+*
+f_equal; nra.
+*
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+*
+repeat (split; try interval with ( i_bisect h, i_taylor h, i_degree 3)).
++ 
+subst.
 Admitted.
 
 
@@ -619,11 +632,10 @@ Lemma sv_vector_implies (A V Λ : matrix 2 2):
 Proof.
 intros.
 apply mk_matrix_ext; intros.
-
 unfold Mmult at 1 in H1.
 unfold Mmult at 2 in H1.
 rewrite <- mk_matrix_ext in H1.
-
+subst x; auto.
 Admitted.
 
 
@@ -1004,6 +1016,27 @@ end.
 all: try split; try 
 interval
  with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+-
+assert (j = 0)%nat by lia; subst.
+repeat rewrite sum_Sn.
+repeat rewrite sum_O.
+repeat rewrite coeff_mat_bij; try lia.
+simpl.
+unfold Cconj,RtoC, MTM_eV_1; simpl.
+change mult with Cmult.
+change plus with Cplus.
+change one with C1.
+change zero with C0.
+repeat rewrite coeff_mat_bij; try lia.
+simpl.
+cbv [Cplus Cmult RtoC C0 fst snd].
+f_equal; field_simplify; try nra.
+repeat rewrite pow2_sqrt.
+field_simplify. 
+assert ( forall a, 0/a = 0) by (intros;nra).
+apply H0.
+apply tech_Rplus.
+apply Raux.Rle_0_minus.
 Admitted.
 
 
