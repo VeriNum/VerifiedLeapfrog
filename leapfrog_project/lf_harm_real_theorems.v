@@ -4,7 +4,7 @@ Require Import real_lemmas lf_harm_real.
 From Coquelicot Require Import Coquelicot.
 Set Bullet Behavior "Strict Subproofs". 
 
-Require Import Interval.Tactic.
+Require Import IntervalFlocq3.Tactic.
 
 (* This file contains real properties proofs for leapfrog integration of the 
 harmonic oscillator. In particular, 

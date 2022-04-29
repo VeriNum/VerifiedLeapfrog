@@ -9,7 +9,7 @@ Require Import real_lemmas lf_harm_real matrix_lemmas lf_harm_real_theorems.
 
 
 From Coquelicot Require Import Coquelicot.
-Require Import Interval.Tactic.
+Require Import IntervalFlocq3.Tactic.
 
 Import Bool.
 

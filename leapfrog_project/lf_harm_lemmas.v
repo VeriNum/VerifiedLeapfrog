@@ -4,13 +4,12 @@
 *)
 
 From vcfloat Require Import FPLang FPLangOpt RAux Rounding Reify Float_notations Automate.
-Require Import Interval.Tactic.
+Require Import IntervalFlocq3.Tactic.
 Import Binary.
 Import List ListNotations.
 Set Bullet Behavior "Strict Subproofs".
 
 Require Import lf_harm_float lf_harm_real real_lemmas lf_harm_real_theorems.
-
 
 Open Scope R_scope.
 
@@ -97,15 +96,13 @@ Lemma init_norm_eq :
   ∥  (FT2R p_init, FT2R q_init) ∥ = 1 . 
 Proof.
 intros.
-replace 1 with (sqrt 1).
+rewrite <- sqrt_1.
 replace (FT2R q_init) with 1.
 simpl. unfold Rprod_norm, fst, snd.
 f_equal; nra.
 unfold FT2R, q_init. 
-unfold Rprod_norm, fst, snd.
  cbv [B2R]. simpl. cbv [Defs.F2R IZR IPR]. simpl;
 field_simplify; nra.
-apply sqrt_1.
 Qed.
 
 Lemma iternR_bound : 
