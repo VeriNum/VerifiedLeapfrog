@@ -28,10 +28,70 @@ Definition matrix_conj_transpose (n m:nat) (M: @matrix C n m) : @matrix C m n :=
   mk_matrix m n (fun i j => Cconj (coeff_mat Hierarchy.zero M j i))
 .
 
-Lemma tranpose_rewrite (n m :nat) (A: @matrix C n n) (B: @matrix C n m): 
-(matrix_conj_transpose n m (Mmult A B)) = 
-Mmult (matrix_conj_transpose n m B) (matrix_conj_transpose n n A).
-Admitted.
+Lemma Cconj_plus (a b : C) :
+  Cconj( Cplus a  b) = Cplus (Cconj a) (Cconj b).
+Proof.
+destruct a, b.
+cbv [Cconj Cplus].
+simpl.
+apply pair_equal_spec; split; auto.
+nra.
+Qed.
+
+Lemma Cconj_mult (a b : C) :
+  Cconj( Cmult a  b) = Cmult (Cconj a) (Cconj b).
+Proof.
+destruct a, b.
+cbv [Cconj Cmult].
+simpl.
+apply pair_equal_spec; split; auto.
+nra.
+field_simplify; nra.
+Qed.
+
+Lemma tranpose_rewrite (A: @matrix C 2 2) (x: @matrix C 2 1): 
+(matrix_conj_transpose 2 1 (Mmult A x)) = 
+Mmult (matrix_conj_transpose 2 1 x) (matrix_conj_transpose 2 2 A).
+Proof.
+unfold matrix_conj_transpose.
+unfold Mmult.
+apply mk_matrix_ext; intros.
+rewrite coeff_mat_bij; try lia.
+replace (Init.Nat.pred 2) with (S 0) by lia.
+repeat rewrite sum_Sn.
+repeat rewrite coeff_mat_bij; try lia.
+repeat rewrite sum_O.
+repeat rewrite coeff_mat_bij; try lia.
+change plus with Cplus.
+change mult with Cmult.
+assert ( (i = 0)%nat) by lia.
+subst.
+assert ( (j = 0)%nat \/ (j <> 0)%nat) by lia; destruct H1.
+- 
+subst. 
+unfold coeff_mat.
+simpl.
+rewrite Cconj_plus.
+repeat rewrite Cconj_mult.
+rewrite Cmult_comm.
+rewrite Cplus_comm.
+rewrite Cmult_comm.
+rewrite Cplus_comm.
+auto.
+-
+assert (j=1)%nat by lia.
+subst.
+unfold coeff_mat.
+simpl.
+rewrite Cconj_plus.
+repeat rewrite Cconj_mult.
+rewrite Cmult_comm.
+rewrite Cplus_comm.
+rewrite Cmult_comm.
+rewrite Cplus_comm.
+auto.
+Qed.
+
 
 
 (* multiply a matrix by a complex number *)
@@ -967,7 +1027,7 @@ unfold diag_pred in *.
 intros.
 assert (HK: ii <> k \/ jj <> k) by lia; destruct HK as [A | B].
 --
-assert ((ii < m)%nat /\ (k < m)%nat /\ ii <> k) as Hk1 by lia.
+assert ((ii < m)%nat /\ (k < m)%nat /\ ii <> k) as Hk1 by lia. 
 specialize (H1 ii k Hk1); rewrite H1; rewrite mult_zero_l; auto.
 --
 assert ((k < m)%nat /\ (jj < m)%nat /\ k <> jj) as Hk2 by lia.
