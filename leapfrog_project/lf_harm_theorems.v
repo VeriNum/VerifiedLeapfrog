@@ -9,22 +9,18 @@ Set Bullet Behavior "Strict Subproofs".
 
 Require Import lf_harm_float lf_harm_real real_lemmas lf_harm_real_theorems lf_harm_lemmas.
 
-
 Open Scope R_scope.
 
 Section WITHNANS.
 
-
 Context {NANS: Nans}.
 
-(*Import Interval.Tactic.*)
-
 Lemma prove_roundoff_bound_q:
-  forall p q : ftype Tsingle,
-  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap p q) q' 
+  forall pq : state,
+  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap pq) q' 
     (2.704*(1/10^6)).
 Proof.
-intros.
+intros [p q].
 prove_roundoff_bound.
 - abstract (prove_rndval; interval).
 - prove_roundoff_bound2.
@@ -33,11 +29,11 @@ interval.
 Qed.
 
 Lemma prove_roundoff_bound_p:
-  forall p q : ftype Tsingle,
-  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap p q) p' 
+  forall pq : state,
+  prove_roundoff_bound leapfrog_bmap (leapfrog_vmap pq) p' 
    (1.436*(1/10^6)).
 Proof.
-intros.
+intros [p q].
 prove_roundoff_bound.
 - abstract (prove_rndval; interval).
 - prove_roundoff_bound2.
@@ -46,37 +42,28 @@ interval.
 Qed.
 
 Lemma prove_roundoff_bound_q_implies:
-  forall p q : ftype Tsingle,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-  Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) q') 
-           - rval (env_ (leapfrog_vmap p q)) q')
+  forall pq : state,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap pq)-> 
+  Rabs (FT2R (fval (env_ (leapfrog_vmap pq)) q') 
+           - rval (env_ (leapfrog_vmap pq)) q')
         <= (2.704*(1/10^6))
 .
 Proof.
 intros.
-pose proof prove_roundoff_bound_q p q.
-unfold prove_roundoff_bound in H0. 
-specialize (H0 H).
-unfold roundoff_error_bound in H0; auto. 
+apply (prove_roundoff_bound_q pq H).
 Qed.
 
-
 Lemma prove_roundoff_bound_p_implies:
-  forall p q : ftype Tsingle,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-  Rabs (FT2R (fval (env_ (leapfrog_vmap p q)) p') - rval (env_ (leapfrog_vmap p q)) p') <= (1.436*(1/10^6))
+  forall pq : state,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap pq)-> 
+  Rabs (FT2R (fval (env_ (leapfrog_vmap pq)) p') - rval (env_ (leapfrog_vmap pq)) p') <= (1.436*(1/10^6))
 .
 Proof.
 intros.
-pose proof prove_roundoff_bound_p p q.
-unfold prove_roundoff_bound in H0. 
-specialize (H0 H).
-unfold roundoff_error_bound in H0; auto. 
+apply (prove_roundoff_bound_p pq H).
 Qed.
 
-
 Definition local_round_off :=  ∥(1.436*(1/10^6), 2.704*(1/10^6))∥.
-
 
 Lemma itern_implies_bmd_aux1:
   forall pnf qnf : ftype Tsingle,
@@ -145,14 +132,14 @@ Lemma itern_implies_bmd:
   forall n,
   (S n <= 100)%nat -> 
   boundsmap_denote leapfrog_bmap 
-    (leapfrog_vmap (fst(iternF (p,q) n)) (snd(iternF (p,q) n))) ->
+    (leapfrog_vmap (iternF (p,q) n)) ->
   ∥(iternR (FT2R p, FT2R q) h (S n)) - FT2R_prod (iternF (p,q)  (S n)) ∥ <= 
   local_round_off * error_sum (1 + h) (S n)  /\
 ∥ (iternR (FT2R p, FT2R q) h  (S n))∥ <= 21.697 ->
-   boundsmap_denote leapfrog_bmap (leapfrog_vmap (fst(iternF (p,q) (S n))) (snd(iternF (p,q) (S n)))).
+   boundsmap_denote leapfrog_bmap (leapfrog_vmap (iternF (p,q) (S n))).
 Proof. 
 intros ? ? ? BNDn BMD NORM.
-pose proof (itern_implies_bmd_aux p q n BMD) as HFIN.
+pose proof (itern_implies_bmd_aux (p,q) n BMD) as HFIN.
 pose proof (itern_implies_bmd_aux1) as HBND.
 unfold boundsmap_denote in *.
 intros.
@@ -168,13 +155,13 @@ destruct ((iternF (p, q) n)).
 set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
 set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
 pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f1 f2) i) as COR. 
+   (leapfrog_vmap (f1,f2)) i) as COR. 
 pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f f0) i) as COR2.
-pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX.
+   (leapfrog_vmap (f,f0)) i) as COR2.
+pose proof (leapfrog_vmap_shape (f1,f2) (f,f0) i) as EX.
 simpl in BMD. 
-destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
-destruct (Maps.PTree.get i (leapfrog_vmap f f0));
+destruct (Maps.PTree.get i (leapfrog_vmap (f1,f2)));
+destruct (Maps.PTree.get i (leapfrog_vmap (f,f0)));
 try contradiction.
 +
 specialize (COR2 s0 eq_refl).
@@ -229,29 +216,18 @@ destruct EX as (A & B & C); discriminate.
 -
 rewrite step_iternF in *.
 destruct ((iternF (p, q) n)).
-set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
-set (f2 := (snd (leapfrog_stepF (f, f0)))) in *.
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f1 f2) i) as COR. 
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap f f0) i) as COR2.
-pose proof (leapfrog_vmap_i_aux f1 f2 f f0 i) as EX1.
-pose proof (leapfrog_vmap_i_aux f f0 f1 f2 i) as EX2.
-simpl in BMD. 
-destruct (Maps.PTree.get i (leapfrog_vmap f1 f2));
-destruct (Maps.PTree.get i (leapfrog_vmap f f0));
-try contradiction.
-*
-specialize (EX2 s eq_refl).
-destruct EX2 as (A & B & C); discriminate.
-* auto.
+destruct (Maps.PTree.get i (leapfrog_vmap (f,f0))) eqn:?H; try contradiction.
+destruct (Maps.PTree.get i (leapfrog_vmap (leapfrog_stepF (f, f0)))) eqn:?H; auto.
+apply leapfrog_vmap_shape with (pq1 := (f,f0)) in H0.
+destruct H0 as [? [? ?]].
+congruence.
 Qed.
 
 Lemma roundoff_norm_bound:
-  forall p q : ftype Tsingle,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p q)-> 
-  let (pnf, qnf) := FT2R_prod (fval (env_ (leapfrog_vmap p q)) p', fval (env_ (leapfrog_vmap p q)) q') in 
-  let (pnr, qnr) := (rval (env_ (leapfrog_vmap p q)) p', rval (env_ (leapfrog_vmap p q)) q') in
+  forall pq : state,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap pq)-> 
+  let (pnf, qnf) := FT2R_prod (fval (env_ (leapfrog_vmap pq)) p', fval (env_ (leapfrog_vmap pq)) q') in 
+  let (pnr, qnr) := (rval (env_ (leapfrog_vmap pq)) p', rval (env_ (leapfrog_vmap pq)) q') in
   ∥ (pnf, qnf) - (pnr, qnr)∥ <= local_round_off.
 Proof.
 intros.
@@ -259,8 +235,8 @@ unfold Rprod_minus, FT2R_prod, Rprod_norm, fst, snd.
 rewrite <- pow2_abs.
 rewrite Rplus_comm.
 rewrite <- pow2_abs.
-pose proof prove_roundoff_bound_p_implies p q H.
-pose proof prove_roundoff_bound_q_implies p q H.
+pose proof prove_roundoff_bound_p_implies pq H.
+pose proof prove_roundoff_bound_q_implies pq H.
 apply sqrt_le_1_alt.
 eapply Rle_trans.
 apply Rplus_le_compat_r.
@@ -278,14 +254,14 @@ Qed.
 
 Lemma global_error : 
   boundsmap_denote leapfrog_bmap 
-  (leapfrog_vmap p_init q_init) ->
+  (leapfrog_vmap pq_init) ->
   forall n : nat, 
   (n <= 100)%nat -> 
-  let vmap_n := (leapfrog_vmap (fst(iternF (p_init, q_init) n)) (snd(iternF (p_init, q_init) n))) in
+  let vmap_n := (leapfrog_vmap (iternF pq_init n)) in
   let c:= local_round_off in 
   let (pr0, qr0) := (FT2R p_init, FT2R q_init) in
   boundsmap_denote leapfrog_bmap vmap_n /\
-  ∥(iternR (pr0, qr0) h n) - FT2R_prod (iternF (p_init, q_init) n) ∥ 
+  ∥(iternR (pr0, qr0) h n) - FT2R_prod (iternF pq_init n) ∥ 
      <= c * error_sum (1 + h) n.
   Proof.
 intros.
@@ -306,7 +282,7 @@ rewrite step_iternF; rewrite step_iternR.
 assert (BNDn: (n<= 100)%nat) by lia.
 pose proof iternR_bound n BNDn.
 destruct (iternR (FT2R p_init, FT2R q_init) h n) as (pnr, qnr). 
-destruct (iternF (p_init,q_init) n) as (pnf, qnf).
+destruct (iternF pq_init n) as (pnf, qnf).
 match goal with |- context[∥?a - ?b∥ <=  _] =>
   let c := (constr:(leapfrog_stepR (FT2R_prod (pnf, qnf)) h)) in
   replace (∥a - b∥) with (∥ Rprod_plus (a - c) (c - b) ∥)
@@ -320,16 +296,9 @@ apply Rplus_le_compat_l.
 assert (∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
      local_round_off * error_sum (1 + h) n /\ ∥ (pnr, qnr) ∥ <= 21.697).
 split; auto.
-pose proof (roundoff_norm_bound pnf qnf IHbmd) as BND.
-rewrite reflect_reify_p in BND.
-rewrite reflect_reify_q in BND.
-change (leapfrog_step_p pnf qnf , leapfrog_step_q pnf qnf ) with 
-  (leapfrog_stepF (pnf, qnf)) in BND.
-rewrite rval_correct_q in BND. 
-rewrite rval_correct_p in BND.
-change ((fst (leapfrog_stepR (FT2R_prod (pnf, qnf)) h),
-         snd (leapfrog_stepR (FT2R_prod (pnf, qnf)) h))) with 
-(leapfrog_stepR (FT2R_prod (pnf, qnf)) h) in BND.
+pose proof (roundoff_norm_bound (pnf,qnf) IHbmd) as BND.
+rewrite reflect_reify_pq in BND.
+rewrite rval_correct_pq in BND.
 destruct (FT2R_prod (leapfrog_stepF (pnf, qnf))). 
 rewrite Rprod_minus_comm in BND. 
 apply BND.  
@@ -354,8 +323,6 @@ apply itern_implies_bmd; try lia; auto; split; auto.
 pose proof iternR_bound (S n); auto.
 Qed. 
 
-
-
 Theorem total_error: 
   forall pt qt: R -> R,
   forall n : nat, 
@@ -369,7 +336,7 @@ Theorem total_error:
   ∥ (pt tn, qt tn) - (FT2R_prod (iternF (p_init,q_init) n)) ∥ 
      <=  (h^2  + c) * ((1 + h) ^ n - 1) .
 Proof.
-assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init)) by
+assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap pq_init)) by
 apply bmd_init.
 intros ? ? ? ? ? ? Hp Hq Hsys ; simpl.
 match goal with |- context[?A <= ?B] =>
@@ -407,7 +374,7 @@ field_simplify.
 symmetry; apply Rprod_norm_plus_minus_eq.
 Qed. 
 
-Definition accurate_harmonic_oscillator_100 (pq: ftype Tsingle * ftype Tsingle) :=
+Definition accurate_harmonic_oscillator_100 (pq: state) :=
   forall pt qt: R -> R,
   let t0 := 0 in
   let n := 100%nat in 
@@ -434,17 +401,17 @@ Proof.
 red; intros.
 pose proof global_error bmd_init n H.
 destruct H0 as (A & _).
- lazymatch goal with
- | H: boundsmap_denote _ _ |- _ =>
-  apply boundsmap_denote_e in H;
-  simpl Maps.PTree.elements in H;
-  unfold list_forall in H
-end.
+apply boundsmap_denote_e in A.
+simpl Maps.PTree.elements in A.
+unfold list_forall in A.
 destruct A as (A & B).
-simpl in A. destruct A as (V1 & V2 & V3 & V4 & _).  
-  inversion V3; subst. simpl in V4; auto.
-simpl in B. destruct B as (U1 & U2 & U3 & U4 & _).  
-  inversion U3; subst. simpl in U4; auto.
+destruct A as (V1 & V2 & V3 & V4 & V5).  
+  inversion V3; subst.
+apply Classical_Prop.EqdepTheory.inj_pair2 in H1; subst. 
+destruct B as (U1 & U2 & U3 & U4 & U5). 
+inversion U3; subst.
+apply Classical_Prop.EqdepTheory.inj_pair2 in H1; subst.
+auto. 
 Qed.
 
 End WITHNANS.

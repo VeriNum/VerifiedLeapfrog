@@ -46,37 +46,25 @@ Definition q' := ltac:(let e' :=
 (**  Step one, given values "p" and "q", 
   make an association list mapping _q to q, and _p to p,  each labeled
   by its floating-point type.  **)
-Definition leapfrog_vmap_list (p q : ftype Tsingle) := 
-   [(_p, existT ftype _ p);(_q, existT ftype _ q)].
+Definition leapfrog_vmap_raw (pq: state) :=
+ valmap_of_list [(_p, existT ftype _ (fst pq));(_q, existT ftype _ (snd pq))].
 
 
 (** Step two, build that into "varmap" data structure, taking care to
   compute it into a lookup-tree ___here___, not later in each place
   where we look something up. *)
-Definition leapfrog_vmap (p q : ftype Tsingle) : valmap :=
- ltac:(let z := compute_PTree (valmap_of_list (leapfrog_vmap_list p q)) in exact z).
-
+Definition leapfrog_vmap (pq : state) : valmap :=
+ ltac:(let z := compute_PTree (leapfrog_vmap_raw pq) in exact z).
 
 
 (**  Reification and reflection.   When you have a 
   deep-embedded "expr"ession, you can get back the shallow embedding
    by applying the "fval" function *)
-Lemma reflect_reify_q : forall p q, 
-  fval (env_ (leapfrog_vmap p q)) q' = leapfrog_step_q p q.
-Proof.
-intros.
-unfold q'. 
-reflexivity. 
-Qed.
 
-Lemma reflect_reify_p : forall p q, 
-  fval (env_ (leapfrog_vmap p q)) p' = leapfrog_step_p p q.
-Proof.
-intros.
-unfold p'.
-reflexivity. 
-Qed.
-
+Lemma reflect_reify_pq : forall pq, 
+    let e := env_ (leapfrog_vmap pq) in 
+     (fval e p', fval e q') = leapfrog_stepF pq.
+Proof. reflexivity. Qed.
 
 (** The main point of VCFloat is to prove bounds on the roundoff error of
   floating-point expressions.  Generally those bounds are provable only if
@@ -130,103 +118,60 @@ Definition leapfrog_bmap : boundsmap :=
 
 
 
-Definition FT2R_prod (A: ftype Tsingle * ftype Tsingle)  := (FT2R (fst A), FT2R (snd A)).
+Definition FT2R_prod (A: state)  := (FT2R (fst A), FT2R (snd A)).
 
-
-
-Lemma rval_correct_q : 
-forall pnf qnf,
-rval (env_ (leapfrog_vmap pnf qnf)) q' = snd (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
-Proof.
-intros.
-unfold_rval.
-unfold leapfrog_stepR,FT2R_prod, fst,snd, h,ω. 
-nra.
-Qed.
 
 
 (** Reification and reflection: get back the shallow embedding
    of the real functional model by applying the "rval" function *)
-Lemma rval_correct_p : 
-forall pnf qnf,
-rval (env_ (leapfrog_vmap pnf qnf)) p' = fst (leapfrog_stepR (FT2R_prod (pnf,qnf)) h).
+Lemma rval_correct_pq : 
+forall pq,
+  let e := env_ (leapfrog_vmap pq)
+   in (rval e p', rval e q') = leapfrog_stepR (FT2R_prod pq) h.
 Proof.
-intros.
-unfold_rval.
-field_simplify.
-unfold leapfrog_stepR,FT2R_prod, fst,snd, h,ω.
-nra.
+ intros. subst e. destruct pq as [p q]. unfold p', q'. 
+ unfold_rval.
+ unfold leapfrog_stepR,FT2R_prod, fst,snd, h,ω.  f_equal; nra.
 Qed.
 
-
-
-
-
-Lemma leapfrog_vmap_i_aux: 
-  forall  p1 q1 p0 q0 ,
+Lemma leapfrog_vmap_shape:
+  forall  pq1 pq0,
   forall i,
   forall v1 : {x : type & ftype x},
-  Maps.PTree.get i (leapfrog_vmap p0 q0) = Some v1 -> 
+  Maps.PTree.get i (leapfrog_vmap pq0) = Some v1 -> 
   exists v2 : {x : type & ftype x},
-  Maps.PTree.get i (leapfrog_vmap p1 q1) = Some v2 /\ 
+  Maps.PTree.get i (leapfrog_vmap pq1) = Some v2 /\ 
   projT1 v1 = projT1 v2.
 Proof.
 intros.
 apply Maps.PTree.elements_correct in H.
+repeat (destruct H; [inversion H; subst; eexists; split; reflexivity | ]).
 destruct H.
-+ inversion H. subst. clear H.
-exists (existT ftype Tsingle q1).
-simpl. auto.
-+ simpl in H. destruct H; try contradiction. 
-inversion H.  clear H.
-exists (existT ftype Tsingle p1).
-simpl. auto.
 Qed.
 
-
-
 Lemma itern_implies_bmd_aux:
-  forall p0 q0 : ftype Tsingle,
+  forall pq0 : state,
   forall n : nat,
   boundsmap_denote leapfrog_bmap 
-  (leapfrog_vmap (fst(iternF (p0,q0) n)) (snd(iternF (p0,q0) n))) ->
-  (is_finite _ _  (fst(iternF (p0,q0) (S n))) = true) /\
-  (is_finite _ _  (snd(iternF (p0,q0) (S n))) = true).
+  (leapfrog_vmap (iternF pq0 n)) ->
+  (is_finite _ _  (fst(iternF pq0 (S n))) = true) /\
+  (is_finite _ _  (snd(iternF pq0 (S n))) = true).
 Proof.
 intros.
 rewrite step_iternF.
-destruct (iternF (p0,q0) n).
+destruct (iternF pq0 n).
 simpl in H.
-change (snd (leapfrog_stepF (f0, f))) with
-  (leapfrog_step_p f0 f ).
-change (fst (leapfrog_stepF (f0, f))) with
-  (leapfrog_step_q f0 f).
+rewrite <- reflect_reify_pq.
 split.
 -
-replace ((fst (leapfrog_stepF (f, f0)))) with
-(leapfrog_step_p f f0) by (unfold leapfrog_step_p; auto). 
-rewrite <- reflect_reify_p.
-assert (EV1: expr_valid p' = true) by auto.
-pose proof rndval_with_cond_correct2 p' EV1
-  leapfrog_bmap (leapfrog_vmap f f0) H.
-(* this takes a moment to print *)
-destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
-(* this takes a moment to solve *)
-solve_Forall_conds; interval.
+unfold fst.
+prove_roundoff_bound.
+prove_rndval; interval.
 -
-replace ((snd (leapfrog_stepF (f, f0)))) with
-(leapfrog_step_q f f0) by (unfold leapfrog_step_q; auto). 
-rewrite <- reflect_reify_q.
-assert (EV1: expr_valid q' = true) by auto.
-pose proof rndval_with_cond_correct2 q' EV1
-  leapfrog_bmap (leapfrog_vmap f f0) H.
-destruct H0 as (_ & _ & FIN & _ ); try apply FIN; auto.
-(* this takes a moment to solve *)
-solve_Forall_conds; interval.
+unfold snd.
+prove_roundoff_bound.
+prove_rndval; interval.
 Qed.
-
-
-
 
 Lemma bmd_Sn_bnds_le : 
 forall i,
@@ -245,27 +190,19 @@ simpl; auto.
 + simpl in H1; try contradiction. 
 Qed.
 
-
-
 Lemma leapfrog_vmap_init: 
 forall i,
 forall v1 : (sigT ftype),
-Maps.PTree.get i (leapfrog_vmap q_init p_init) = Some v1 -> 
+Maps.PTree.get i (leapfrog_vmap pq_init) = Some v1 -> 
 v1 = (existT ftype Tsingle q_init) \/
 v1 = (existT ftype Tsingle p_init).
 Proof. 
 intros.
 apply Maps.PTree.elements_correct in H.
+destruct H; [inversion H; auto | ].
+destruct H; [inversion H; auto | ].
 destruct H.
-- inversion H.
-right; auto.
-- inversion H.
-+ inversion H0.
-* left; auto.
-+ inversion H0; auto.
 Qed.
-
-
 
 Lemma leapfrog_bmap_aux:
 forall (i : positive) (v: varinfo),
@@ -300,104 +237,27 @@ Qed.
 
 Lemma bmd_vmap_bmap_iff : 
 forall (i : positive)
-(p q: ftype Tsingle),
+(pq: state),
 (exists (v : varinfo),
        Maps.PTree.get i leapfrog_bmap = Some v) <->
 (exists (v1 : sigT ftype),
-       Maps.PTree.get i (leapfrog_vmap p q) = Some v1).
+       Maps.PTree.get i (leapfrog_vmap pq) = Some v1).
 Proof.
 intros.
-split.
-- intros.
-destruct H.
-apply Maps.PTree.elements_correct in H.
-inversion H.
-+ exists (existT ftype Tsingle q).
-inversion H0.
-subst.
-cbv. auto.
-+ exists (existT ftype Tsingle p).
-inversion H0. inversion H1.
-subst. cbv. auto.
-inversion H1.
-- intros.
-destruct H.
-apply Maps.PTree.elements_correct in H.
-destruct H.
-+ exists 
-(    {|
-      var_type := Tsingle;
-      var_name := _q;
-      var_lobound := (-22);
-      var_hibound := 22
-    |}).
-inversion H; auto.
-+ inversion H. 
-* inversion H0.
-exists 
-(    {|
-      var_type := Tsingle;
-      var_name := _p;
-      var_lobound := (-22);
-      var_hibound := 22
-    |}).
-auto.
-* inversion H0.
+split; intros; destruct H;
+apply Maps.PTree.elements_correct in H;
+repeat (try contradiction; apply in_inv in H; destruct H as [H0|H]);
+inversion H0; clear H0; subst; eexists; reflexivity.
 Qed.
 
-
 Lemma bmd_init : 
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap p_init q_init) .
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap pq_init) .
 Proof.
 intros.
-unfold boundsmap_denote.
-intros.
-pose proof leapfrog_bmap_aux i as H1.
-pose proof leapfrog_vmap_init i as H2.
-pose proof bmd_vmap_bmap_iff i p_init q_init as H3.
-pose proof leapfrog_bmap_aux1 i as H4.
-destruct (Maps.PTree.get i leapfrog_bmap).
--
-specialize (H1 v eq_refl).
-destruct H1 as [H1|H1].
-+  
-symmetry in H1.
-apply Maps.PTree.elements_correct in H1.
-specialize (H4 v eq_refl).
-inversion H1.
-* inversion H; clear H.
-* simpl in H. destruct H; try contradiction.
-destruct H3.
-destruct v. inversion H.
-destruct H0.
---
-exists ({|
-      var_type := Tsingle; var_name := _p; var_lobound := -22; var_hibound := 22
-    |});subst;auto.
---
-destruct (Maps.PTree.get i (leapfrog_vmap q_init p_init)); 
-  try discriminate.
-++
-subst.
-specialize (H2 s eq_refl).
-destruct H2.
-** repeat (split; simpl; auto; try interval).
-** repeat (split; simpl; auto; try interval).
-++
-subst.
-simpl.
-repeat (split; simpl; auto; try interval).
-+
-inversion H1.
-specialize (H4 v eq_refl).
-subst.
-simpl.
-repeat (split; simpl; auto; try interval).
--
-destruct (Maps.PTree.get i (leapfrog_vmap p_init q_init)); auto.
-destruct H3.
-destruct H0; try discriminate.
-exists s; auto.
+apply boundsmap_denote_i.
+repeat constructor;
+(eexists; split; [reflexivity | split; [reflexivity | split;  [reflexivity  | simpl; interval]]]).
+repeat constructor.
 Qed.
 
 Lemma error_sum_bound: 

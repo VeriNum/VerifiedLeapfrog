@@ -33,8 +33,10 @@ Definition F (x : ftype Tsingle) : ftype Tsingle := -x.
   not wish to use the identity (1.0*x=x)  _in the floats_;  we want
   to match exactly the computation that the C program does. *)
 
+Definition state : Type := ftype Tsingle * ftype Tsingle.  (* momenum,position*)
+
 (* Single step of Verlet integration *)
-Definition leapfrog_stepF (ic : ftype Tsingle * ftype Tsingle) : ftype Tsingle * ftype Tsingle :=
+Definition leapfrog_stepF (ic : state) : state :=
   let p  := fst ic in let q := snd ic in 
   let q' := (q + h * p) + (0.5 * (h * h)) * F q in
   let p' :=  p +  (0.5 * h) * (F q + F q') in 
@@ -44,7 +46,7 @@ Definition leapfrog_stepF (ic : ftype Tsingle * ftype Tsingle) : ftype Tsingle *
 (** Iterations **)
 
 (* Main *)
-Fixpoint iternF (ic: ftype Tsingle * ftype Tsingle) (n : nat): ftype Tsingle * ftype Tsingle:=
+Fixpoint iternF (ic: state) (n : nat): state:=
   match n with
   | 0%nat => ic
   | S n' =>
@@ -101,11 +103,12 @@ Qed.
 (* The initial conditions of the momentum "p" and position "q" specified for the integration scheme*)
 Definition p_init: ftype Tsingle :=  0%F32.
 Definition q_init: ftype Tsingle :=  1%F32.
+Definition pq_init := (p_init, q_init).
 
 Definition iternF_is_finite : Prop :=
   forall n : nat,  ( n <= 100)%nat->
-  (is_finite _ _  (fst(iternF (p_init,q_init)  n)) = true) /\
-  (is_finite _ _  (snd(iternF (p_init,q_init)  n)) = true).
+  (is_finite _ _  (fst(iternF pq_init  n)) = true) /\
+  (is_finite _ _  (snd(iternF pq_init n)) = true).
 
 End WITHNANS.
 
