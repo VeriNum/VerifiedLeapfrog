@@ -41,6 +41,47 @@ match goal with |- Rabs ?a <= _ => field_simplify a end.
 interval.
 Qed.
 
+Ltac unfold_all_fval :=  (* move this to vcfloat *)
+ repeat
+  match goal with
+  | |- context [fval (env_ ?e) ?x] =>
+     pattern (fval (env_ e) x);
+     let M := fresh in match goal with |- ?MM _ => set (M := MM) end;
+     unfold fval; try unfold x; unfold type_of_expr; unfold_fval;
+    repeat match goal with |- context [env_ ?a ?b ?c] => 
+       let u := constr:(env_ a b c) in 
+       let u1 := eval hnf in u in
+      change u with u1
+     end;
+    subst M; cbv beta
+end.
+
+Lemma itern_implies_bmd_aux:
+  forall pq0 : state,
+  forall n : nat,
+  boundsmap_denote leapfrog_bmap 
+  (leapfrog_vmap (iternF pq0 n)) ->
+  (is_finite _ _  (fst(iternF pq0 (S n))) = true) /\
+  (is_finite _ _  (snd(iternF pq0 (S n))) = true).
+Proof.
+intros.
+rewrite step_iternF.
+destruct (iternF pq0 n) as [p q]; clear pq0 n.
+split.
+-
+destruct (prove_roundoff_bound_p _ H) as [? _]; clear H.
+rewrite <- H0; clear H0.
+simple apply f_equal.
+unfold_all_fval.
+reflexivity.
+-
+destruct (prove_roundoff_bound_q _ H) as [? _]; clear H.
+rewrite <- H0; clear H0.
+simple apply f_equal.
+unfold_all_fval.
+reflexivity.
+Qed.
+
 Lemma prove_roundoff_bound_q_implies:
   forall pq : state,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap pq)-> 

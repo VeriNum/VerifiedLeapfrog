@@ -149,30 +149,6 @@ repeat (destruct H; [inversion H; subst; eexists; split; reflexivity | ]).
 destruct H.
 Qed.
 
-Lemma itern_implies_bmd_aux:
-  forall pq0 : state,
-  forall n : nat,
-  boundsmap_denote leapfrog_bmap 
-  (leapfrog_vmap (iternF pq0 n)) ->
-  (is_finite _ _  (fst(iternF pq0 (S n))) = true) /\
-  (is_finite _ _  (snd(iternF pq0 (S n))) = true).
-Proof.
-intros.
-rewrite step_iternF.
-destruct (iternF pq0 n).
-simpl in H.
-rewrite <- reflect_reify_pq.
-split.
--
-unfold fst.
-prove_roundoff_bound.
-prove_rndval; interval.
--
-unfold snd.
-prove_roundoff_bound.
-prove_rndval; interval.
-Qed.
-
 Lemma bmd_Sn_bnds_le : 
 forall i,
 forall v : varinfo,
