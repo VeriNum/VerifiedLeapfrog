@@ -115,33 +115,34 @@ Lemma itern_implies_bmd_aux1:
   /\ ∥(pnr,qnr) ∥ <= 21.697 -> 
   Rabs (FT2R pnf)  <= 22 /\ Rabs ( FT2R qnf) <= 22.
 Proof.
-intros ? ? ? ? ? BNDn H. destruct H as (A & B).
+intros ? ? ? ? ? BNDn (A & B).
 assert (HYP1: ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
 (local_round_off) * error_sum (1 + h) 100).
-+ eapply Rle_trans.
-2 :  { 
-apply Rmult_le_compat_l; try (apply Rnorm_pos). 
-eapply error_sum_le_trans. apply BNDn. unfold h; nra.
-} apply A.
++ eapply Rle_trans. apply A.
+  apply Rmult_le_compat_l; try (apply Rnorm_pos).
+  eapply error_sum_le_trans. apply BNDn. unfold h; nra.
 + clear A. 
 (* use the fact that (error_sum (1 + h) 200 = 15032.068779571218 *)
 assert ( HYP2 :∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-    local_round_off * 15033).
-eapply Rle_trans.
-apply HYP1.
-apply Rmult_le_compat_l; try (apply Rnorm_pos).
-apply error_sum_bound; try lia.
+    local_round_off * 15033). {
+  eapply Rle_trans.
+  apply HYP1.
+  apply Rmult_le_compat_l; try (apply Rnorm_pos).
+  apply error_sum_bound; try lia.
+}
 clear HYP1. 
-assert (HYP3: (∥ (FT2R_prod (pnf, qnf))∥ - ∥ (pnr, qnr) ∥) <=local_round_off * 15033 ).
-eapply Rle_trans.
-apply Rprod_triang_inv.
-rewrite Rprod_minus_comm.
-apply HYP2.
+assert (HYP3: (∥ (FT2R_prod (pnf, qnf))∥ - ∥ (pnr, qnr) ∥) <=local_round_off * 15033 ). {
+  eapply Rle_trans.
+  apply Rprod_triang_inv.
+  rewrite Rprod_minus_comm.
+  apply HYP2.
+}
 apply Rle_minus_l_2 in HYP3. 
-assert (HYP4: ∥ FT2R_prod (pnf, qnf) ∥ <= 21.697 + local_round_off * 15033).
-eapply Rle_trans.
-2: {apply Rplus_le_compat_r. apply B.
-} apply HYP3. clear HYP2.
+assert (HYP4: ∥ FT2R_prod (pnf, qnf) ∥ <= 21.697 + local_round_off * 15033). {
+  eapply Rle_trans.
+  apply HYP3.
+ apply Rplus_le_compat_r. apply B.
+} clear HYP2.
 generalize HYP4.
 match goal with |-context[Rprod_norm ?A <= ?a]=>
   interval_intro a upper; intros ?HYP; clear HYP;
@@ -166,8 +167,6 @@ rewrite sqrt_pow2 in H0.
 all: (try interval).
 Qed.
 
-
-
 Lemma itern_implies_bmd:
   forall p q: ftype Tsingle,
   forall n,
@@ -180,88 +179,21 @@ Lemma itern_implies_bmd:
    boundsmap_denote leapfrog_bmap (leapfrog_vmap (iternF (p,q) (S n))).
 Proof. 
 intros ? ? ? BNDn BMD NORM.
-pose proof (itern_implies_bmd_aux (p,q) n BMD) as HFIN.
-pose proof (itern_implies_bmd_aux1) as HBND.
-unfold boundsmap_denote in *.
-intros.
-specialize (BMD i).
-pose proof bmd_Sn_bnds_le i as ABSBND.
-destruct (Maps.PTree.get i leapfrog_bmap).
--
-specialize (ABSBND v eq_refl).
-destruct v. 
-simpl in ABSBND.
+apply boundsmap_denote_i.
+2: repeat apply list_forall_cons; try apply list_forall_nil; simpl; auto.
+destruct (BMD _p) as [_ [_ [_ Bp]]].
+destruct (BMD _q) as [_ [_ [_ Bq]]].
+destruct (itern_implies_bmd_aux _ _ BMD) as [FINp FINq].
+clear BMD.
 rewrite step_iternF in *.
-destruct ((iternF (p, q) n)).
-set (f1 := (fst (leapfrog_stepF (f, f0)))) in *.
-set (f2:=(snd (leapfrog_stepF (f, f0)))) in *.
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap (f1,f2)) i) as COR. 
-pose proof  (Maps.PTree.elements_correct
-   (leapfrog_vmap (f,f0)) i) as COR2.
-pose proof (leapfrog_vmap_shape (f1,f2) (f,f0) i) as EX.
-simpl in BMD. 
-destruct (Maps.PTree.get i (leapfrog_vmap (f1,f2)));
-destruct (Maps.PTree.get i (leapfrog_vmap (f,f0)));
-try contradiction.
-+
-specialize (COR2 s0 eq_refl).
-inversion COR2; clear COR2.
-*
-inversion H; subst; clear H.
-simpl in BMD.
-specialize (COR s eq_refl).
-inversion COR; clear COR.
---
-inversion H; subst; clear H.
-split; try ( apply BMD).
-split. simpl. apply BMD.
-split. apply HFIN.
-destruct ((iternR (FT2R p, FT2R q) h (S n))).
-specialize (HBND f1 f2 r r0 (S n) BNDn NORM). 
-destruct ABSBND.
-subst.
-unfold projT2. 
-destruct HBND.
-apply Rabs_le_inv; auto.
---
-simpl in H; destruct H; try contradiction.
-inversion H; subst; clear H.
-*
-simpl in H; destruct H; try contradiction.
-inversion H; subst; clear H.
-simpl in BMD.
-specialize (COR s eq_refl).
-inversion COR; clear COR.
---
-inversion H; subst; clear H.
---
-inversion H; subst; clear H.
-++ 
-inversion H0; subst; clear H0.
-split; try ( apply BMD).
-split. simpl. apply BMD.
-split. apply HFIN.
-destruct ((iternR (FT2R p, FT2R q) h (S n))).
-specialize (HBND f1 f2 r r0 (S n) BNDn NORM). 
-destruct ABSBND.
-subst.
-unfold projT2. 
-destruct HBND.
-apply Rabs_le_inv; auto.
-++ 
-inversion H0; subst; clear H0.
-+
-specialize (EX s eq_refl).
-destruct EX as (A & B & C); discriminate.
--
-rewrite step_iternF in *.
-destruct ((iternF (p, q) n)).
-destruct (Maps.PTree.get i (leapfrog_vmap (f,f0))) eqn:?H; try contradiction.
-destruct (Maps.PTree.get i (leapfrog_vmap (leapfrog_stepF (f, f0)))) eqn:?H; auto.
-apply leapfrog_vmap_shape with (pq1 := (f,f0)) in H0.
-destruct H0 as [? [? ?]].
-congruence.
+destruct ((iternF (p, q) n)) as [pn qn].
+destruct (leapfrog_stepF (pn, qn)) as [pn1 qn1].
+simpl in Bp,Bq,FINp,FINq.
+destruct ((iternR (FT2R p, FT2R q) h (S n))) as [pr qr].
+destruct (itern_implies_bmd_aux1 pn1 qn1 pr qr _ BNDn NORM).
+repeat apply list_forall_cons; try apply list_forall_nil;
+(eexists; split; [|split;[|split]]; try reflexivity; auto;
+ apply Rabs_le_inv; auto).
 Qed.
 
 Lemma roundoff_norm_bound:

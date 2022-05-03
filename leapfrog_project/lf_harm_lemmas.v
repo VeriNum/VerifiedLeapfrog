@@ -134,96 +134,33 @@ Proof.
  unfold leapfrog_stepR,FT2R_prod, fst,snd, h,ω.  f_equal; nra.
 Qed.
 
+Definition sametype (v1 v2: sigT ftype) := projT1 v1 = projT1 v2.
+
+Lemma Equivalence_sametype : Equivalence sametype.
+Proof.
+split; intro; intros; hnf; auto.
+red in H,H0. congruence.
+Qed.
+
 Lemma leapfrog_vmap_shape:
   forall  pq1 pq0,
-  forall i,
-  forall v1 : {x : type & ftype x},
-  Maps.PTree.get i (leapfrog_vmap pq0) = Some v1 -> 
-  exists v2 : {x : type & ftype x},
-  Maps.PTree.get i (leapfrog_vmap pq1) = Some v2 /\ 
-  projT1 v1 = projT1 v2.
+  Maps.PTree_Properties.Equal Equivalence_sametype
+        (leapfrog_vmap pq0) (leapfrog_vmap pq1).
 Proof.
 intros.
+intro i.
+destruct (Maps.PTree.get i (leapfrog_vmap pq0)) eqn:H.
+-
 apply Maps.PTree.elements_correct in H.
-repeat (destruct H; [inversion H; subst; eexists; split; reflexivity | ]).
+repeat (destruct H; [inversion H; clear H; subst; simpl; reflexivity | ]).
 destruct H.
-Qed.
-
-Lemma bmd_Sn_bnds_le : 
-forall i,
-forall v : varinfo,
-Maps.PTree.get i leapfrog_bmap = Some v-> 
-v.(var_lobound) = -22 /\ 
-v.(var_hibound) = 22.
-Proof.
-intros.
+-
+rename H into H0.
+destruct (Maps.PTree.get i (leapfrog_vmap pq1)) eqn:H.
 apply Maps.PTree.elements_correct in H.
-inversion H.
-- inversion H0.
-simpl; auto.
-- inversion H0.
-+  inversion H1. simpl; auto.
-+ simpl in H1; try contradiction. 
-Qed.
-
-Lemma leapfrog_vmap_init: 
-forall i,
-forall v1 : (sigT ftype),
-Maps.PTree.get i (leapfrog_vmap pq_init) = Some v1 -> 
-v1 = (existT ftype Tsingle q_init) \/
-v1 = (existT ftype Tsingle p_init).
-Proof. 
-intros.
-apply Maps.PTree.elements_correct in H.
-destruct H; [inversion H; auto | ].
-destruct H; [inversion H; auto | ].
+repeat (destruct H; [inversion H; clear H; subst; inversion H0 | ]).
 destruct H.
-Qed.
-
-Lemma leapfrog_bmap_aux:
-forall (i : positive) (v: varinfo),
-       Maps.PTree.get i leapfrog_bmap = Some v -> 
-       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _p leapfrog_bmap \/
-       Maps.PTree.get i leapfrog_bmap = Maps.PTree.get _q leapfrog_bmap.
-Proof.
-intros.
-apply Maps.PTree.elements_correct in H.
-inversion H.
-- 
-inversion H0. right; auto.
-- inversion H0.
-inversion H1.
-+ 
- left; auto.
-+ simpl in H1; contradiction.
-Qed.
-
-Lemma leapfrog_bmap_aux1:
-forall (i : positive) (v : varinfo),
-       Maps.PTree.get i leapfrog_bmap = Some v ->
-v.(var_name) = i. 
-Proof.
-intros.
-apply Maps.PTree.elements_correct in H.
-destruct H.
-- inversion H. auto.
-- inversion H; inversion H0; subst; auto.
-Qed. 
-
-
-Lemma bmd_vmap_bmap_iff : 
-forall (i : positive)
-(pq: state),
-(exists (v : varinfo),
-       Maps.PTree.get i leapfrog_bmap = Some v) <->
-(exists (v1 : sigT ftype),
-       Maps.PTree.get i (leapfrog_vmap pq) = Some v1).
-Proof.
-intros.
-split; intros; destruct H;
-apply Maps.PTree.elements_correct in H;
-repeat (try contradiction; apply in_inv in H; destruct H as [H0|H]);
-inversion H0; clear H0; subst; eexists; reflexivity.
+auto.
 Qed.
 
 Lemma bmd_init : 
