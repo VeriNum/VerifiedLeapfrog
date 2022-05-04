@@ -32,7 +32,7 @@ void integrate(struct state *s) {
 
     s->q = 1.0f; s->p = 0.0f; t = 0.0f;     /* initial conditions */
 
-    max_step = 10000;	                /* number of integration steps */
+    max_step = 1000;	                /* number of integration steps */
     h = 1.0f / 32.0f;			/* timestep */
 
     /* integration loop */
