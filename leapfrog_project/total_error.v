@@ -45,7 +45,7 @@ eapply Rle_trans.
 apply Rprod_triang_ineq.
 eapply Rle_trans.
 apply Rplus_le_compat_l.
-apply global_error; auto.
+apply global_roundoff_error; auto.
 eapply Rle_trans.
 apply Rplus_le_compat_r.
 rewrite <- Hp, <- Hq in *.
@@ -93,7 +93,7 @@ Qed.
 Theorem yes_iternF_is_finite: iternF_is_finite.
 Proof.
 red; intros.
-pose proof global_error bmd_init n H.
+pose proof global_roundoff_error bmd_init n H.
 destruct H0 as (A & _).
 apply boundsmap_denote_e in A.
 simpl Maps.PTree.elements in A.

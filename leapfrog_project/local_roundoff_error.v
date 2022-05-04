@@ -108,7 +108,35 @@ Qed.
 
 Definition local_round_off :=  ∥(1.235*(1/10^7) , 6.552*(1/10^8))∥.
 
-
+Theorem local_roundoff_error:
+  forall x : state,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x)-> 
+  let env := env_ (leapfrog_vmap x) in
+  let (pnf, qnf) := FT2R_prod (fval env p', fval env q') in 
+  let (pnr, qnr) := (rval env p', rval env q') in
+  ∥ (pnf, qnf) - (pnr, qnr)∥ <= local_round_off.
+Proof.
+intros.
+unfold Rprod_minus, FT2R_prod, Rprod_norm, fst, snd.
+rewrite <- pow2_abs.
+rewrite Rplus_comm.
+rewrite <- pow2_abs.
+pose proof prove_roundoff_bound_p_implies x H.
+pose proof prove_roundoff_bound_q_implies x H.
+apply sqrt_le_1_alt.
+eapply Rle_trans.
+apply Rplus_le_compat_r.
+apply pow_incr.
+split; try (apply Rabs_pos).
+apply H1.
+eapply Rle_trans. 
+apply Rplus_le_compat_l.
+apply pow_incr.
+split; try (apply Rabs_pos).
+apply H0.
+unfold fst, snd.
+nra.
+Qed.
 
 
 End WITHNANS.

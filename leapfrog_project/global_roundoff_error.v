@@ -234,37 +234,8 @@ repeat apply list_forall_cons; try apply list_forall_nil;
  simpl; nra; auto).
 Qed.
 
-Lemma roundoff_norm_bound:
-  forall pq : state,
-  boundsmap_denote leapfrog_bmap (leapfrog_vmap pq)-> 
-  let (pnf, qnf) := FT2R_prod (fval (env_ (leapfrog_vmap pq)) p', fval (env_ (leapfrog_vmap pq)) q') in 
-  let (pnr, qnr) := (rval (env_ (leapfrog_vmap pq)) p', rval (env_ (leapfrog_vmap pq)) q') in
-  ∥ (pnf, qnf) - (pnr, qnr)∥ <= local_round_off.
-Proof.
-intros.
-unfold Rprod_minus, FT2R_prod, Rprod_norm, fst, snd.
-rewrite <- pow2_abs.
-rewrite Rplus_comm.
-rewrite <- pow2_abs.
-pose proof prove_roundoff_bound_p_implies pq H.
-pose proof prove_roundoff_bound_q_implies pq H.
-apply sqrt_le_1_alt.
-eapply Rle_trans.
-apply Rplus_le_compat_r.
-apply pow_incr.
-split; try (apply Rabs_pos).
-apply H1.
-eapply Rle_trans. 
-apply Rplus_le_compat_l.
-apply pow_incr.
-split; try (apply Rabs_pos).
-apply H0.
-unfold fst, snd.
-nra.
-Qed.
 
-
-Theorem global_error : 
+Theorem global_roundoff_error : 
   boundsmap_denote leapfrog_bmap 
   (leapfrog_vmap pq_init) ->
   forall n : nat, 
@@ -309,7 +280,7 @@ apply Rplus_le_compat_l.
 assert (∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
      local_round_off * error_sum 1.0000038147045427 n /\ ∥ (pnr, qnr) ∥ <= 1.003822).
 split; auto.
-pose proof (roundoff_norm_bound (pnf,qnf) IHbmd) as BND.
+pose proof (local_roundoff_error (pnf,qnf) IHbmd) as BND.
 rewrite reflect_reify_pq in BND.
 rewrite rval_correct_pq in BND.
 destruct (FT2R_prod (leapfrog_stepF (pnf, qnf))). 
