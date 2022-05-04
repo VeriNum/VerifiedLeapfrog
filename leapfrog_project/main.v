@@ -3,7 +3,7 @@ Require Import Reals.
 Require Import real_lemmas.
 Require Import lfharm.
 Require Import verif_lfharm.
-Require Import lf_harm_float lf_harm_theorems.
+Require Import float_model total_error.
 Require Import vcfloat.FPCompCert.
 
 Definition integrate_spec := 
@@ -15,7 +15,7 @@ Definition integrate_spec :=
     SEP(data_at_ Tsh t_state s)
   POST [ tvoid ]
    EX (pq: float32*float32),
-    PROP(accurate_harmonic_oscillator_100 pq)
+    PROP(accurate_harmonic_oscillator pq max_step 0.0308)
     RETURN()
     SEP(data_at Tsh t_state (floats_to_vals pq) s).
 
@@ -29,13 +29,15 @@ split; auto. intros s [? ?]. Exists s emp.
 Intros. simpl in H.
 inv H. inv H4.
 pose proof yes_iternF_is_finite.
-destruct (H 100%nat ltac:(lia)) as [_ ?].
-pose proof yes_accurate_harmonic_oscillator_100.
-set (pq := iternF (p_init, q_init) 100) in *.
+destruct (H 1000%nat ltac:(unfold max_step;lia)) as [_ ?].
+pose proof yes_accurate_harmonic_oscillator.
+unfold max_step in *.
+set (pq := iternF (p_init, q_init) 1000) in *.
 clearbody pq.
 unfold_for_go_lower; normalize.
 inv H2.
-simpl; entailer!.
+simpl.
+entailer!.
 intros.
 Exists pq.
 entailer!.
@@ -56,7 +58,7 @@ Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
 forward_call. apply yes_iternF_is_finite.
-forget (iternF (p_init, q_init) 100)  as a.
+forget (iternF (p_init, q_init) 1000)  as a.
 forward.
 cancel.
 Qed.

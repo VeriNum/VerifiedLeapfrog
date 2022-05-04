@@ -6,7 +6,8 @@ Definition Vprog : varspecs. mk_varspecs prog. Defined.
 Open Scope logic.
 
 From vcfloat Require Import FPCompCert Float_notations.
-Require Import lf_harm_float.
+Require Import float_model.
+
 
 Set Bullet Behavior "Strict Subproofs". 
 
@@ -42,7 +43,7 @@ Definition integrate_spec_lowlevel :=
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh t_state (floats_to_vals (iternF (p_init,q_init) 100)) s).
+    SEP(data_at Tsh t_state (floats_to_vals (iternF (p_init,q_init) 1000)) s).
 
 Definition main_spec :=
  DECLARE _main
@@ -89,16 +90,22 @@ forward.
 forward.
 autorewrite with float_elim in *. 
 pose (step n := iternF (p_init, q_init) (Z.to_nat n)).
- forward_for_simple_bound 100%Z (EX n:Z,
+ forward_for_simple_bound 1000%Z (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);
-                   temp _max_step (Vint (Int.repr 100));
+                   temp _max_step (Vint (Int.repr 1000));
                    temp _t (Vsingle (Z.iter n (BPLUS Tsingle h) (0%F32))); 
                    temp lfharm._s s)
    SEP (data_at Tsh t_state (floats_to_vals (step n)) s))%assert.
 - entailer!.
 - forward_call (s, step i).
-  apply H; lia.
+  apply H. unfold max_step. simpl.
+  assert (Z.to_nat i < Z.to_nat 1000)%nat by lia.
+  apply Nat.lt_le_incl.
+  eapply Nat.lt_le_trans.
+  apply H1.
+  apply Nat.eq_le_incl.
+  simpl. auto.
   forward.
   autorewrite with float_elim in *.
   entailer!.
@@ -108,8 +115,7 @@ pose (step n := iternF (p_init, q_init) (Z.to_nat n)).
   replace (Z.to_nat (i+1)) with (S (Z.to_nat i)) by lia.
   rewrite step_iternF.
   apply derives_refl.
-- change (iternF(p_init, q_init) 100) with (step 100%Z).
-   forward.
+- forward.
 Qed.
 
 

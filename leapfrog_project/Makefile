@@ -3,7 +3,7 @@ COQDEP=coqdep
 VCFLOAT_LOC=../../vcfloat/vcfloat
 COQFLAGS= -Q $(VCFLOAT_LOC) vcfloat
 
-all: _CoqProject main.vo matrix_analysis.vo
+all: _CoqProject main.vo matrix_analysis.vo 
 
 _CoqProject: Makefile
 	echo $(COQFLAGS) >_CoqProject

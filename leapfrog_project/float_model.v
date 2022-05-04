@@ -104,9 +104,10 @@ Qed.
 Definition p_init: ftype Tsingle :=  0%F32.
 Definition q_init: ftype Tsingle :=  1%F32.
 Definition pq_init := (p_init, q_init).
+Definition max_step : nat := 1000.
 
 Definition iternF_is_finite : Prop :=
-  forall n : nat,  ( n <= 100)%nat->
+  forall n : nat,  ( n <= max_step)%nat->
   (is_finite _ _  (fst(iternF pq_init  n)) = true) /\
   (is_finite _ _  (snd(iternF pq_init n)) = true).
 

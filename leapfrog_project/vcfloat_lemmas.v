@@ -9,7 +9,8 @@ Import Binary.
 Import List ListNotations.
 Set Bullet Behavior "Strict Subproofs".
 
-Require Import lf_harm_float lf_harm_real real_lemmas lf_harm_real_theorems.
+Require Import float_model real_model real_lemmas.
+Require Import harmonic_oscillator_system  matrix_analysis.
 
 Open Scope R_scope.
 
@@ -80,38 +81,11 @@ Proof. reflexivity. Qed.
   bounds hold for the position and momentum computed in floating-point arithmetic for 
   some number of iterations *)
 
-Lemma init_norm_eq :
-  ∥  (FT2R p_init, FT2R q_init) ∥ = 1 . 
-Proof.
-intros.
-rewrite <- sqrt_1.
-replace (FT2R q_init) with 1.
-simpl. unfold Rprod_norm, fst, snd.
-f_equal; nra.
-unfold FT2R, q_init. 
- cbv [B2R]. simpl. cbv [Defs.F2R IZR IPR]. simpl;
-field_simplify; nra.
-Qed.
 
-Lemma iternR_bound : 
-  forall n : nat, 
-  ( n <=100)%nat -> 
-  ∥iternR (FT2R p_init, FT2R q_init) h n∥ <= 21.697.
-Proof.
-intros.
-eapply Rle_trans.
-eapply method_bound_n; try unfold h,ω; try nra.
-rewrite init_norm_eq.
-rewrite Rmult_1_r.
-eapply Rle_trans.
-apply Rle_pow; try unfold h; try nra.
-apply H.
-interval.
-Qed.
 
 Definition leapfrog_bmap_list : list varinfo := 
-  [ Build_varinfo Tsingle _p (-22)  22 ;  Build_varinfo Tsingle _q (-22)  22 ].
-
+  [ Build_varinfo Tsingle _p (-1.0041)  1.0041 ;  
+      Build_varinfo Tsingle _q (-1.0041)  1.0041 ].
 
 Definition leapfrog_bmap : boundsmap :=
  ltac:(let z := compute_PTree (boundsmap_of_list leapfrog_bmap_list) in exact z).
@@ -173,104 +147,6 @@ repeat constructor;
 repeat constructor.
 Qed.
 
-Lemma error_sum_bound: 
-  forall n,
-  (n <= 200)%nat -> 
-  error_sum (1 + h) n <= 15033.
-Proof.
-intros.
-eapply Rle_trans.
-eapply error_sum_le_trans. 
-  apply H. try unfold h; try nra.
-assert (Hyph: 1 + h <> 1 ) by (unfold h ;nra).
-pose proof geo_series_closed_form (1 + h) 199 Hyph.
-unfold error_sum; rewrite H0.
-replace ((1 - (1 + h) ^ 200) / (1 - (1 + h))) with (  ((1 + h) ^ 200 - 1) /  h).
-rewrite Rcomplements.Rle_div_l; try (unfold h; nra).
-set (a:=(1 + h) ^ 200).
-field_simplify; try nra. 
-apply Stdlib.Rdiv_eq_reg; try nra.
-Qed.
-
-Lemma iterR_bound: 
-  forall pt qt: R -> R,
-  forall n : nat, 
-  (n <= 200)%nat ->
-  let t0 := 0 in
-  let tn := t0 + INR n * h in
-  pt t0 = FT2R p_init -> 
-  qt t0 = FT2R q_init ->
-  Harmonic_oscillator_system pt qt ω t0 ->
-   ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum (1 + h) n -> 
-  (forall m,
-    (m <= n)%nat -> 
-    ∥(iternR ((FT2R p_init), (FT2R q_init)) h m)∥ <= 1.5).
-Proof.
-intros * ? * IC1 IC2. intros.
-assert (0 < ω*h <= 2) as Hbnd by (unfold h,ω; nra).
-pose proof global_truncation_error_sum pt qt t0 tn h Hbnd H0 m.
-assert (t0 + INR m * h <= tn). 
-  subst tn. apply Rplus_le_compat_l.
-  apply Rmult_le_compat_r; try unfold h; try nra.
-  apply le_INR; apply H2.
-specialize (H3 H4).
-rewrite  Rprod_minus_comm in H3.
-eapply Rle_trans in H3.
-2: apply Rprod_triang_inv.
-destruct H0 as (_ & _ & A).
-specialize (A (t0 + INR m * h)).
-destruct A as ( _ & _ & C).
-unfold ω in *; repeat (rewrite Rmult_1_l in C).
-rewrite C in H3.
-rewrite IC1 in H3.
-rewrite IC2 in H3.
-rewrite init_norm_eq in H3.
-rewrite Rmult_1_r in H3.
-rewrite Rle_minus_l_2 in H3.
-pose proof error_sum_bound.
-assert (1 + h ^ 3 * error_sum (1 + h) m <= 
-  1 + h ^ 3 * error_sum (1 + h) n).
-  apply Rplus_le_compat_l.
-  apply Rmult_le_compat_l.
-  try unfold h; try nra.
-  apply error_sum_le_trans.
-  apply H2.
-  unfold h; nra.
-eapply Rle_trans.
-apply H3.
-eapply Rle_trans.
-apply H5.
-specialize (H0 n H).
-assert (1 + h ^ 3 * error_sum (1 + h) n <=
-  1 + h ^ 3 * 15033).
-apply Rplus_le_compat_l.
-  apply Rmult_le_compat_l.
-  try unfold h; try nra.
-  apply H0.
-eapply Rle_trans.
-apply H6.
-unfold h.
-interval.
-Qed.
-
-Lemma init_norm_bound :
-  forall n : nat,
-  (forall p q n,
-  ∥iternR (p,q) h n∥ <= (sqrt 2 * ∥(p,q)∥)) ->
-  ∥ iternR (FT2R p_init, FT2R q_init) h n ∥ <= 1.5. 
-Proof.
-intros.
-pose proof init_norm_eq as Hnorm.
-specialize (H (FT2R p_init) (FT2R q_init) n).
-eapply Rle_trans.
-apply H.
-eapply Rle_trans.
-apply Rmult_le_compat_l.
-apply sqrt_pos.
-apply Req_le.
-apply Hnorm.
-interval.
-Qed.
 
 
 End WITHNANS.

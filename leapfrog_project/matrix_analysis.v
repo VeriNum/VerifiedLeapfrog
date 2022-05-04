@@ -5,8 +5,7 @@
 
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Bool Arith.Arith.
-Require Import real_lemmas lf_harm_real matrix_lemmas lf_harm_real_theorems.
-Require vcfloat.Prune.
+Require Import real_lemmas real_model matrix_lemmas.
 
 From Coquelicot Require Import Coquelicot.
 Require Import IntervalFlocq3.Tactic.
@@ -185,6 +184,43 @@ intros. subst Mx. destruct ic. cbv.
 all : (f_equal; field_simplify; nra) .
 Qed.
 
+
+(** equivalence between matrix update and leapfrog step*)
+Lemma transition_matrix_equiv_iternR:
+  forall (ic : R * R) (h : R) (n : nat), 
+  let Mx := Mmult (Mpow 2 n (t_matrix h)) (s_vector ic) in
+  let pn := fst (coeff_mat Hierarchy.zero Mx 0 0) in 
+  let qn := fst (coeff_mat Hierarchy.zero Mx 1 0) in 
+  (pn, qn) = iternR ic h n.
+Proof.
+intros.
+induction n.
+- 
+subst Mx pn qn; destruct ic; simpl; f_equal; try nra.
+-
+set (m_iternR := mk_matrix 2 1 (fun i _ => if (Nat.eqb i 0%nat) then RtoC (fst (iternR ic h n)) 
+  else RtoC (snd (iternR ic h n)) )).
+
+assert (Mx = Mmult (t_matrix h) m_iternR). admit.
+subst pn qn. rewrite H.
+replace (iternR ic h (S n)) with (leapfrog_stepR (iternR ic h n) h).
+simpl in IHn.
+subst m_iternR.
+rewrite <- IHn. 
+unfold Mmult.
+repeat rewrite coeff_mat_bij; try lia.
+change (Init.Nat.pred 2) with 1%nat.
+repeat rewrite sum_Sn.
+repeat rewrite sum_O.
+repeat rewrite coeff_mat_bij; try lia.
+simpl.
+repeat rewrite Rmult_0_r.
+repeat rewrite Rmult_0_l.
+repeat rewrite Rplus_0_r.
+repeat rewrite Rminus_0_r.
+unfold leapfrog_stepR, ω; simpl.
+f_equal; try nra.
+Admitted.
 
 
 
@@ -1502,6 +1538,8 @@ Definition two_norm_t_matrix (h : R | 0 < h < 1.4):=
 
 
 
+
+
 Lemma two_norm_t_matrix_eq :
 sqrt (Cmod (MTM_lambda_2 h)) <= 1.0000038147045427.
 Proof.
@@ -1531,72 +1569,6 @@ unfold two_norm_t_matrix. simpl.
 repeat rewrite <- two_norms_eq_2d.
 apply H1.
 Qed.
-
-Lemma matrix_analysis_local_truncation_error:
-  forall p q : R -> R,
-  forall t0 tn: R,
-  forall (h  :R | 0 <  h < sqrt 2),
-  Harmonic_oscillator_system p q ω t0 ->  
-  vec_two_norm_2d (Mplus (pq_vector (proj1_sig h) p q (tn + (proj1_sig h))) (Mopp (Mmult (t_matrix (proj1_sig h)) (s_vector (p tn, q tn))))) <= 
-      (proj1_sig h)^3 * vec_two_norm_2d (s_vector (p t0, q t0)).
-Proof.
-intros ? ? ? ? ? HSY; intros.
-destruct h as (h & Hh). simpl in *.
-unfold vec_two_norm_2d.
-unfold Mplus, Mopp, Mmult; simpl in *.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-unfold sum_n; simpl. 
-repeat rewrite sum_n_Sm; try lia.
-repeat rewrite sum_n_n.
-unfold t_matrix, s_vector.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-rewrite coeff_mat_bij; try lia.
-simpl.
-cbv [mult plus Cmult Cplus Cmod].
-simpl.
-simpl; repeat rewrite Rmult_0_l.
-repeat rewrite Rminus_0_r.
-repeat rewrite Rplus_0_l.
-repeat rewrite Rmult_1_r.
-repeat rewrite Rplus_0_r.
-repeat rewrite Rmult_0_r.
-repeat rewrite Rplus_0_r.
-repeat rewrite Ropp_0.
-repeat rewrite Rmult_0_r.
-repeat rewrite Rplus_0_r.
-unfold Rprod_norm, fst, snd.
-assert (0 < ω * h <= 4).
-(unfold ω; split; try nra; try interval).
-pose proof local_truncation_error p q t0 tn h H HSY as LTE.
-simpl in LTE; unfold Rprod_norm, fst ,snd in LTE.
-simpl in LTE.
-repeat rewrite Rmult_1_r in LTE.
-repeat rewrite pow2_sqrt.
-match goal with H0 : context[ sqrt ?a <= ?b] |- _=> 
-set (yy:=  a)
-end.
-match goal with |- context[ sqrt ?a <= ?b] => 
-replace ( a) with yy
-end.
-subst yy;  apply LTE; auto.
-subst yy. field_simplify. nra.
-all: try match goal with |-context [?a * ?a] =>
-replace (a * a) with (a ^ 2) by (simpl;nra);
-apply square_pos; try nra
-end.
-Qed.
-
 
 Lemma matrix_analysis_method_bound_n : 
   forall p q : R,
@@ -1651,6 +1623,7 @@ split; unfold h; unfold ω; try nra.
 Qed.
 
 
+
 Theorem matrix_analysis_method_bound_fixed_h_n : 
   forall p q: R,
   forall n : nat, 
@@ -1673,6 +1646,86 @@ apply sqrt_pos.
 Qed.
 
 
+Lemma iternR_bound : 
+  forall p q: R,
+  forall nf : nat, 
+  ( nf <=1000)%nat -> 
+  ∥iternR (p, q) h nf∥ <= 1.0000038147045427 ^ nf * ∥(p,q)∥.
+Proof.
+intros.
+eapply Rle_trans.
+pose proof matrix_analysis_method_bound_fixed_h_n p q nf.
+simpl in H0.
+pose proof transition_matrix_equiv_iternR (p, q) h nf.
+set (Mx:= Mmult (Mpow 2 nf (t_matrix h)) (s_vector (p, q))) in *.
+assert (vec_two_norm_2d Mx = ∥ iternR (p, q) h nf ∥ ).
+subst Mx.
+rewrite <- H1.
+unfold vec_two_norm_2d, Rprod_norm.
+unfold fst at 1.
+unfold snd at 1.
+unfold fst at 1.
+unfold snd at 1.
+unfold Cmod.
+repeat rewrite pow2_sqrt; auto; try apply sqr_plus_pos.
+assert (@snd R R
+        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (t_matrix h)) (s_vector (p, q))) 0
+           0) = 0) by admit. 
+rewrite H2; clear H2.
+assert (@snd R R
+        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (t_matrix h)) (s_vector (p, q))) 1
+           0) = 0) by admit.
+rewrite H2; clear H2.
+rewrite pow_i; try lia.
+repeat rewrite Rplus_0_r.
+repeat rewrite sqrt_pow2; auto.
+rewrite <- H2.
+apply H0.
+eapply Rmult_le_compat_l. 
+apply pow_le; try nra.
+unfold vec_two_norm_2d, Rprod_norm.
+unfold fst at 1.
+unfold snd at 1.
+unfold fst at 1.
+unfold snd at 1.
+unfold Cmod.
+repeat rewrite pow2_sqrt; auto; try apply sqr_plus_pos.
+simpl.
+apply Req_le.
+f_equal; nra.
+Admitted.
 
+
+Lemma method_norm_bound : 
+  forall p q: R,
+  ∥(leapfrog_stepR (p,q) h)∥ <= 1.0000038147045427 * ∥(p,q)∥.
+Proof.
+intros.
+assert (H : (1 <= 1000)%nat) by (simpl; lia).
+pose proof iternR_bound p q 1 H.
+unfold iternR in H0.
+eapply Rle_trans.
+apply H0.
+apply Rmult_le_compat_r; try apply Rnorm_pos.
+rewrite pow_1.
+nra.
+Qed.
+
+
+Lemma iternR_bound_max_step : 
+  forall p q: R,
+  forall nf : nat, 
+  ( nf <=1000)%nat -> 
+  ∥iternR (p, q) h nf∥ <= 1.003822 * ∥(p,q)∥.
+Proof.
+intros.
+pose proof iternR_bound p q nf H.
+eapply Rle_trans.
+apply H0.
+eapply Rmult_le_compat_r; try apply Rnorm_pos.
+eapply Rle_trans.
+apply Rle_pow; try nra; apply H.
+interval with (i_prec 256).
+Qed.
 
 Close Scope R_scope. 

@@ -6,7 +6,7 @@
 
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Arith.Arith.
-Require Import real_lemmas lf_harm_real.
+Require Import real_lemmas.
 Require Import Init.Nat Arith.EqNat.
 
 From Coq Require Import ssreflect. 

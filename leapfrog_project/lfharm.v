@@ -200,7 +200,7 @@ Definition f_integrate := {|
     (Ssequence
       (Sset _t (Econst_single (Float32.of_bits (Int.repr 0)) tfloat))
       (Ssequence
-        (Sset _max_step (Econst_int (Int.repr 100) tint))
+        (Sset _max_step (Econst_int (Int.repr 1000) tint))
         (Ssequence
           (Sset _h
             (Ebinop Odiv
