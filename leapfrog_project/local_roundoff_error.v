@@ -108,7 +108,7 @@ Qed.
 
 Definition local_round_off :=  ∥(1.235*(1/10^7) , 6.552*(1/10^8))∥.
 
-Theorem local_roundoff_error:
+Theorem local_roundoff_error':
   forall x : state,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x)-> 
   let env := env_ (leapfrog_vmap x) in
@@ -138,5 +138,18 @@ unfold fst, snd.
 nra.
 Qed.
 
+Theorem local_roundoff_error:
+  forall x : state,
+  boundsmap_denote leapfrog_bmap (leapfrog_vmap x) -> 
+  ∥ FT2R_prod (leapfrog_stepF x)  - leapfrog_stepR (FT2R_prod x) h ∥ 
+    <= local_round_off.
+Proof.
+intros.
+pose proof local_roundoff_error' x H.
+cbv zeta in H0.
+rewrite reflect_reify_pq in H0.
+rewrite rval_correct_pq in H0.
+apply H0.
+Qed.
 
 End WITHNANS.

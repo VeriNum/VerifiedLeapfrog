@@ -29,10 +29,11 @@ split; auto. intros s [? ?]. Exists s emp.
 Intros. simpl in H.
 inv H. inv H4.
 pose proof yes_iternF_is_finite.
-destruct (H 1000%nat ltac:(unfold max_step;lia)) as [_ ?].
+destruct (H max_step ltac:(unfold max_step;lia)) as [_ ?].
 pose proof yes_accurate_harmonic_oscillator.
-unfold max_step in *.
-set (pq := iternF (p_init, q_init) 1000) in *.
+fold max_step in *.
+forget max_step as N.
+set (pq := iternF (p_init, q_init) N) in *.
 clearbody pq.
 unfold_for_go_lower; normalize.
 inv H2.

@@ -280,12 +280,8 @@ apply Rplus_le_compat_l.
 assert (∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
      local_round_off * error_sum 1.0000038147045427 n /\ ∥ (pnr, qnr) ∥ <= 1.003822).
 split; auto.
-pose proof (local_roundoff_error (pnf,qnf) IHbmd) as BND.
-rewrite reflect_reify_pq in BND.
-rewrite rval_correct_pq in BND.
-destruct (FT2R_prod (leapfrog_stepF (pnf, qnf))). 
-rewrite Rprod_minus_comm in BND. 
-apply BND.  
+rewrite Rprod_minus_comm. 
+apply (local_roundoff_error (pnf,qnf) IHbmd).
 destruct (Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf))).
 assert (0 < ω*h <= 2) as Hh by (unfold h,ω; nra).
 pose proof (method_norm_bound r r0 ) as BND.
