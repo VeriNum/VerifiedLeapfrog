@@ -16,7 +16,7 @@ Theorem global_truncation_error_sum :
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
   ∥ (p tn, q tn) - (iternR (p t0, q t0) h n)∥
-    <= h^3 * ∥(p t0,  q t0)∥ * error_sum 1.0000038147045427 n.
+    <= h^3 * ∥(p t0,  q t0)∥ * error_sum σb n.
 Proof.
 intros ? ? ? ? HSY; intros. 
 induction n.
@@ -75,19 +75,18 @@ apply H2; rewrite Rmult_1_l; auto.
 unfold fst at 1.
 eapply Rle_trans.
 eapply Rplus_le_compat_l.
-eapply Rmult_le_compat_l; try nra.
+eapply Rmult_le_compat_l; try (unfold σb; nra).
 apply IHn. 
 set 
   (aa:=h ^ 3 *  ∥ (p t0, q t0) ∥).
-replace (aa + 1.0000038147045427 * (aa * error_sum (1.0000038147045427 ^ n) n))
+replace (aa + σb * (aa * error_sum (σb ^ n) n))
 with 
-(aa + aa * 1.0000038147045427 * error_sum (1.0000038147045427 ^ n) n) by nra.
+(aa + aa * σb * error_sum (σb ^ n) n) by nra.
 rewrite <- error_sum_aux2.
+clearbody aa.
 field_simplify.
 apply Req_le.
 nra.
 Qed.
-
-
 
 Close Scope R_scope. 

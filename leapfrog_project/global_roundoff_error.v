@@ -34,7 +34,7 @@ Qed.
 
 Lemma iternR_bound_init : 
   forall nf : nat, 
-  ( nf <= max_step)%nat -> 
+  ( nf <= N)%nat -> 
   ∥iternR (FT2R p_init, FT2R q_init) h nf∥ <=  1.003822.
 Proof.
 intros. 
@@ -49,21 +49,21 @@ Qed.
 Lemma error_sum_bound: 
   forall n,
   (n <= 1000)%nat -> 
-  error_sum 1.0000038147045427 n <= 1002.
+  error_sum σb n <= 1002.
 Proof.
 intros.
 eapply Rle_trans.
 eapply error_sum_le_trans. 
-  apply H. try unfold h; try nra.
-assert (Hyph: 1.0000038147045427 <> 1 ) by (unfold h ;nra).
-pose proof geo_series_closed_form 1.0000038147045427 (999) Hyph.
+  apply H. try unfold σb; nra.
+assert (Hyph: σb <> 1 ) by (unfold σb ;nra).
+pose proof geo_series_closed_form σb (999) Hyph.
 unfold error_sum.
 rewrite H0.
 set (a:= 1000%nat).
-replace ((1 - 1.0000038147045427 ^ a) / (1 - 1.0000038147045427)) with ((
- 1.0000038147045427 ^ a- 1) /(1.0000038147045427 -1)) by nra. 
+replace ((1 - σb ^ a) / (1 - σb)) with ((
+ σb ^ a- 1) /(σb -1)) by (unfold σb; nra). 
 match goal with  |-context[?a /?b] =>
-replace b with (0.0000038147045427) by nra
+replace b with (0.000003814704543) by (unfold σb; nra)
 end.
 rewrite Rcomplements.Rle_div_l. 
 subst a.
@@ -84,7 +84,7 @@ Lemma iterR_bound:
   pt t0 = FT2R p_init -> 
   qt t0 = FT2R q_init ->
   Harmonic_oscillator_system pt qt ω t0 ->
-   ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum 1.0000038147045427 n -> 
+   ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum σb n -> 
   (forall m,
     (m <= n)%nat -> 
     ∥(iternR ((FT2R p_init), (FT2R q_init)) h m)∥ <= 1.0306).
@@ -111,20 +111,20 @@ rewrite init_norm_eq in H3.
 rewrite Rmult_1_r in H3.
 rewrite Rle_minus_l_2 in H3.
 pose proof error_sum_bound.
-assert (1 + h ^ 3 * error_sum 1.0000038147045427 m <= 
-  1 + h ^ 3 * error_sum 1.0000038147045427 n).
+assert (1 + h ^ 3 * error_sum σb m <= 
+  1 + h ^ 3 * error_sum σb n).
   apply Rplus_le_compat_l.
   apply Rmult_le_compat_l.
   try unfold h; try nra.
   apply error_sum_le_trans.
   apply H2.
-  unfold h; nra.
+  unfold σb; nra.
 eapply Rle_trans.
 apply H3.
 eapply Rle_trans.
 apply H5.
 specialize (H0 n H).
-assert (1 + h ^ 3 * error_sum 1.0000038147045427 n <=
+assert (1 + h ^ 3 * error_sum σb n <=
   1 + h ^ 3 * 1002).
 apply Rplus_le_compat_l.
   apply Rmult_le_compat_l.
@@ -142,18 +142,18 @@ Lemma itern_implies_bmd_aux1:
   forall pnr qnr : R,
   forall n,
   (n <= 1000)%nat -> 
-  ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=  local_round_off * error_sum 1.0000038147045427 n 
+  ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=  local_round_off * error_sum σb n 
   /\ ∥(pnr,qnr) ∥ <= 1.003822 -> 
   Rabs (FT2R pnf)  <= 1.0041 /\ Rabs ( FT2R qnf) <= 1.0041.
 Proof.
 intros ? ? ? ? ? BNDn (A & B).
 assert (HYP1: ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-(local_round_off) * error_sum 1.0000038147045427 1000).
+(local_round_off) * error_sum σb 1000).
 - 
 eapply Rle_trans. 
 apply A.
   apply Rmult_le_compat_l; try (apply Rnorm_pos).
-  eapply error_sum_le_trans. apply BNDn. unfold h; nra.
+  eapply error_sum_le_trans. apply BNDn. unfold σb; nra.
 -
 clear A. 
 (* use the fact that (error_sum (1 + a) 1000 <= 1002 *)
@@ -210,7 +210,7 @@ Lemma itern_implies_bmd:
   boundsmap_denote leapfrog_bmap 
     (leapfrog_vmap (iternF float_model.h (p,q) n)) ->
   ∥(iternR (FT2R p, FT2R q) h (S n)) - FT2R_prod (iternF float_model.h (p,q)  (S n)) ∥ <= 
-  local_round_off * error_sum 1.0000038147045427 (S n)  /\
+  local_round_off * error_sum σb (S n)  /\
 ∥ (iternR (FT2R p, FT2R q) h  (S n))∥ <= 1.003822 ->
    boundsmap_denote leapfrog_bmap (leapfrog_vmap (iternF float_model.h (p,q) (S n))).
 Proof. 
@@ -245,7 +245,7 @@ Theorem global_roundoff_error :
   let (pr0, qr0) := (FT2R p_init, FT2R q_init) in
   boundsmap_denote leapfrog_bmap vmap_n /\
   ∥(iternR (pr0, qr0) h n) - FT2R_prod (iternF float_model.h pq_init n) ∥ 
-     <= c * error_sum  1.0000038147045427 n.
+     <= c * error_sum  σb n.
   Proof.
 intros.
 induction n.
@@ -278,7 +278,7 @@ rewrite leapfrog_minus_args.
 eapply Rle_trans.
 apply Rplus_le_compat_l.
 assert (∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
-     local_round_off * error_sum 1.0000038147045427 n /\ ∥ (pnr, qnr) ∥ <= 1.003822).
+     local_round_off * error_sum σb n /\ ∥ (pnr, qnr) ∥ <= 1.003822).
 split; auto.
 rewrite Rprod_minus_comm. 
 apply (local_roundoff_error (pnf,qnf) IHbmd).
@@ -290,12 +290,12 @@ apply Rplus_le_compat_r.
 apply BND. 
 eapply Rle_trans.
 apply Rplus_le_compat_r.
-apply Rmult_le_compat_l; try (unfold h; nra).
+apply Rmult_le_compat_l; try (unfold σb; nra).
 apply IHnorm. 
 fold c.
-replace (1.0000038147045427 * (c * error_sum 1.0000038147045427 n) + c)
+replace (σb * (c * error_sum σb n) + c)
 with
-(c * (1.0000038147045427 * (error_sum 1.0000038147045427 n) + 1)) by nra.
+(c * (σb * (error_sum σb n) + 1)) by nra.
 rewrite <- error_sum_aux2; unfold c; nra.
 symmetry. apply Rprod_norm_plus_minus_eq.
 + destruct IHn as (IHbmd & IHnorm); try lia.

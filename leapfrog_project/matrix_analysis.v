@@ -151,7 +151,7 @@ Qed.
 
 
 (** the leapfrog transition matrix *)
-Definition t_matrix (h: R) : @matrix C 2 2 := 
+Definition M (h: R) : @matrix C 2 2 := 
   let a := 0.5 * h^2 in 
   mk_matrix 2 2 (fun i j => if (Nat.eqb i j) then ((1 - a) , 0) else 
     if ( Nat.ltb j i)%nat then (h,0) else ((-0.5 * h * (2 - a)),0)) .
@@ -167,7 +167,7 @@ Definition s_vector (ic: R * R) := @mk_matrix C 2 1%nat
 (** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_1:
   forall (ic : R * R) (h : R),  
-  let Mx := Mmult (t_matrix h) (s_vector ic) in
+  let Mx := Mmult (M h) (s_vector ic) in
    coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR h ic),0).
 Proof.
 intros. subst Mx. destruct ic. cbv. 
@@ -177,7 +177,7 @@ Qed.
 (** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_2:
   forall (ic : R * R) (h : R), 
-  let Mx := Mmult (t_matrix h) (s_vector ic) in
+  let Mx := Mmult (M h) (s_vector ic) in
 coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR h ic),0).
 Proof.
 intros. subst Mx. destruct ic. cbv.
@@ -188,7 +188,7 @@ Qed.
 (** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_iternR:
   forall (ic : R * R) (h : R) (n : nat), 
-  let Mx := Mmult (Mpow 2 n (t_matrix h)) (s_vector ic) in
+  let Mx := Mmult (Mpow 2 n (M h)) (s_vector ic) in
   let pn := fst (coeff_mat Hierarchy.zero Mx 0 0) in 
   let qn := fst (coeff_mat Hierarchy.zero Mx 1 0) in 
   (pn, qn) = iternR ic h n.
@@ -201,7 +201,7 @@ subst Mx pn qn; destruct ic; simpl; f_equal; try nra.
 set (m_iternR := mk_matrix 2 1 (fun i _ => if (Nat.eqb i 0%nat) then RtoC (fst (iternR ic h n)) 
   else RtoC (snd (iternR ic h n)) )).
 
-assert (Mx = Mmult (t_matrix h) m_iternR). admit.
+assert (Mx = Mmult (M h) m_iternR). admit.
 subst pn qn. rewrite H.
 replace (iternR ic h (S n)) with (leapfrog_stepR h (iternR ic h n)).
 simpl in IHn.
@@ -303,7 +303,7 @@ Definition MTM_eigenvector_matrix (h : R) : @matrix C 2 2 :=
 (* M * V = V * L *)
 Lemma eigens_correct (h : R) :
   0 <= h <= 2 -> 
-  Mmult (t_matrix h) (eigenvector_matrix h) = 
+  Mmult (M h) (eigenvector_matrix h) = 
   Mmult (eigenvector_matrix h) (eigenvalue_matrix h).
 Proof.
 intros.
@@ -311,7 +311,7 @@ apply mk_matrix_ext => i j Hi Hj.
 replace (Init.Nat.pred 2) with (S 0) by lia.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
-unfold t_matrix, eigenvector_matrix, eigenvalue_matrix, 
+unfold M, eigenvector_matrix, eigenvalue_matrix, 
   eV_1, eV_2, lambda_1, lambda_2, matrix_lemmas.C1.
 repeat rewrite coeff_mat_bij.
 all: try lia.
@@ -441,14 +441,14 @@ Qed.
 
 
 Lemma MTM_aux  (h : R) :
-  Mmult (matrix_conj_transpose _ _ (t_matrix h)) (t_matrix h) = MTM h.
+  Mmult (matrix_conj_transpose _ _ (M h)) (M h) = MTM h.
 Proof.
 unfold MTM.
 apply mk_matrix_ext => i j Hi Hj.
 replace (Init.Nat.pred 2) with (S 0) by lia.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
-unfold t_matrix, matrix_conj_transpose, Cconj.
+unfold M, matrix_conj_transpose, Cconj.
 repeat rewrite coeff_mat_bij.
 all: try lia.
 assert (A: i = 0%nat \/ i = 1%nat) by lia;
@@ -1459,10 +1459,10 @@ Qed.
 
 
 Lemma two_norm_pred_eq (h : R | 0 < h < 1.4): 
- two_norm_pred 2 (t_matrix (proj1_sig h)) (sqrt (MTM_lambda_2 (proj1_sig h))).
+ two_norm_pred 2 (M (proj1_sig h)) (sqrt (MTM_lambda_2 (proj1_sig h))).
 Proof.
 apply ( max_sv_pred_implies_two_norm_pred
-  (t_matrix (proj1_sig h)) (sqrt (MTM_lambda_2 (proj1_sig h)))).
+  (M (proj1_sig h)) (sqrt (MTM_lambda_2 (proj1_sig h)))).
 unfold max_sv_pred.
 destruct h as (h & Hh); simpl; split; try apply sqrt_pos.
 exists (MTM_eigenvector_matrix h), (MTM_eigenvalue_matrix h).
@@ -1530,42 +1530,47 @@ rewrite sqrt_square; try apply MTM_lambda_2_pos_2; auto.
 apply eig_MTM_le; auto.
 Qed.
 
+Definition σ (h: R) := sqrt (MTM_lambda_2 h).
 
+Definition two_norm_M (h : R | 0 < h < 1.4):=
+  proj1_sig (exist (two_norm_pred 2 (M (proj1_sig h))) 
+                          (sqrt (MTM_lambda_2 (proj1_sig h)))
+                          (two_norm_pred_eq h)).
 
-Definition two_norm_t_matrix (h : R | 0 < h < 1.4):=
-  proj1_sig (exist (two_norm_pred 2 (t_matrix (proj1_sig h))) (sqrt (MTM_lambda_2 (proj1_sig h))) (two_norm_pred_eq h))
-.
-
-
-
-
-
-Lemma two_norm_t_matrix_eq :
-sqrt (Cmod (MTM_lambda_2 h)) <= 1.0000038147045427.
+Lemma sigma_eq_two_norm_M:
+  forall h, σ (proj1_sig h) = two_norm_M h.
 Proof.
-unfold MTM_lambda_2, RtoC, Cmod, fst, snd, h.
-match goal with |-context [sqrt (sqrt ?a) <= ?b] =>
-  field_simplify a
-end.
-match goal with |-context [sqrt (sqrt ?a) <= _] =>
-interval_intro (sqrt (sqrt a)) upper 
-end.
+intros.
+unfold two_norm_M.
+destruct h; simpl.
+reflexivity.
+Qed.
+
+(* 1.000003814704542914881812976091168820858001708984375 *)
+
+Definition σb := 1.000003814704543.
+
+Lemma sigma_bound: σ h <= σb.
+Proof.
+unfold σ, σb, MTM_lambda_2, h.
+match goal with |- sqrt ?a <= _ => field_simplify a end.
+match goal with |- ?a <= _ => interval_intro a upper end.
 eapply Rle_trans.
 apply H. nra.
 interval.
 Qed.
 
-Lemma t_matrix_norm_sub_mult :
+Lemma M_norm_sub_mult :
   forall (h : R | 0 < h < 1.4),
   forall (y : @matrix C 2 1%nat),
-  vec_two_norm_2d (Mmult (t_matrix (proj1_sig h)) y) <= (two_norm_t_matrix h) * vec_two_norm_2d y.
+  vec_two_norm_2d (Mmult (M (proj1_sig h)) y) <= (two_norm_M h) * vec_two_norm_2d y.
 Proof.
 intros.
 pose proof two_norm_pred_eq h.
 unfold two_norm_pred in H.
 specialize (H y).
 destruct H as (H1 & H2).
-unfold two_norm_t_matrix. simpl.
+unfold two_norm_M. simpl.
 repeat rewrite <- two_norms_eq_2d.
 apply H1.
 Qed.
@@ -1574,7 +1579,7 @@ Lemma matrix_analysis_method_bound_n :
   forall p q : R,
   forall n : nat, 
   forall h : {h : R | 0 <  h < 1.4},
-  let Mn := Mpow 2 n (t_matrix (proj1_sig h)) in
+  let Mn := Mpow 2 n (M (proj1_sig h)) in
   vec_two_norm_2d  (Mmult Mn (s_vector (p, q))) <= 
       (sqrt (Cmod (MTM_lambda_2 (proj1_sig h)))) ^ n * vec_two_norm_2d (s_vector (p,q)).
 Proof.
@@ -1593,20 +1598,20 @@ fold Mpow in Mn.
 simpl in IHn.
 subst Mn. 
 replace (Mmult (Mmult (Mpow 2 n 
-  (t_matrix (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (t_matrix (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q)))
+  (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q)))
 with
-( Mmult (t_matrix (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h)) 
-  (Mmult (Mpow 2 n (t_matrix (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q)))).
-destruct (@Mmult C_Ring 2 2 1 (Mpow 2 n (t_matrix (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q))).
+( Mmult (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h)) 
+  (Mmult (Mpow 2 n (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q)))).
+destruct (@Mmult C_Ring 2 2 1 (Mpow 2 n (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q))).
 eapply Rle_trans.
-pose proof t_matrix_norm_sub_mult h (t, t0).
+pose proof M_norm_sub_mult h (t, t0).
 apply H.
 eapply Rle_trans.
 apply Rmult_le_compat_l.
-unfold two_norm_t_matrix; simpl.
+unfold two_norm_M; simpl.
 apply sqrt_pos.
 apply IHn.
-unfold two_norm_t_matrix.
+unfold two_norm_M.
 simpl.
 rewrite Cmod_RtoC; try apply MTM_lambda_2_pos_2; try (destruct h; simpl; auto).
 apply Req_le.
@@ -1624,40 +1629,42 @@ Qed.
 
 
 
-Theorem matrix_analysis_method_bound_fixed_h_n : 
+Theorem matrix_bound : 
   forall p q: R,
   forall n : nat, 
-  let Mn := Mpow 2 n (t_matrix  h ) in
+  let Mn := Mpow 2 n (M  h ) in
   vec_two_norm_2d  (Mmult Mn (s_vector (p, q))) <= 
-      1.0000038147045427 ^ n * vec_two_norm_2d (s_vector (p,q)).
+      σb ^ n * vec_two_norm_2d (s_vector (p,q)).
 Proof.
 intros.
-pose proof h_bnd_lem as Hbnd.
 set (j := (exist (fun x => 0 < x < 1.4) h) h_bnd_lem).
 pose proof matrix_analysis_method_bound_n p q n j.
-pose proof two_norm_t_matrix_eq.
 simpl in H.
 eapply Rle_trans.
 apply H.
 apply Rmult_le_compat_r.
 apply Rnorm_pos.
-apply pow_incr; split; auto.
+apply pow_incr; split.
 apply sqrt_pos.
+rewrite Cmod_RtoC.
+apply sigma_bound.
+apply MTM_lambda_2_pos_2.
+unfold h. lra.
 Qed.
-
 
 Lemma iternR_bound : 
   forall p q: R,
   forall nf : nat, 
   ( nf <=1000)%nat -> 
-  ∥iternR (p, q) h nf∥ <= 1.0000038147045427 ^ nf * ∥(p,q)∥.
+  ∥iternR (p, q) h nf∥ <= σb ^ nf * ∥(p,q)∥.
 Proof.
 intros.
+unfold σb.
 eapply Rle_trans.
-pose proof matrix_analysis_method_bound_fixed_h_n p q nf.
+pose proof matrix_bound p q nf.
 simpl in H0.
 pose proof transition_matrix_equiv_iternR (p, q) h nf.
-set (Mx:= Mmult (Mpow 2 nf (t_matrix h)) (s_vector (p, q))) in *.
+set (Mx:= Mmult (Mpow 2 nf (M h)) (s_vector (p, q))) in *.
 assert (vec_two_norm_2d Mx = ∥ iternR (p, q) h nf ∥ ).
 subst Mx.
 rewrite <- H1.
@@ -1669,11 +1676,11 @@ unfold snd at 1.
 unfold Cmod.
 repeat rewrite pow2_sqrt; auto; try apply sqr_plus_pos.
 assert (@snd R R
-        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (t_matrix h)) (s_vector (p, q))) 0
+        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 0
            0) = 0) by admit. 
 rewrite H2; clear H2.
 assert (@snd R R
-        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (t_matrix h)) (s_vector (p, q))) 1
+        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 1
            0) = 0) by admit.
 rewrite H2; clear H2.
 rewrite pow_i; try lia.
@@ -1698,7 +1705,7 @@ Admitted.
 
 Lemma method_norm_bound : 
   forall p q: R,
-  ∥(leapfrog_stepR h (p,q))∥ <= 1.0000038147045427 * ∥(p,q)∥.
+  ∥(leapfrog_stepR h (p,q))∥ <= σb * ∥(p,q)∥.
 Proof.
 intros.
 assert (H : (1 <= 1000)%nat) by (simpl; lia).
@@ -1706,11 +1713,10 @@ pose proof iternR_bound p q 1 H.
 unfold iternR in H0.
 eapply Rle_trans.
 apply H0.
-apply Rmult_le_compat_r; try apply Rnorm_pos.
+apply Rmult_le_compat_r; try apply   Rnorm_pos.
 rewrite pow_1.
-nra.
+lra.
 Qed.
-
 
 Lemma iternR_bound_max_step : 
   forall p q: R,
@@ -1720,6 +1726,7 @@ Lemma iternR_bound_max_step :
 Proof.
 intros.
 pose proof iternR_bound p q nf H.
+unfold σb in H0.
 eapply Rle_trans.
 apply H0.
 eapply Rmult_le_compat_r; try apply Rnorm_pos.

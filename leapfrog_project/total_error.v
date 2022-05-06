@@ -28,7 +28,7 @@ Theorem total_error:
   qt t0 = FT2R q_init ->
   Harmonic_oscillator_system pt qt ω t0 ->
   ∥ (pt tn, qt tn) - (FT2R_prod (iternF float_model.h (p_init,q_init) n)) ∥ 
-     <=  (h^3  + local_round_off)/ (0.0000038147045427) * (1.0000038147045427 ^ n - 1) .
+     <=  (h^3  + local_round_off)/ (σb-1) * (σb ^ n - 1) .
 Proof.
 assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap pq_init)) by
 apply bmd_init.
@@ -51,21 +51,21 @@ apply Rplus_le_compat_r.
 rewrite <- Hp, <- Hq in *.
 eapply global_truncation_error_sum; try unfold h,ω; try nra; auto.
 apply Rle_refl.
-assert (hlow: 0 < 0.0000038147045427) by (unfold h; nra).
- pose proof error_sum_GS n 0.0000038147045427 hlow as GS.
-replace (1 + 0.0000038147045427) with (1.0000038147045427) in GS.
+assert (hlow: 0 < 0.000003814704543) by (unfold h; nra).
+ pose proof error_sum_GS n 0.000003814704543 hlow as GS.
+replace (1 + _) with (σb) in GS.
 rewrite GS.
 apply Req_le.
-replace (( local_round_off ) * (((1.0000038147045427 ^ n - 1) /  0.0000038147045427)))
+replace (( local_round_off ) * (((σb ^ n - 1) /  (σb-1))))
 with 
-(( local_round_off ) /  0.0000038147045427  * (1.0000038147045427 ^ n - 1) ).
+(( local_round_off ) /  (σb-1)  * (σb ^ n - 1) ).
 replace (∥ (pt t0, qt t0) ∥) with 1.
-field_simplify; nra.
+field_simplify; unfold σb; nra.
 symmetry.
 rewrite Hp, Hq.
 apply init_norm_eq.
-field_simplify; repeat nra.
-nra.
+field_simplify; repeat (unfold σb; nra).
+unfold σb; nra.
 symmetry; apply Rprod_norm_plus_minus_eq.
 Qed. 
 
@@ -79,7 +79,7 @@ Definition accurate_harmonic_oscillator (pq: state) (n : nat) (acc: R) :=
   ∥ (pt tn, qt tn) - (FT2R (fst pq), FT2R (snd pq)) ∥ <= acc.
 
 Corollary yes_accurate_harmonic_oscillator : 
-          accurate_harmonic_oscillator (iternF float_model.h (p_init,q_init) max_step) max_step 0.0308.
+          accurate_harmonic_oscillator (iternF float_model.h (p_init,q_init) N) N 0.0308.
 Proof.
 intros.
 red; intros.

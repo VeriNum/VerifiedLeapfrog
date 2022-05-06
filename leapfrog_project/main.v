@@ -15,7 +15,7 @@ Definition integrate_spec :=
     SEP(data_at_ Tsh t_state s)
   POST [ tvoid ]
    EX (pq: float32*float32),
-    PROP(accurate_harmonic_oscillator pq max_step 0.0308)
+    PROP(accurate_harmonic_oscillator pq N 0.0308)
     RETURN()
     SEP(data_at Tsh t_state (floats_to_vals pq) s).
 
@@ -29,19 +29,22 @@ split; auto. intros s [? ?]. Exists s emp.
 Intros. simpl in H.
 inv H. inv H4.
 pose proof yes_iternF_is_finite.
-destruct (H max_step ltac:(unfold max_step;lia)) as [_ ?].
+destruct (H N ltac:(unfold N;lia)) as [_ ?].
 pose proof yes_accurate_harmonic_oscillator.
-fold max_step in *.
-forget max_step as N.
+fold N.
 set (pq := iternF float_model.h (p_init, q_init) N) in *.
 clearbody pq.
 unfold_for_go_lower; normalize.
 inv H2.
 simpl.
-entailer!.
+rewrite prop_true_andp.
+rewrite !prop_true_andp by auto.
+apply derives_refl.
 intros.
+Intros.
 Exists pq.
-entailer!.
+rewrite !prop_true_andp by auto.
+apply derives_refl.
 Qed.
 
 Theorem body_integrate_highlevel :
