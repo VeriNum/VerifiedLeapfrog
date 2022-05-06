@@ -217,9 +217,9 @@ Theorem local_truncation_error_aux:
   exists t1 t2: R,
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
-  q (tn + h) - snd(leapfrog_stepR (p tn, q tn) h) = 
+  q (tn + h) - snd(leapfrog_stepR h (p tn, q tn)) = 
     h^3 / INR (fact 3) * Derive_n q 3 t1 /\
-  p (tn + h) - fst(leapfrog_stepR (p tn,  q tn) h) = 
+  p (tn + h) - fst(leapfrog_stepR h (p tn,  q tn)) = 
     h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * q tn . 
 Proof.
 intros ? ? ? ? ? ? HSY; intros.
@@ -288,7 +288,7 @@ Theorem local_truncation_error_norm_aux:
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
   let '(r1, r2) := (h^4/INR(fact 4) * Derive_n p 4 t2 - h^3 / 12 * q tn,  h^3/INR(fact 3) * Derive_n q 3 t1) in
-  ∥(p (tn + h)%R, q (tn + h)%R) - (leapfrog_stepR (p tn, q tn) h)∥ <= ∥(r1 , r2)∥.
+  ∥(p (tn + h)%R, q (tn + h)%R) - (leapfrog_stepR h (p tn, q tn))∥ <= ∥(r1 , r2)∥.
 Proof.
 intros ? ? ? ? ? Hbnd HSY; intros.
 pose proof local_truncation_error_aux p q t0 tn h Hbnd HSY as LTE.
@@ -310,7 +310,7 @@ Theorem local_truncation_error:
   forall h : R, 
   0 < ω*h <= 4 ->  (* ideally we would write 0 < ω*h <= 4   here *)
   Harmonic_oscillator_system p q ω t0 -> 
-  let '(pn,qn):= (leapfrog_stepR (p tn, q tn) h ) in
+  let '(pn,qn):= (leapfrog_stepR h (p tn, q tn)) in
   ∥(p (tn + h)%R, q (tn + h)%R) - (pn, qn)∥ <= h^3 * ∥(p t0,  q t0)∥.
 Proof.
 intros ? ? ? ? ? Hbnd HSY; intros.

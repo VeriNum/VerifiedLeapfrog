@@ -33,7 +33,7 @@ destruct (H max_step ltac:(unfold max_step;lia)) as [_ ?].
 pose proof yes_accurate_harmonic_oscillator.
 fold max_step in *.
 forget max_step as N.
-set (pq := iternF (p_init, q_init) N) in *.
+set (pq := iternF float_model.h (p_init, q_init) N) in *.
 clearbody pq.
 unfold_for_go_lower; normalize.
 inv H2.
@@ -59,7 +59,7 @@ Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
 forward_call. apply yes_iternF_is_finite.
-forget (iternF (p_init, q_init) 1000)  as a.
+forget (iternF float_model.h (p_init, q_init) 1000)  as a.
 forward.
 cancel.
 Qed.

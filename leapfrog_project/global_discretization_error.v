@@ -39,9 +39,9 @@ unfold h; try nra.
 eapply Rle_trans. apply H0. apply H.
 +
 specialize (IHn HSN).
-set (phi1:= leapfrog_stepR (p (t0 + INR  n * h), q (t0 + INR  n * h)) h) in *.
+set (phi1:= leapfrog_stepR h (p (t0 + INR  n * h), q (t0 + INR  n * h))) in *.
 set (phi2:=  
-leapfrog_stepR (iternR (p t0, q t0) h n) h ).
+leapfrog_stepR h (iternR (p t0, q t0) h n)).
 eapply Rle_trans.
 match goal with |- context[ ?a <= ?b] =>
   replace a with (Rprod_norm 

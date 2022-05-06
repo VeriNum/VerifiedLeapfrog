@@ -21,9 +21,9 @@ Context {NANS: Nans}.
 
 
 (** Calculate a new momentum, as a function of momentum p and position q *)
-Definition leapfrog_step_p p q  := fst (leapfrog_stepF (p,q)).
+Definition leapfrog_step_p p q  := fst (leapfrog_stepF float_model.h (p,q)).
 (** Calculate a new posisition, as a function of momentum p and position q *)
-Definition leapfrog_step_q p q  := snd (leapfrog_stepF (p,q)).
+Definition leapfrog_step_q p q  := snd (leapfrog_stepF float_model.h (p,q)).
 
 
 (** In deep-embedded (syntactic) expressons, variables are represented
@@ -64,7 +64,7 @@ Definition leapfrog_vmap (pq : state) : valmap :=
 
 Lemma reflect_reify_pq : forall pq, 
     let e := env_ (leapfrog_vmap pq) in 
-     (fval e p', fval e q') = leapfrog_stepF pq.
+     (fval e p', fval e q') = leapfrog_stepF float_model.h pq.
 Proof. reflexivity. Qed.
 
 (** The main point of VCFloat is to prove bounds on the roundoff error of
@@ -101,7 +101,7 @@ Definition FT2R_prod (A: state)  := (FT2R (fst A), FT2R (snd A)).
 Lemma rval_correct_pq : 
 forall pq,
   let e := env_ (leapfrog_vmap pq)
-   in (rval e p', rval e q') = leapfrog_stepR (FT2R_prod pq) h.
+   in (rval e p', rval e q') = leapfrog_stepR h (FT2R_prod pq).
 Proof.
  intros. subst e. destruct pq as [p q]. unfold p', q'. 
  unfold_rval.

@@ -31,7 +31,7 @@ Definition lfstep_spec :=
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh t_state (floats_to_vals (leapfrog_stepF pq)) s ).
+    SEP(data_at Tsh t_state (floats_to_vals (leapfrog_stepF h pq)) s ).
 
 Definition integrate_spec_lowlevel := 
   DECLARE _integrate
@@ -43,7 +43,7 @@ Definition integrate_spec_lowlevel :=
   POST [ tvoid ]
     PROP()
     RETURN()
-    SEP(data_at Tsh t_state (floats_to_vals (iternF (p_init,q_init) 1000)) s).
+    SEP(data_at Tsh t_state (floats_to_vals (iternF h (p_init,q_init) 1000)) s).
 
 Definition main_spec :=
  DECLARE _main
@@ -89,7 +89,7 @@ forward.
 forward.
 forward.
 autorewrite with float_elim in *. 
-pose (step n := iternF (p_init, q_init) (Z.to_nat n)).
+pose (step n := iternF h (p_init, q_init) (Z.to_nat n)).
  forward_for_simple_bound 1000%Z (EX n:Z,
        PROP() 
        LOCAL (temp _h (Vsingle h);

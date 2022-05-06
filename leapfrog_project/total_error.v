@@ -27,7 +27,7 @@ Theorem total_error:
   pt t0 = FT2R p_init ->
   qt t0 = FT2R q_init ->
   Harmonic_oscillator_system pt qt ω t0 ->
-  ∥ (pt tn, qt tn) - (FT2R_prod (iternF (p_init,q_init) n)) ∥ 
+  ∥ (pt tn, qt tn) - (FT2R_prod (iternF float_model.h (p_init,q_init) n)) ∥ 
      <=  (h^3  + local_round_off)/ (0.0000038147045427) * (1.0000038147045427 ^ n - 1) .
 Proof.
 assert (BMD: boundsmap_denote leapfrog_bmap (leapfrog_vmap pq_init)) by
@@ -36,7 +36,7 @@ intros ? ? ? ? ? ? Hp Hq Hsys ; simpl.
 match goal with |- context[?A <= ?B] =>
 replace A with
   (∥ ((pt (t0 + INR n * h)%R, qt (t0 + INR n * h)%R) - (iternR (FT2R p_init, FT2R q_init) h n)) +
-((iternR (FT2R p_init, FT2R q_init) h n) - (FT2R_prod (iternF (p_init,q_init) n))) ∥)
+((iternR (FT2R p_init, FT2R q_init) h n) - (FT2R_prod (iternF float_model.h (p_init,q_init) n))) ∥)
 end.
 assert (HSY: Harmonic_oscillator_system pt qt 1 t0) by auto.
 unfold Harmonic_oscillator_system in Hsys.
@@ -79,7 +79,7 @@ Definition accurate_harmonic_oscillator (pq: state) (n : nat) (acc: R) :=
   ∥ (pt tn, qt tn) - (FT2R (fst pq), FT2R (snd pq)) ∥ <= acc.
 
 Corollary yes_accurate_harmonic_oscillator : 
-          accurate_harmonic_oscillator (iternF (p_init,q_init) max_step) max_step 0.0308.
+          accurate_harmonic_oscillator (iternF float_model.h (p_init,q_init) max_step) max_step 0.0308.
 Proof.
 intros.
 red; intros.

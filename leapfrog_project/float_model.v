@@ -36,7 +36,7 @@ Definition F (x : ftype Tsingle) : ftype Tsingle := -x.
 Definition state : Type := ftype Tsingle * ftype Tsingle.  (* momenum,position*)
 
 (* Single step of Verlet integration *)
-Definition leapfrog_stepF (ic : state) : state :=
+Definition leapfrog_stepF (h: ftype Tsingle) (ic : state) : state :=
   let p  := fst ic in let q := snd ic in 
   let q' := (q + h * p) + (0.5 * (h * h)) * F q in
   let p' :=  p +  (0.5 * h) * (F q + F q') in 
@@ -46,12 +46,10 @@ Definition leapfrog_stepF (ic : state) : state :=
 (** Iterations **)
 
 (* Main *)
-Fixpoint iternF (ic: state) (n : nat): state:=
+Fixpoint iternF (h: ftype Tsingle) (ic: state) (n : nat): state:=
   match n with
   | 0%nat => ic
-  | S n' =>
-    let ic' := leapfrog_stepF ic in
-  iternF  ic' n'
+  | S n' => iternF  h (leapfrog_stepF h ic) n'
 end.
 
 
@@ -60,7 +58,7 @@ end.
 
 Lemma lfstep_lfn:
   forall n ic ,
-  leapfrog_stepF (iternF ic n) = iternF (leapfrog_stepF ic) n.
+  leapfrog_stepF h (iternF h ic n) = iternF h (leapfrog_stepF h ic) n.
 Proof.
 induction n. 
 - auto.
@@ -70,19 +68,19 @@ Qed.
 
 Lemma step_iternF:
   forall n ic ,
-  iternF  ic (S n) = leapfrog_stepF (iternF ic n).
+  iternF h ic (S n) = leapfrog_stepF h (iternF h ic n).
 Proof.
 induction n.
 - auto.
 - intros. rewrite -> IHn. simpl. 
-replace (leapfrog_stepF (iternF _ _ )) with (iternF (leapfrog_stepF ic) n). 
-  destruct (leapfrog_stepF ic). 
+replace (leapfrog_stepF h (iternF _ _ _ )) with (iternF h (leapfrog_stepF h ic) n). 
+  destruct (leapfrog_stepF h ic). 
 all: symmetry; apply lfstep_lfn. 
 Qed.
 
 Lemma Ziter_itern:  (* Delete this lemma?  doesn't seem to be used. *)
   forall x v i,
-  (Z.iter i leapfrog_stepF (x, v)) = iternF (x, v) (Z.to_nat i).
+  (Z.iter i (leapfrog_stepF h) (x, v)) = iternF h (x, v) (Z.to_nat i).
 Proof.
 intros.
 destruct (Z_le_dec 0 i).
@@ -108,8 +106,8 @@ Definition max_step : nat := 1000.
 
 Definition iternF_is_finite : Prop :=
   forall n : nat,  ( n <= max_step)%nat->
-  (is_finite _ _  (fst(iternF pq_init  n)) = true) /\
-  (is_finite _ _  (snd(iternF pq_init n)) = true).
+  (is_finite _ _  (fst(iternF h pq_init  n)) = true) /\
+  (is_finite _ _  (snd(iternF h pq_init n)) = true).
 
 End WITHNANS.
 

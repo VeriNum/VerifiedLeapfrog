@@ -168,7 +168,7 @@ Definition s_vector (ic: R * R) := @mk_matrix C 2 1%nat
 Lemma transition_matrix_equiv_1:
   forall (ic : R * R) (h : R),  
   let Mx := Mmult (t_matrix h) (s_vector ic) in
-   coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR ic h),0).
+   coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR h ic),0).
 Proof.
 intros. subst Mx. destruct ic. cbv. 
 all : (f_equal; field_simplify; nra) .
@@ -178,7 +178,7 @@ Qed.
 Lemma transition_matrix_equiv_2:
   forall (ic : R * R) (h : R), 
   let Mx := Mmult (t_matrix h) (s_vector ic) in
-coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR ic h),0).
+coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR h ic),0).
 Proof.
 intros. subst Mx. destruct ic. cbv.
 all : (f_equal; field_simplify; nra) .
@@ -203,7 +203,7 @@ set (m_iternR := mk_matrix 2 1 (fun i _ => if (Nat.eqb i 0%nat) then RtoC (fst (
 
 assert (Mx = Mmult (t_matrix h) m_iternR). admit.
 subst pn qn. rewrite H.
-replace (iternR ic h (S n)) with (leapfrog_stepR (iternR ic h n) h).
+replace (iternR ic h (S n)) with (leapfrog_stepR h (iternR ic h n)).
 simpl in IHn.
 subst m_iternR.
 rewrite <- IHn. 
@@ -1698,7 +1698,7 @@ Admitted.
 
 Lemma method_norm_bound : 
   forall p q: R,
-  ∥(leapfrog_stepR (p,q) h)∥ <= 1.0000038147045427 * ∥(p,q)∥.
+  ∥(leapfrog_stepR h (p,q))∥ <= 1.0000038147045427 * ∥(p,q)∥.
 Proof.
 intros.
 assert (H : (1 <= 1000)%nat) by (simpl; lia).

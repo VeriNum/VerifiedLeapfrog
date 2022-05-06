@@ -84,13 +84,13 @@ Lemma itern_implies_bmd_aux:
   forall pq0 : state,
   forall n : nat,
   boundsmap_denote leapfrog_bmap 
-  (leapfrog_vmap (iternF pq0 n)) ->
-  (is_finite _ _  (fst(iternF pq0 (S n))) = true) /\
-  (is_finite _ _  (snd(iternF pq0 (S n))) = true).
+  (leapfrog_vmap (iternF float_model.h pq0 n)) ->
+  (is_finite _ _  (fst(iternF float_model.h pq0 (S n))) = true) /\
+  (is_finite _ _  (snd(iternF float_model.h pq0 (S n))) = true).
 Proof.
 intros.
 rewrite step_iternF.
-destruct (iternF pq0 n) as [p q]; clear pq0 n.
+destruct (iternF float_model.h pq0 n) as [p q]; clear pq0 n.
 split.
 -
 destruct (prove_roundoff_bound_p _ H) as [? _]; clear H.
@@ -141,7 +141,7 @@ Qed.
 Theorem local_roundoff_error:
   forall x : state,
   boundsmap_denote leapfrog_bmap (leapfrog_vmap x) -> 
-  ∥ FT2R_prod (leapfrog_stepF x)  - leapfrog_stepR (FT2R_prod x) h ∥ 
+  ∥ FT2R_prod (leapfrog_stepF float_model.h x)  - leapfrog_stepR h (FT2R_prod x) ∥ 
     <= local_round_off.
 Proof.
 intros.

@@ -13,7 +13,7 @@ Open Scope R_scope.
 Lemma method_norm_bounded_aux_p : 
 forall p q h: R,
   0 < ω*h <= 2 ->  (* ideally we would write 0 < ω*h <= 2   here *)
-Rabs (fst(leapfrog_stepR (p,q) h)) <=  Rabs p + h * Rabs q.
+Rabs (fst(leapfrog_stepR h (p,q))) <=  Rabs p + h * Rabs q.
 Proof.
 intros.
 unfold leapfrog_stepR, fst, snd.
@@ -43,7 +43,7 @@ Qed.
 Lemma method_norm_bounded_aux_q : 
 forall p q h: R,
   0 < ω*h <= 2 -> 
-Rabs (snd(leapfrog_stepR (p,q) h)) <=  Rabs q + h * Rabs p.
+Rabs (snd(leapfrog_stepR h (p,q))) <=  Rabs q + h * Rabs p.
 Proof.
 intros.
 rewrite Rmult_1_l in H.
@@ -72,7 +72,7 @@ Qed.
 Lemma method_norm_bounded : 
 forall p q h: R,
   0 < ω*h <= 2 -> 
-∥(leapfrog_stepR (p,q) h)∥ <= (1 + h) * ∥(p,q)∥.
+∥(leapfrog_stepR h (p,q))∥ <= (1 + h) * ∥(p,q)∥.
 Proof.
 intros.
 pose proof method_norm_bounded_aux_q p q h H.
@@ -176,9 +176,8 @@ subst tn.
 rewrite S_INR in H. rewrite Rmult_1_l in HBND.
 assert (HSN: t0 + INR n * h <= T) by lra.
 specialize (IHn HSN); clear HSN.
-set (phi1:= leapfrog_stepR (p (t0 + INR  n * h), q (t0 + INR  n * h)) h) in *.
-set (phi2:=  
-leapfrog_stepR (iternR (p t0, q t0) h n) h ).
+set (phi1:= leapfrog_stepR h (p (t0 + INR  n * h), q (t0 + INR  n * h))) in *.
+set (phi2:= leapfrog_stepR h (iternR (p t0, q t0) h n)).
 eapply Rle_trans.
 match goal with |- context[ ?a <= ?b] =>
   replace a with (Rprod_norm 

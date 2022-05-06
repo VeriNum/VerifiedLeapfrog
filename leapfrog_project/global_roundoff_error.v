@@ -208,11 +208,11 @@ Lemma itern_implies_bmd:
   forall n,
   (S n <= 1000)%nat -> 
   boundsmap_denote leapfrog_bmap 
-    (leapfrog_vmap (iternF (p,q) n)) ->
-  ∥(iternR (FT2R p, FT2R q) h (S n)) - FT2R_prod (iternF (p,q)  (S n)) ∥ <= 
+    (leapfrog_vmap (iternF float_model.h (p,q) n)) ->
+  ∥(iternR (FT2R p, FT2R q) h (S n)) - FT2R_prod (iternF float_model.h (p,q)  (S n)) ∥ <= 
   local_round_off * error_sum 1.0000038147045427 (S n)  /\
 ∥ (iternR (FT2R p, FT2R q) h  (S n))∥ <= 1.003822 ->
-   boundsmap_denote leapfrog_bmap (leapfrog_vmap (iternF (p,q) (S n))).
+   boundsmap_denote leapfrog_bmap (leapfrog_vmap (iternF float_model.h (p,q) (S n))).
 Proof. 
 intros ? ? ? BNDn BMD NORM.
 apply boundsmap_denote_i.
@@ -222,8 +222,8 @@ destruct (BMD _q) as [_ [_ [_ Bq]]].
 destruct (itern_implies_bmd_aux _ _ BMD) as [FINp FINq].
 clear BMD.
 rewrite step_iternF in *.
-destruct ((iternF (p, q) n)) as [pn qn].
-destruct (leapfrog_stepF (pn, qn)) as [pn1 qn1].
+destruct ((iternF float_model.h (p, q) n)) as [pn qn].
+destruct (leapfrog_stepF float_model.h (pn, qn)) as [pn1 qn1].
 simpl in Bp,Bq,FINp,FINq.
 destruct ((iternR (FT2R p, FT2R q) h (S n))) as [pr qr].
 destruct (itern_implies_bmd_aux1 pn1 qn1 pr qr _ BNDn NORM).
@@ -240,11 +240,11 @@ Theorem global_roundoff_error :
   (leapfrog_vmap pq_init) ->
   forall n : nat, 
   (n <= 1000)%nat -> 
-  let vmap_n := (leapfrog_vmap (iternF pq_init n)) in
+  let vmap_n := (leapfrog_vmap (iternF float_model.h pq_init n)) in
   let c:= local_round_off in 
   let (pr0, qr0) := (FT2R p_init, FT2R q_init) in
   boundsmap_denote leapfrog_bmap vmap_n /\
-  ∥(iternR (pr0, qr0) h n) - FT2R_prod (iternF pq_init n) ∥ 
+  ∥(iternR (pr0, qr0) h n) - FT2R_prod (iternF float_model.h pq_init n) ∥ 
      <= c * error_sum  1.0000038147045427 n.
   Proof.
 intros.
@@ -267,9 +267,9 @@ pose proof iternR_bound_max_step (FT2R p_init) (FT2R q_init) n BNDn.
 rewrite init_norm_eq in H1.
 rewrite Rmult_1_r in H1.
 destruct (iternR (FT2R p_init, FT2R q_init) h n) as (pnr, qnr). 
-destruct (iternF pq_init n) as (pnf, qnf).
+destruct (iternF float_model.h pq_init n) as (pnf, qnf).
 match goal with |- context[∥?a - ?b∥ <=  _] =>
-  let c := (constr:(leapfrog_stepR (FT2R_prod (pnf, qnf)) h)) in
+  let c := (constr:(leapfrog_stepR h (FT2R_prod (pnf, qnf)))) in
   replace (∥a - b∥) with (∥ Rprod_plus (a - c) (c - b) ∥)
 end.
 eapply Rle_trans.
