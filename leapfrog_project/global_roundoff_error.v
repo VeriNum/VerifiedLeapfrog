@@ -142,11 +142,11 @@ Lemma itern_implies_bmd_aux1:
   forall pnr qnr : R,
   forall n,
   (n <= 1000)%nat -> 
-  ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=  local_round_off * error_sum σb n 
-  /\ ∥(pnr,qnr) ∥ <= 1.003822 -> 
+  ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=  local_round_off * error_sum σb n ->
+  ∥(pnr,qnr) ∥ <= 1.003822 -> 
   Rabs (FT2R pnf)  <= 1.0041 /\ Rabs ( FT2R qnf) <= 1.0041.
 Proof.
-intros ? ? ? ? ? BNDn (A & B).
+intros ? ? ? ? ? BNDn A B.
 assert (HYP1: ∥ Rprod_minus (pnr, qnr) (FT2R_prod (pnf, qnf)) ∥ <=
 (local_round_off) * error_sum σb 1000).
 - 
@@ -210,11 +210,11 @@ Lemma itern_implies_bmd:
   boundsmap_denote leapfrog_bmap 
     (leapfrog_vmap (iternF float_model.h (p,q) n)) ->
   ∥(iternR (FT2R p, FT2R q) h (S n)) - FT2R_prod (iternF float_model.h (p,q)  (S n)) ∥ <= 
-  local_round_off * error_sum σb (S n)  /\
-∥ (iternR (FT2R p, FT2R q) h  (S n))∥ <= 1.003822 ->
+  local_round_off * error_sum σb (S n)  ->
+ ∥ (iternR (FT2R p, FT2R q) h  (S n))∥ <= 1.003822 ->
    boundsmap_denote leapfrog_bmap (leapfrog_vmap (iternF float_model.h (p,q) (S n))).
 Proof. 
-intros ? ? ? BNDn BMD NORM.
+intros ? ? ? BNDn BMD NORM1 NORM2.
 apply boundsmap_denote_i.
 2: repeat apply list_forall_cons; try apply list_forall_nil; simpl; auto.
 destruct (BMD _p) as [_ [_ [_ Bp]]].
@@ -226,7 +226,7 @@ destruct ((iternF float_model.h (p, q) n)) as [pn qn].
 destruct (leapfrog_stepF float_model.h (pn, qn)) as [pn1 qn1].
 simpl in Bp,Bq,FINp,FINq.
 destruct ((iternR (FT2R p, FT2R q) h (S n))) as [pr qr].
-destruct (itern_implies_bmd_aux1 pn1 qn1 pr qr _ BNDn NORM).
+destruct (itern_implies_bmd_aux1 pn1 qn1 pr qr _ BNDn NORM1 NORM2).
 apply Rabs_le_inv in H.
 apply Rabs_le_inv in H0.
 repeat apply list_forall_cons; try apply list_forall_nil;
@@ -299,7 +299,7 @@ with
 rewrite <- error_sum_aux2; unfold c; nra.
 symmetry. apply Rprod_norm_plus_minus_eq.
 + destruct IHn as (IHbmd & IHnorm); try lia.
-apply itern_implies_bmd; try lia; auto; split; auto.
+apply itern_implies_bmd; try lia; auto.
 pose proof iternR_bound_max_step (FT2R p_init) (FT2R q_init) (S n) H0. 
 rewrite init_norm_eq in H2.
 rewrite Rmult_1_r in H2.
