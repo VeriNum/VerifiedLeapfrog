@@ -168,7 +168,7 @@ Definition s_vector (ic: R * R) := @mk_matrix C 2 1%nat
 Lemma transition_matrix_equiv_1:
   forall (ic : R * R) (h : R),  
   let Mx := Mmult (M h) (s_vector ic) in
-   coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR h ic),0).
+   coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR ic h),0).
 Proof.
 intros. subst Mx. destruct ic. cbv. 
 all : (f_equal; field_simplify; nra) .
@@ -178,49 +178,141 @@ Qed.
 Lemma transition_matrix_equiv_2:
   forall (ic : R * R) (h : R), 
   let Mx := Mmult (M h) (s_vector ic) in
-coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR h ic),0).
+coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR ic h),0).
 Proof.
 intros. subst Mx. destruct ic. cbv.
 all : (f_equal; field_simplify; nra) .
 Qed.
 
+Lemma transition_matrix_equiv_iternR_aux:
+  forall (h : R) (n : nat), 
+snd (coeff_mat zero (Mpow 2 n (M h)) 0 0) = 0 /\
+snd (coeff_mat zero (Mpow 2 n (M h)) 0 1) = 0 /\
+snd (coeff_mat zero (Mpow 2 n (M h)) 1 0) = 0 /\
+snd (coeff_mat zero (Mpow 2 n (M h)) 1 1) = 0. 
+Proof.
+intros.
+induction n.
+-
+simpl; auto.
+-
+simpl.
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 0 0)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 0 0) in IHn.
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 0 1)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 0 1) in IHn.
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 1 0)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 1 0) in IHn.
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 1 1)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 1 1) in IHn.
+repeat rewrite Rmult_0_r.
+repeat rewrite Rmult_0_r.
+repeat rewrite Rplus_0_l.
+repeat rewrite Rplus_0_r.
+repeat rewrite Rminus_0_r.
+destruct IHn as (H1 & H2 & H3 & H4).
+rewrite H1, H2, H3, H4. 
+repeat rewrite Rmult_0_l.
+split; nra.
+Qed.
+
+
 
 (** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_iternR:
   forall (ic : R * R) (h : R) (n : nat), 
-  let Mx := Mmult (Mpow 2 n (M h)) (s_vector ic) in
-  let pn := fst (coeff_mat Hierarchy.zero Mx 0 0) in 
-  let qn := fst (coeff_mat Hierarchy.zero Mx 1 0) in 
-  (pn, qn) = iternR ic h n.
+  (fst (coeff_mat Hierarchy.zero (Mmult (Mpow 2 n (M h)) (s_vector ic)) 0 0), 
+    fst (coeff_mat Hierarchy.zero (Mmult (Mpow 2 n (M h)) (s_vector ic)) 1 0)) = iternR ic h n.
 Proof.
 intros.
 induction n.
 - 
-subst Mx pn qn; destruct ic; simpl; f_equal; try nra.
+destruct ic; simpl; f_equal; try nra.
 -
 set (m_iternR := mk_matrix 2 1 (fun i _ => if (Nat.eqb i 0%nat) then RtoC (fst (iternR ic h n)) 
   else RtoC (snd (iternR ic h n)) )).
 
-assert (Mx = Mmult (M h) m_iternR). admit.
-subst pn qn. rewrite H.
-replace (iternR ic h (S n)) with (leapfrog_stepR h (iternR ic h n)).
-simpl in IHn.
+assert ((Mmult (Mpow 2 (S n) (M h)) (s_vector ic)) = Mmult (M h) m_iternR). 
++ 
 subst m_iternR.
-rewrite <- IHn. 
-unfold Mmult.
-repeat rewrite coeff_mat_bij; try lia.
-change (Init.Nat.pred 2) with 1%nat.
+unfold Mpow; fold Mpow.
+symmetry. 
+rewrite <- Mpow_comm.
+rewrite <- Mmult_assoc.
+simpl in IHn.
+repeat rewrite Rmult_0_r in IHn.
+repeat rewrite Rplus_0_r in IHn.
+repeat rewrite Rminus_0_r in IHn.
+f_equal.
+apply mk_matrix_ext => i j Hi Hj.
+rewrite <- IHn.
+simpl.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
-repeat rewrite coeff_mat_bij; try lia.
-simpl.
+assert (Hii: (i=0)%nat \/ (i=1)%nat) by lia; destruct Hii; 
+assert (Hjj: (j=0)%nat) by lia;
+  subst; simpl; symmetry.
+*
+unfold s_vector; simpl.
+repeat rewrite coeff_mat_bij; try lia; simpl.
+apply sum_n_ext_loc => k Hk.
+change mult with Cmult. 
+unfold Cmult; simpl.
 repeat rewrite Rmult_0_r.
-repeat rewrite Rmult_0_l.
-repeat rewrite Rplus_0_r.
+repeat rewrite Rplus_0_l.
 repeat rewrite Rminus_0_r.
-unfold leapfrog_stepR, ω; simpl.
-f_equal; try nra.
-Admitted.
+pose proof transition_matrix_equiv_iternR_aux h n as (A & B & _).
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 0 0)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 0 0) in A.
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 0 1)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 0 1) in B.
+rewrite A.
+rewrite B.
+change plus with Cplus.
+cbv [Cplus]; simpl.
+repeat rewrite Rmult_0_l.
+repeat rewrite Rplus_0_r; auto.
+* 
+unfold s_vector; simpl.
+repeat rewrite coeff_mat_bij; try lia; simpl.
+change plus with Cplus. 
+change mult with Cmult.
+cbv [Cplus]; simpl.
+repeat rewrite Rmult_0_r.
+repeat rewrite Rminus_0_r.
+repeat rewrite Rplus_0_l.
+pose proof transition_matrix_equiv_iternR_aux h n as (_ & _ & A & B).
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 1 0)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 1 0) in A.
+change (@coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup) (Mpow 2 n (M h)) 1 1)
+with (@coeff_mat C 2 2 (@zero C_Ring) (Mpow 2 n (M h)) 1 1) in B.
+rewrite A.
+rewrite B.
+repeat rewrite Rmult_0_l.
+repeat rewrite Rplus_0_r; auto.
++
+rewrite H.
+rewrite step_iternR.
+assert (leapfrog_stepR (iternR ic h n) h =
+  (fst (leapfrog_stepR (iternR ic h n) h),
+    snd (leapfrog_stepR (iternR ic h n) h))).
+*
+unfold leapfrog_stepR; simpl; auto.
+*
+rewrite H0.
+assert (m_iternR = (s_vector (iternR ic h n))).
+--
+unfold m_iternR, s_vector.
+apply mk_matrix_ext => i j Hi Hj.
+assert (Hii: (i=0)%nat \/ (i=1)%nat) by lia; destruct Hii; 
+assert (Hjj: (j=0)%nat) by lia; subst; simpl; auto.
+--
+rewrite H1.
+rewrite transition_matrix_equiv_2.
+rewrite transition_matrix_equiv_1.
+unfold fst at 1.
+unfold fst at 2; auto.
+Qed.
 
 
 
