@@ -1874,19 +1874,46 @@ unfold fst at 1.
 unfold snd at 1.
 unfold Cmod.
 repeat rewrite pow2_sqrt; auto; try apply sqr_plus_pos.
+pose proof transition_matrix_equiv_iternR_aux h nf as (HA & HB & HC & HD).
 assert (@snd R R
         (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 0
-           0) = 0) by admit. 
-rewrite H2; clear H2.
+           0) = 0).
+- 
+unfold Mmult.
+rewrite coeff_mat_bij; try lia.
+simpl.
+change (@zero C_Ring) with (@zero C_AbelianGroup).
+repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
+  change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
+end.
+rewrite HA.
+rewrite HB.
+nra.
+-
 assert (@snd R R
         (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 1
-           0) = 0) by admit.
+           0) = 0).
++
+unfold Mmult.
+rewrite coeff_mat_bij; try lia.
+simpl.
+change (@zero C_Ring) with (@zero C_AbelianGroup).
+repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
+  change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
+end.
+rewrite HC.
+rewrite HD.
+nra.
++
 rewrite H2; clear H2.
+rewrite H3; clear H3.
 rewrite pow_i; try lia.
-repeat rewrite Rplus_0_r.
+repeat rewrite Rplus_0_r; auto.
+-
 repeat rewrite sqrt_pow2; auto.
 rewrite <- H2.
 apply H0.
+-
 eapply Rmult_le_compat_l. 
 apply pow_le; try nra.
 unfold vec_two_norm_2d, Rprod_norm.
@@ -1899,7 +1926,7 @@ repeat rewrite pow2_sqrt; auto; try apply sqr_plus_pos.
 simpl.
 apply Req_le.
 f_equal; nra.
-Admitted.
+Qed.
 
 
 Lemma method_norm_bound : 
