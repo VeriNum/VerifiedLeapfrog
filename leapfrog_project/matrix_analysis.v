@@ -316,6 +316,8 @@ Qed.
 
 
 
+
+
 (** The eigenvalues of the transition matrix *)
 Definition lambda_1 (h : R) : C := (1 -0.5 * h^2 , -h * sqrt(2 - h) * 0.5 * sqrt(h + 2))
 . 
@@ -827,21 +829,126 @@ Lemma sv_vector_implies (A V Λ : matrix 2 2):
    is_orthogonal_matrix 2 V ->
    diag_pred 2 Λ ->
    Mmult (Mmult (matrix_conj_transpose 2 2 A) A) V = Mmult V Λ -> 
-  forall (i :nat), (i < 2)%nat ->
+  forall (k :nat), (k < 2)%nat ->
   let x := mk_matrix 2 1
-  (fun ii _ : nat =>
-     (coeff_mat zero V ii i)) in
+  (fun i0 _ : nat =>
+     (coeff_mat zero V i0 k)) in
   (Mmult (matrix_conj_transpose 2 1 x) (Mmult (Mmult (matrix_conj_transpose 2 2 A) A) x)) =
-  (Mmult (matrix_conj_transpose 2 1 x) (mat_coeff_mult (coeff_mat zero Λ i i) 2 1 x)).
+  (Mmult (matrix_conj_transpose 2 1 x) (mat_coeff_mult (coeff_mat zero Λ k k) 2 1 x)).
 Proof.
 intros.
-apply mk_matrix_ext; intros.
 unfold Mmult at 1 in H1.
 unfold Mmult at 2 in H1.
 rewrite <- mk_matrix_ext in H1.
-subst x; auto.
-Admitted.
-
+apply mk_matrix_ext; intros.
+apply sum_n_ext_loc => m Hm.
+assert (Hmm: m = 0%nat \/ m = 1%nat) by lia;
+  destruct Hmm; subst.
+-
+assert ( (i = 0)%nat) as Hii by lia.
+assert ( (j = 0)%nat) as Hjj by lia.
+subst.
+subst x.
+unfold Mmult at 1. 
+rewrite coeff_mat_bij; try lia.
+simpl.
+f_equal.
+assert (C: k = 0%nat \/ k = 1%nat) by lia;
+destruct C; subst.
++
+assert ( (0 < 2)%nat) as Hi by lia.
+assert ( (0 < 2)%nat) as Hj by lia.
+specialize (H1 0%nat 0%nat Hi Hj).
+simpl in H1.
+etransitivity.
+apply H1.
+unfold mat_coeff_mult.
+repeat rewrite coeff_mat_bij; try lia.
+repeat rewrite sum_Sn.
+repeat rewrite sum_O.
+unfold diag_pred in H0.
+assert ((1 < 2)%nat /\ (0 < 2)%nat /\ 1%nat <> 0%nat) by lia.
+specialize (H0 1%nat 0%nat H5).
+change ( @coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 1 0)
+with  (@coeff_mat C 2 2 (@zero C_Ring) Λ 1 0) in H0.
+rewrite H0.
+rewrite (@mult_zero_r C_Ring).
+rewrite (@plus_zero_r C_Ring).
+change mult with Cmult; apply Cmult_comm.
++ 
+assert ( (0 < 2)%nat) as Hi by lia.
+assert ( (1 < 2)%nat) as Hj by lia.
+specialize (H1 0%nat 1%nat Hi Hj).
+etransitivity.
+cbv [Init.Nat.pred] in H1.
+apply H1.
+unfold mat_coeff_mult.
+repeat rewrite coeff_mat_bij; try lia.
+repeat rewrite sum_Sn.
+repeat rewrite sum_O.
+unfold diag_pred in H0.
+assert ((0 < 2)%nat /\ (1 < 2)%nat /\ 0%nat <> 1%nat) by lia.
+specialize (H0 0%nat 1%nat H5).
+change ( @coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 0 1)
+with  (@coeff_mat C 2 2 (@zero C_Ring) Λ  0 1) in H0.
+simpl.
+rewrite H0.
+rewrite (@mult_zero_r C_Ring).
+rewrite (@plus_zero_l C_Ring).
+change mult with Cmult; apply Cmult_comm.
+-
+assert ( (i = 0)%nat) as Hii by lia.
+assert ( (j = 0)%nat) as Hjj by lia.
+subst.
+subst x.
+unfold Mmult at 1. 
+rewrite coeff_mat_bij; try lia.
+simpl.
+f_equal.
+assert (C: k = 0%nat \/ k = 1%nat) by lia;
+destruct C; subst.
++
+assert ( (1 < 2)%nat) as Hi by lia.
+assert ( (0 < 2)%nat) as Hj by lia.
+specialize (H1 1%nat 0%nat Hi Hj).
+simpl in H1.
+etransitivity.
+apply H1.
+unfold mat_coeff_mult.
+repeat rewrite coeff_mat_bij; try lia.
+repeat rewrite sum_Sn.
+repeat rewrite sum_O.
+unfold diag_pred in H0.
+assert ((1 < 2)%nat /\ (0 < 2)%nat /\ 1%nat <> 0%nat) by lia.
+specialize (H0 1%nat 0%nat H5).
+change ( @coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 1 0)
+with  (@coeff_mat C 2 2 (@zero C_Ring) Λ 1 0) in H0.
+rewrite H0.
+rewrite (@mult_zero_r C_Ring).
+rewrite (@plus_zero_r C_Ring).
+change mult with Cmult; apply Cmult_comm.
++ 
+assert ( (1 < 2)%nat) as Hi by lia.
+assert ( (1 < 2)%nat) as Hj by lia.
+specialize (H1 1%nat 1%nat Hi Hj).
+etransitivity.
+cbv [Init.Nat.pred] in H1.
+apply H1.
+unfold mat_coeff_mult.
+repeat rewrite coeff_mat_bij; try lia.
+repeat rewrite sum_Sn.
+repeat rewrite sum_O.
+unfold diag_pred in H0.
+assert ((0 < 2)%nat /\ (1 < 2)%nat /\ 0%nat <> 1%nat) by lia.
+specialize (H0 0%nat 1%nat H5).
+change ( @coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 0 1)
+with  (@coeff_mat C 2 2 (@zero C_Ring) Λ  0 1) in H0.
+simpl.
+rewrite H0.
+rewrite (@mult_zero_r C_Ring).
+rewrite (@plus_zero_l C_Ring).
+change mult with Cmult; apply Cmult_comm.
+Qed.
 
 
 (* if σ^2 is the largest singular value of A ∈ M(C^2) then σ is the two-norm of A *)
@@ -1797,7 +1904,7 @@ Admitted.
 
 Lemma method_norm_bound : 
   forall p q: R,
-  ∥(leapfrog_stepR h (p,q))∥ <= σb * ∥(p,q)∥.
+  ∥(leapfrog_stepR (p,q) h)∥ <= σb * ∥(p,q)∥.
 Proof.
 intros.
 assert (H : (1 <= 1000)%nat) by (simpl; lia).
