@@ -18,82 +18,6 @@ Require Import Coq.Logic.FunctionalExtensionality.
 
 
 
-Definition vec_two_norm (n: nat ) (u : @matrix C n 1) : R :=
-   sqrt (Cmod (@coeff_mat C 1%nat 1%nat Hierarchy.zero (Mmult (matrix_conj_transpose n 1 u) u) 0 0))
-.
-
-Definition vec_two_norm_2d (u : @matrix C 2 1) : R := 
-  Rprod_norm (Cmod (@coeff_mat C 2 1%nat Hierarchy.zero u 0 0), Cmod (@coeff_mat C 2 1 Hierarchy.zero u 1 0))
-.
-
-
-Theorem two_norms_eq_2d (u : @matrix C 2 1%nat) :
-vec_two_norm 2 u = vec_two_norm_2d u .
-Proof.
-unfold vec_two_norm_2d, Rprod_norm, vec_two_norm, Mmult, matrix_conj_transpose.
-symmetry.
-unfold fst at 1.
-unfold snd at 1.
-symmetry.
-f_equal.
-rewrite coeff_mat_bij; try lia.
-etransitivity.
-apply Ceq_Cmod_eq.
-apply sum_Sn.
-rewrite sum_O.
-simpl.
-repeat rewrite coeff_mat_bij; try lia.
-rewrite Cmult_comm.
-rewrite Cmod_Ccong.
-rewrite Cmult_comm.
-rewrite Cmod_Ccong.
-repeat rewrite Rmult_1_r.
-match goal with |-context[Cmod ?a * Cmod ?a] =>
-replace (Cmod a * Cmod a) with (Cmod a ^ 2)
-end.
-match goal with |-context[Cmod ?a * Cmod ?a] =>
-replace (Cmod a * Cmod a) with (Cmod a ^ 2)
-end.
-etransitivity.
-unfold Cmod.
-unfold RtoC.
-repeat rewrite pow2_sqrt.
-change plus with Cplus.
-repeat match goal with |-context[sqrt (fst (?a) ^2 + snd?b ^2)] =>
-replace (snd b) with 0
-end.
-rewrite pow_i; try lia.
-rewrite Rplus_0_r.
-cbv [Cplus].
-unfold fst at 1.
-apply sqrt_pow2.
-unfold fst at 1.
-unfold fst at 2.
-apply Rle_plus;
-apply sqr_plus_pos.
-simpl; try nra.
-apply sqr_plus_pos.
-apply sqr_plus_pos.
-unfold fst at 1.
-unfold fst at 2.
-fold Cmod.
-etransitivity.
-assert (fst (coeff_mat zero u 0 0) ^ 2 + snd (coeff_mat zero u 0 0) ^ 2 +
-(fst (coeff_mat zero u 1 0) ^ 2 + snd (coeff_mat zero u 1 0) ^ 2) = 
-(Cmod (coeff_mat zero u 0 0))^2  + (Cmod (coeff_mat zero u 1 0) )^2).
-unfold Cmod.
-repeat rewrite pow2_sqrt; try apply sqr_plus_pos; auto.
-apply H; auto.
-auto.
-auto.
-simpl.
-rewrite Rmult_1_r; auto.
-simpl.
-rewrite Rmult_1_r; auto.
-Qed.
-
-
-
 (** Largest singular value of a square matrix A ∈ Mn(C) is the square root of the largest 
     eigenvalue of A'A*)
 Definition max_sv_pred (n: nat ) (A : @matrix C n n) (σmax : R):=  
@@ -125,7 +49,8 @@ Definition basis_pred (n: nat ) (A : @matrix C n n) (u : @matrix C n 1%nat):=
 Definition two_norm_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
   forall (u : @matrix C n 1%nat), 
   vec_two_norm n (Mmult A u) <=  σ * vec_two_norm n u 
-  /\ ~(exists (s : R), forall (x : matrix n 1), vec_two_norm n (Mmult A x) <= s * vec_two_norm n x < σ * vec_two_norm n x) (* sqrt σ is inf *)
+  /\ ~(exists (s : R), forall (x : matrix n 1), 
+      vec_two_norm n (Mmult A x) <= s * vec_two_norm n x < σ * vec_two_norm n x) (* σ is inf *)
 .
 
 
@@ -168,7 +93,7 @@ Definition s_vector (ic: R * R) := @mk_matrix C 2 1%nat
 Lemma transition_matrix_equiv_1:
   forall (ic : R * R) (h : R),  
   let Mx := Mmult (M h) (s_vector ic) in
-   coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR ic h),0).
+   coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR h ic),0).
 Proof.
 intros. subst Mx. destruct ic. cbv. 
 all : (f_equal; field_simplify; nra) .
@@ -178,7 +103,7 @@ Qed.
 Lemma transition_matrix_equiv_2:
   forall (ic : R * R) (h : R), 
   let Mx := Mmult (M h) (s_vector ic) in
-coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR ic h),0).
+coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR h ic),0).
 Proof.
 intros. subst Mx. destruct ic. cbv.
 all : (f_equal; field_simplify; nra) .
@@ -292,9 +217,9 @@ repeat rewrite Rplus_0_r; auto.
 +
 rewrite H.
 rewrite step_iternR.
-assert (leapfrog_stepR (iternR ic h n) h =
-  (fst (leapfrog_stepR (iternR ic h n) h),
-    snd (leapfrog_stepR (iternR ic h n) h))).
+assert (leapfrog_stepR h (iternR ic h n) =
+  (fst (leapfrog_stepR h (iternR ic h n) ),
+    snd (leapfrog_stepR h (iternR ic h n) ))).
 *
 unfold leapfrog_stepR; simpl; auto.
 *
@@ -312,9 +237,6 @@ rewrite transition_matrix_equiv_1.
 unfold fst at 1.
 unfold fst at 2; auto.
 Qed.
-
-
-
 
 
 (** The eigenvalues of the transition matrix *)
@@ -1888,7 +1810,7 @@ Qed.
 
 Lemma method_norm_bound : 
   forall p q: R,
-  ∥(leapfrog_stepR (p,q) h)∥ <= σb * ∥(p,q)∥.
+  ∥(leapfrog_stepR h (p,q))∥ <= σb * ∥(p,q)∥.
 Proof.
 intros.
 assert (H : (1 <= 1000)%nat) by (simpl; lia).

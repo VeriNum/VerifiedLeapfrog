@@ -1,4 +1,4 @@
-(** matrix_lemmas.v:  Definitions and lemmas for the error analysis
+(** matrix_lemmas.v:  Definitions and lemmas for error analysis
   of ODE systems using matrices.
  Copyright (C) 2021-2022 and Ariel Kellison.
 *)
@@ -23,7 +23,11 @@ Definition C0: C := (0,0).
 Definition C1: C := (1,0).
 
 
-(* matrix transpose *)
+
+(*********************************)
+(* MATRIX TRANSPOSE       *)
+(*********************************)
+
 Definition matrix_conj_transpose (n m:nat) (M: @matrix C n m) : @matrix C m n := 
   mk_matrix m n (fun i j => Cconj (coeff_mat Hierarchy.zero M j i))
 .
@@ -100,10 +104,6 @@ Definition mat_coeff_mult (a : C) (n m:nat) (V: @matrix C n m) : @matrix C n m :
       Cmult a (@coeff_mat C n m Hierarchy.zero V i j))
 .
 
-Lemma mat_coeff_mult_eq (a b: C) (n m: nat) (A : @matrix C n m) : 
-  (mat_coeff_mult a n m A) = (mat_coeff_mult b n m A) -> a = b.
-Proof.
-Admitted.
 
 
 Lemma zero_d_matrices_eq (x y : @matrix C 0 1%nat) :
@@ -299,8 +299,10 @@ Qed.
 (* end ID and 0 matrix lemmas *)
 
 
+
 (******************)
 (** ORTHOGONAL MATRICES *)
+(*******************)
 Definition is_orthogonal_matrix (n: nat ) (Q : @matrix C n n) := 
   Mmult (matrix_conj_transpose n n Q) Q = Mone /\ 
   Mmult Q (matrix_conj_transpose n n Q) = Mone
@@ -310,7 +312,7 @@ Definition is_orthogonal_matrix (n: nat ) (Q : @matrix C n n) :=
 
 (*******************)
 (* DIAGONAL MATRICES *)
-
+(*******************)
 (* a matrix is diagonal if *)
 Definition diag_pred (n: nat) (M: @matrix C n n) := 
   forall i j, (i < n)%nat /\ (j < n)%nat /\ (i <> j)%nat -> (@coeff_mat C n n Hierarchy.zero M i j) = zero
@@ -347,7 +349,9 @@ destruct eqb; auto; try discriminate.
 Qed.
 
 
+(*************************)
 (* COMPLEX NUMBER LEMMAS *)
+(*************************)
 Lemma Czero_sqs (x : C) :
   0<= Cmod x /\ Cmod x <= 0 -> Cmod x = 0.
 Proof.
@@ -471,6 +475,89 @@ rewrite Cinv_r; auto.
 cbv [Cmult Cdiv]. apply pair_equal_spec;split; nra.
 Qed.
 (* end complex number lemmas *)
+
+
+
+(******************)
+(* EUCLIDEAN NORM *)
+(******************)
+Definition vec_two_norm (n: nat ) (u : @matrix C n 1) : R :=
+   Coq.Reals.R_sqrt.sqrt (Cmod (@coeff_mat C 1%nat 1%nat Hierarchy.zero (Mmult (matrix_conj_transpose n 1 u) u) 0 0))
+.
+
+Definition vec_two_norm_2d (u : @matrix C 2 1) : R := 
+  Rprod_norm (Cmod (@coeff_mat C 2 1%nat Hierarchy.zero u 0 0), Cmod (@coeff_mat C 2 1 Hierarchy.zero u 1 0))
+.
+
+
+Theorem two_norms_eq_2d (u : @matrix C 2 1%nat) :
+vec_two_norm 2 u = vec_two_norm_2d u .
+Proof.
+unfold vec_two_norm_2d, Rprod_norm, vec_two_norm, Mmult, matrix_conj_transpose.
+symmetry.
+unfold fst at 1.
+unfold snd at 1.
+symmetry.
+f_equal.
+rewrite coeff_mat_bij; try lia.
+etransitivity.
+apply Ceq_Cmod_eq.
+apply sum_Sn.
+rewrite sum_O.
+simpl.
+repeat rewrite coeff_mat_bij; try lia.
+change mult with Cmult.
+rewrite Cmult_comm.
+rewrite Cmod_Ccong.
+rewrite Cmult_comm.
+rewrite Cmod_Ccong.
+repeat rewrite Rmult_1_r.
+match goal with |-context[Cmod ?a * Cmod ?a] =>
+replace (Cmod a * Cmod a) with (Cmod a ^ 2)
+end.
+match goal with |-context[Cmod ?a * Cmod ?a] =>
+replace (Cmod a * Cmod a) with (Cmod a ^ 2)
+end.
+etransitivity.
+unfold Cmod.
+unfold RtoC.
+repeat rewrite pow2_sqrt.
+change plus with Cplus.
+repeat match goal with |-context[R_sqrt.sqrt (fst (?a) ^2 + snd?b ^2)] =>
+replace (snd b) with 0
+end.
+rewrite pow_i; try lia.
+rewrite Rplus_0_r.
+cbv [Cplus].
+unfold fst at 1.
+apply sqrt_pow2.
+unfold fst at 1.
+unfold fst at 2.
+apply Rle_plus;
+apply sqr_plus_pos.
+simpl; try nra.
+apply sqr_plus_pos.
+apply sqr_plus_pos.
+unfold fst at 1.
+unfold fst at 2.
+fold Cmod.
+etransitivity.
+assert (fst (coeff_mat zero u 0 0) ^ 2 + snd (coeff_mat zero u 0 0) ^ 2 +
+(fst (coeff_mat zero u 1 0) ^ 2 + snd (coeff_mat zero u 1 0) ^ 2) = 
+(Cmod (coeff_mat zero u 0 0))^2  + (Cmod (coeff_mat zero u 1 0) )^2).
+unfold Cmod.
+repeat rewrite pow2_sqrt; try apply sqr_plus_pos; auto.
+apply H; auto.
+auto.
+auto.
+simpl.
+rewrite Rmult_1_r; auto.
+simpl.
+rewrite Rmult_1_r; auto.
+Qed.
+
+
+
 
 
 
@@ -729,6 +816,7 @@ Qed.
 
 (**************************)
 (* MATRIX POWERS *)
+(**************************)
 Fixpoint Mpow (m n: nat) (M: @matrix C m m): matrix m m:=  
   match n with
     | 0 => (M_ID m) 
