@@ -633,7 +633,7 @@ Qed.
 
 (* MTM * V = V * L *)
 Theorem MTM_eigens_correct (h : R) :
-  0 < h  < 1.4 -> 
+  0 < h  < 1.41 -> 
   Mmult (MTM h) (MTM_eigenvector_matrix h) = 
   Mmult (MTM_eigenvector_matrix h) (MTM_eigenvalue_matrix h).
 Proof.
@@ -682,7 +682,7 @@ field_simplify.
 apply div_eq_0.
 set (x := sqrt _).
 set (y := sqrt _).
-interval with ( i_bisect h, i_taylor h, i_degree 3).
+interval with ( i_bisect h, i_taylor h, i_degree 7).
 set (x := sqrt _). nra.
 set (x := sqrt _).
 set (y := sqrt _).
@@ -1189,7 +1189,7 @@ interval with ( i_bisect h, i_taylor h, i_degree 3).
 Qed.
 
 Lemma MTM_lambda_2_pos_2 (h : R) :
- 0 < h < 1.4-> 
+ 0 < h < 1.41-> 
 0 <= (MTM_lambda_2 h).
 Proof.
 intros.
@@ -1199,7 +1199,7 @@ Qed.
 
 
 Lemma MTM_lambda_1_pos_2 (h : R) :
- 0 < h < 1.4 -> 
+ 0 < h < 1.41 -> 
 0 <= (MTM_lambda_1 h).
 Proof.
 intros.
@@ -1231,7 +1231,7 @@ Qed.
 
 
 Lemma eig_MTM_le (h: R):
-  0 < h < 1.4 -> 
+  0 < h < 1.41 -> 
    (MTM_lambda_1 h) <=  (MTM_lambda_2 h).
 Proof.
 intros.
@@ -1263,7 +1263,7 @@ replace (-16 * h ^ 21 * x + 192 * h ^ 19 * x - 960 * h ^ 17 * x + 1536 * h ^ 15 
 try apply Rmult_le_0_r; try nra.
 try apply Rmult_le_0_r; try apply sqrt_pos.
 try interval
- with ( i_bisect h, i_depth 8, i_taylor h, i_degree 5).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7, i_prec 64).
 Qed.
 
 
@@ -1275,7 +1275,7 @@ intros; subst. field; auto. Qed.
 
 
 Lemma MTM_eigenvectors_orthogonal_1 (h: R):
-  0 < h < 1.4 -> 
+  0 < h < 1.41 -> 
 Mmult (matrix_conj_transpose 2 2 (MTM_eigenvector_matrix h))
   (MTM_eigenvector_matrix h) = Mone.
 Proof.
@@ -1334,7 +1334,7 @@ match goal with |-context [?a <> 0] =>
 end.
 all: try split; try 
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 -
 assert (j = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
@@ -1362,24 +1362,18 @@ replace (h ^ 4 * y - 4 * (h ^ 2 * y) + 4 * y) with
 ((h ^ 4 - 4 * h ^ 2  + 4 ) *y) by nra.
 apply Rmult_integral_contrapositive_currified.
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 subst y.
-rewrite <- sqrt_mult.
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 repeat split; try
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 repeat split; try
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
-
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 -
 assert (i = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
@@ -1411,19 +1405,19 @@ interval
 subst y.
 rewrite <- sqrt_mult.
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
+interval
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
+interval
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 interval
  with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+repeat split; try 
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 repeat split; try
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
-repeat split; try
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 -
 assert (i = 0)%nat by lia; subst.
 assert (j = 0)%nat by lia; subst.
@@ -1449,15 +1443,15 @@ repeat rewrite pow2_sqrt; try nra.
 apply Rgt_not_eq;
 field_simplify.
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 repeat split. 
 all: (try repeat split; try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3)).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7)).
 Qed.
 
 
 Lemma MTM_eigenvectors_orthogonal_2 (h: R):
-  0 < h < 1.4 -> 
+  0 < h < 1.41 -> 
 Mmult (MTM_eigenvector_matrix h) 
 (matrix_conj_transpose 2 2 (MTM_eigenvector_matrix h)) = Mone.
 Proof.
@@ -1497,7 +1491,7 @@ end.
 repeat rewrite pow2_sqrt; try nra.
 repeat rewrite pow2_sqrt; try nra.
 all: (try repeat split; try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3)).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7)).
 -
 assert (j = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
@@ -1517,46 +1511,20 @@ repeat rewrite pow2_sqrt.
 field_simplify. 
 assert ( forall a b, b = 0 -> a<>0 -> b/a = 0) by (intros;nra).
 apply H0; try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 all: (try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3)).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7)).
 repeat rewrite pow2_abs; field_simplify; try nra.
 apply H0; try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 repeat rewrite pow2_sqrt; field_simplify; try nra.
-repeat rewrite pow2_abs. 
-match goal with |-context[ ?a <> 0] =>
-field_simplify a;try nra;
-repeat rewrite pow2_sqrt; try nra
-end.
-match goal with |-context[sqrt ?a ^ 4 ] =>
-replace (sqrt a ^ 4) with
-(sqrt a ^ 2 * sqrt a ^ 2) by nra;
-repeat rewrite pow2_sqrt; try nra
-end.
-match goal with |-context[ ?a <> 0] =>
-field_simplify a;try nra;
-repeat rewrite pow2_sqrt; try nra
-end.
-all: (try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3)).
-apply sep_0_div; split; 
+repeat rewrite pow2_abs.
+all: (try split; try apply sep_0_div; 
 (try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3)).
-repeat rewrite <- Rabs_mult.
-repeat rewrite Rmult_assoc.
-rewrite Rmult_comm.
-match goal with |-context[h ^ 2 * ?a *?b] =>
-set (y:= a );
-set (x:= b)
-end.
-replace (h ^ 2 * y * x - 2 * (x * y)) with
-((h ^ 2 - 2) * (x * y)) by nra.
-apply Rmult_integral_contrapositive_currified;
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
-all: (repeat split; try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3)).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7))).
+all: (try split; try apply sep_0_div; 
+(try interval
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7))).
 -
 assert (i = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
@@ -1579,7 +1547,7 @@ apply H1.
 repeat rewrite Rmult_assoc.
 repeat rewrite pow2_abs; field_simplify; try nra.
 apply H1; try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 repeat rewrite pow2_sqrt; try nra.
 repeat rewrite pow2_abs. 
 match goal with |-context[ ?a <> 0] =>
@@ -1598,19 +1566,10 @@ end; try interval
  with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
 apply sep_0_div; try split;
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 all : try repeat split; try
 interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
-match goal with |-context[h ^ 2 * ?a * ?b ] =>
-set (y:= a );
-set (x:= b)
-end.
-replace (h ^ 2 * y * x - 2 * y * x) with
-((h ^ 2 - 2) * (x * y)) by nra.
-apply Rmult_integral_contrapositive_currified;
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7).
 -
 assert (i = 0)%nat by lia; subst.
 assert (j = 0)%nat by lia; subst.
@@ -1651,21 +1610,11 @@ replace (sqrt a ^ 4) with
 repeat rewrite pow2_sqrt; try nra
 end.
 all: (try repeat split; try interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3)).
-match goal with |-context[ ?a <> 0] =>
-field_simplify a;try nra;
-repeat rewrite pow2_abs; try nra
-end.
-match goal with |-context[ ?a <> 0] =>
-field_simplify a;try nra
-end.
-apply sep_0_div; split; 
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+ with ( i_bisect h, i_depth 10, i_taylor h, i_degree 7)).
 Qed.
 
 
-Lemma two_norm_pred_eq (h : R | 0 < h < 1.4): 
+Lemma two_norm_pred_eq (h : R | 0 < h < 1.41): 
  two_norm_pred 2 (M (proj1_sig h)) (sqrt (MTM_lambda_2 (proj1_sig h))).
 Proof.
 apply ( max_sv_pred_implies_two_norm_pred
@@ -1739,7 +1688,7 @@ Qed.
 
 Definition σ (h: R) := sqrt (MTM_lambda_2 h).
 
-Definition two_norm_M (h : R | 0 < h < 1.4):=
+Definition two_norm_M (h : R | 0 < h < 1.41):=
   proj1_sig (exist (two_norm_pred 2 (M (proj1_sig h))) 
                           (sqrt (MTM_lambda_2 (proj1_sig h)))
                           (two_norm_pred_eq h)).
@@ -1768,7 +1717,7 @@ interval.
 Qed.
 
 Lemma M_norm_sub_mult :
-  forall (h : R | 0 < h < 1.4),
+  forall (h : R | 0 < h < 1.41),
   forall (y : @matrix C 2 1%nat),
   vec_two_norm_2d (Mmult (M (proj1_sig h)) y) <= (two_norm_M h) * vec_two_norm_2d y.
 Proof.
@@ -1785,7 +1734,7 @@ Qed.
 Lemma matrix_analysis_method_bound_n : 
   forall p q : R,
   forall n : nat, 
-  forall h : {h : R | 0 <  h < 1.4},
+  forall h : {h : R | 0 <  h < 1.41},
   let Mn := Mpow 2 n (M (proj1_sig h)) in
   vec_two_norm_2d  (Mmult Mn (s_vector (p, q))) <= 
       (sqrt (Cmod (MTM_lambda_2 (proj1_sig h)))) ^ n * vec_two_norm_2d (s_vector (p,q)).
@@ -1805,11 +1754,11 @@ fold Mpow in Mn.
 simpl in IHn.
 subst Mn. 
 replace (Mmult (Mmult (Mpow 2 n 
-  (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q)))
+  (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.41) h))) (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.41) h))) (s_vector (p, q)))
 with
-( Mmult (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h)) 
-  (Mmult (Mpow 2 n (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q)))).
-destruct (@Mmult C_Ring 2 2 1 (Mpow 2 n (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.4) h))) (s_vector (p, q))).
+( Mmult (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.41) h)) 
+  (Mmult (Mpow 2 n (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.41) h))) (s_vector (p, q)))).
+destruct (@Mmult C_Ring 2 2 1 (Mpow 2 n (M (@proj1_sig R (fun h1 : R => 0 < h1 < 1.41) h))) (s_vector (p, q))).
 eapply Rle_trans.
 pose proof M_norm_sub_mult h (t, t0).
 apply H.
@@ -1829,7 +1778,7 @@ Qed.
 
 
 Lemma h_bnd_lem :
-0 <  h < 1.4.
+0 <  h < 1.41.
 Proof.
 split; unfold h; unfold ω; try nra.
 Qed.
@@ -1844,7 +1793,7 @@ Theorem matrix_bound :
       σb ^ n * vec_two_norm_2d (s_vector (p,q)).
 Proof.
 intros.
-set (j := (exist (fun x => 0 < x < 1.4) h) h_bnd_lem).
+set (j := (exist (fun x => 0 < x < 1.41) h) h_bnd_lem).
 pose proof matrix_analysis_method_bound_n p q n j.
 simpl in H.
 eapply Rle_trans.
