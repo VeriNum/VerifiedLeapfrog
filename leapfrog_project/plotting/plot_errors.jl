@@ -13,7 +13,7 @@ Author: Ariel Kellison, 12/2021
 fpath = @__DIR__
 
 
-function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int)
+function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int, xlim::Float64, pbnd_x::Float64, pbnd_v::Float64)
     """
     Args: (1) in_file contains the random inputs for integration
           (2) err_file contains the ouput errors
@@ -41,9 +41,6 @@ function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int)
 
     nsteps > 1 ? fstr2 = "multi-step (n = $nsteps)" : fstr2 = "single step"
 
-    nsteps == 16 ? (pbnd_x = 1.7565e-06; pbnd_v = 1.6035e-06) : (pbnd_x = 1.2486e-7; pbnd_v = 6.7232e-8)
-    nsteps == 32 ? (pbnd_x = 3.1714e-06; pbnd_v = 3.8676e-06)  : (pbnd_x = 1.2486e-7; pbnd_v = 6.7232e-8)
-  	
 
     # plot histograms 
 
@@ -75,11 +72,11 @@ function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int)
     end
 
     
-    plot([pbnd_x for i in -1:1],seriestype="hline",label="VCFloat bound=$pbnd_x",
+    plot([pbnd_x for i in -xlim:xlim],seriestype="hline",label="VCFloat bound=$pbnd_x",
         left_margin = 15mm, right_margin = 15mm)
 
     
-    plot([9.315409e-8 for i in -1:1],seriestype="hline",label="FPTaylor bound=9.3154e-8",
+    plot([9.315409e-8 for i in -xlim:xlim],seriestype="hline",label="FPTaylor bound=9.3154e-8",
         left_margin = 15mm, right_margin = 15mm)
 
     plotx = scatter!(
@@ -87,12 +84,12 @@ function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int)
         size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
         yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
         label="empirical error",
-        xlims = (-1,1), title = "Leapfrog integration: $fstr2 absolute position error"    
+        xlims = (-xlim,xlim), title = "Leapfrog integration: $fstr2 absolute position error"    
 	)
    
     savefig(plotx,fpath*"/scatter_errors_x.png")
     
-    plot([pbnd_v for i in -1:1],seriestype="hline",label="VCFloat bound=$pbnd_v",
+    plot([pbnd_v for i in -xlim:xlim],seriestype="hline",label="VCFloat bound=$pbnd_v",
         left_margin = 15mm, right_margin = 15mm)
     
     plotv = scatter!(
@@ -100,7 +97,7 @@ function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int)
         size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
         yguidefontsize=12, xguidefontsize=12, xtickfontsize = 12, ytickfontsize = 12,
         label="empirical error",
-        xlims = (-1,1), title = "Leapfrog integration: $fstr2 absolute momentum error"    
+        xlims = (-xlim,xlim), title = "Leapfrog integration: $fstr2 absolute momentum error"    
 	)
     savefig(plotv,fpath*"/scatter_errors_v_$nsteps.png")
 

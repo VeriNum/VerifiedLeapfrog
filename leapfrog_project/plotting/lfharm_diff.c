@@ -48,12 +48,13 @@ void lfstep64(double **x, double **v, double h, int size)
 /* main */
 int main(int argc, char *argv[]){
 	
-	if (argc <= 2 ){
-    		printf("Takes two arguments: number of inputs, id for filename\n");
+	if (argc <= 3 ){
+    		printf("Takes three arguments: number of inputs, id for filename, and bound on xv\n");
     		return 0;
 	}
 	
 	int max  = atoi(argv[1]);
+	float bnd = atof(argv[3]);
 	float hf = 1.0/32.0;
 	double hd  = (double) hf;
 	char filename1[25]= "lf_in_data_";
@@ -73,9 +74,9 @@ int main(int argc, char *argv[]){
 	float *vfrands  = calloc(max, sizeof(float));
 
 	for (int n = 0; n < max; n++){
-		xfrands[n] = randfrom(-1.0, 1.0);
+		xfrands[n] = randfrom(-bnd, bnd);
 		xdrands[n] = xfrands[n];
-		vfrands[n] = randfrom(-1.0, 1.0);
+		vfrands[n] = randfrom(-bnd, bnd);
 		vdrands[n] = vfrands[n];
 	}
 
