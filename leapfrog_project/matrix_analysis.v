@@ -255,7 +255,6 @@ assert (Hjj: (j=0)%nat) by lia;
 *
 unfold s_vector; simpl.
 repeat rewrite coeff_mat_bij; try lia; simpl.
-apply sum_n_ext_loc => k Hk.
 change mult with Cmult. 
 unfold Cmult; simpl.
 repeat rewrite Rmult_0_r.
@@ -352,15 +351,24 @@ Definition MTM (h : R) : @matrix C 2 2 :=
     (0.0625 * h^6 - 0.25*h^4 + 1, 0))
 .
 
-
+Search (Rabs _ ^2).
 
 (** The eigenvalues of MTM *)
 Definition MTM_lambda_1 (h : R) : R := 
-(h^10 - h^7*sqrt(h^6 + 64) + 4*h^6 + 64*h^4 - 4*h^3*sqrt(h^6 + 64) - 32*h*sqrt(h^6 + 64) + 256)/(2*(h^4*Rabs((h^3 - 8*h + sqrt(h^6 + 64))/(h^2 - 2))^2 + 16*h^4 - 4*h^2*Rabs((h^3 - 8*h + sqrt(h^6 + 64))/(h^2 - 2))^2 - 64*h^2 + 4*Rabs((h^3 - 8*h + sqrt(h^6 + 64))/(h^2 - 2))^2 + 64)) 
+let a:= sqrt(h^6 + 64) in
+let A:= (h^10 - h^7*a + 4*h^6 + 64*h^4 - 4*h^3*a - 32*h*a + 256) * (h^2 -2)^2 in
+let b:= (h^3 - 8*h + a)^2 in 
+A / (2*(h^4  - 4*h^2 + 4) * (b + 16 * (h^2 - 2)^2))
 .
+
+
 Definition MTM_lambda_2 (h : R) : R := 
-(h^10 + h^7*sqrt(h^6 + 64) + 4*h^6 + 64*h^4 + 4*h^3*sqrt(h^6 + 64) + 32*h*sqrt(h^6 + 64) + 256)/(2*(h^4*Rabs((-h^3 + 8*h + sqrt(h^6 + 64))/(h^2 - 2))^2 + 16*h^4 - 4*h^2*Rabs((-h^3 + 8*h + sqrt(h^6 + 64))/(h^2 - 2))^2 - 64*h^2 + 4*Rabs((-h^3 + 8*h + sqrt(h^6 + 64))/(h^2 - 2))^2 + 64))
+let a:= sqrt(h^6 + 64) in
+let A:= (h^10 + h^7*a + 4*h^6 + 64*h^4 + 4*h^3*a + 32*h*a + 256) * (h^2 -2)^2 in
+let b:= (-h^3 + 8*h + a)^2 in 
+A / (2*(h^4  - 4*h^2 + 4) * (b + 16 * (h^2 - 2)^2))
 .
+
 Definition MTM_eigenvalue_vector (h : R) : @matrix R 2 1 :=
 mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then MTM_lambda_1 h else MTM_lambda_2 h)
 .
@@ -1241,24 +1249,24 @@ replace (a^3) with (a^2 * a) by nra
 end.
 repeat rewrite pow2_sqrt; try nra.
 field_simplify; auto.
-apply Rdiv_le2; try
+try apply Rdiv_le2; try
 interval with ( i_bisect h, i_taylor h, i_degree 3).
 apply Rminus_le.
-field_simplify. 
-replace (-16 * h ^ 17 * sqrt (h ^ 6 + 64) + 128 * h ^ 15 * sqrt (h ^ 6 + 64) -
-384 * h ^ 13 * sqrt (h ^ 6 + 64) - 512 * h ^ 11 * sqrt (h ^ 6 + 64) +
-7936 * h ^ 9 * sqrt (h ^ 6 + 64) - 24576 * h ^ 7 * sqrt (h ^ 6 + 64) +
-32768 * h ^ 5 * sqrt (h ^ 6 + 64) - 16384 * h ^ 3 * sqrt (h ^ 6 + 64))
-with
-((-16 * h ^ 14 + 128 * h ^ 12  -
-384 * h ^ 10  - 512 * h ^ 8  +
-7936 * h ^ 6  - 24576 * h ^ 4  +
-32768 * h ^ 2  - 16384) * h^3 * sqrt (h ^ 6 + 64)) by nra.
-apply Rmult_le_0_r; try apply sqrt_pos.
-apply Rmult_le_0_r; try nra.
-interval
- with ( i_bisect h, i_depth 7, i_taylor h, i_degree 3).
+field_simplify.
+set (x := sqrt _).
+replace (-16 * h ^ 21 * x + 192 * h ^ 19 * x - 960 * h ^ 17 * x + 1536 * h ^ 15 * x + 8448 * h ^ 13 * x -
+58368 * h ^ 11 * x + 162816 * h ^ 9 * x - 245760 * h ^ 7 * x + 196608 * h ^ 5 * x -
+65536 * h ^ 3 * x) with
+((-16 * h ^ 18 + 192 * h ^ 16 - 960 * h ^ 14 + 1536 * h ^ 12 + 8448 * h ^ 10 -
+58368 * h ^ 8 + 162816 * h ^ 6 - 245760 * h ^ 4 + 196608 * h ^ 2 -
+65536) * x * h^3) by nra.
+try apply Rmult_le_0_r; try nra.
+try apply Rmult_le_0_r; try apply sqrt_pos.
+try interval
+ with ( i_bisect h, i_depth 8, i_taylor h, i_degree 5).
 Qed.
+
+
 
 Lemma div_eq_1 : 
  (forall a b : R, a = b -> b <> 0 -> a / b = 1).
