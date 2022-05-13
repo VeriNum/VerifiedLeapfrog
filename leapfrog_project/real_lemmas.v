@@ -5,12 +5,18 @@ From Flocq3 Require Import Core.
 
 Require Import vcfloat.RAux.
 
+<<<<<<< HEAD
 Require Import IntervalFlocq3.Tactic.
 
 Import Coq.Logic.FunctionalExtensionality.
 
 Set Bullet Behavior "Strict Subproofs". 
 
+=======
+
+Import Coq.Logic.FunctionalExtensionality.
+
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 
 Lemma Rabs_triang_aux : 
   forall a b c : R,
@@ -332,7 +338,11 @@ Definition Rprod_minus (x y : Rprod) : Rprod :=
 Definition Rprod_plus (x y : Rprod) : Rprod :=
   (Rplus (fst x) (fst y), Rplus (snd x) (snd y)).
 
+<<<<<<< HEAD
 Definition Rprod_norm (x : Rprod) : R  :=
+=======
+Definition Rprod_norm (x : R * R) : R  :=
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
   sqrt ( fst x ^ 2 +  snd x ^ 2).
 
 Notation " L1 - L2 " := (Rprod_minus L1 L2) (at level 50, left associativity) : Rprod.
@@ -394,7 +404,13 @@ apply sqrt_pos.
 Qed.
 
 Lemma Rprod_plus_assoc :
+<<<<<<< HEAD
 forall a b c : Rprod,  ( (a+b)+c = a+(b+c) )%Rprod. 
+=======
+forall a b c, 
+Rprod_plus (Rprod_plus a b) c = 
+Rprod_plus a (Rprod_plus b c).
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 Proof.
 intros.
 unfold Rprod_plus.
@@ -402,13 +418,25 @@ simpl. f_equal; nra.
 Qed.
 
 Lemma Rprod_plus_sym :
+<<<<<<< HEAD
 forall a b : Rprod,  ( a + b = b + a )%Rprod.
+=======
+forall a b, 
+Rprod_plus a b  = 
+Rprod_plus b a.
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 Proof.
 intros.
 unfold Rprod_plus.
 f_equal; nra.
 Qed.
 
+<<<<<<< HEAD
+=======
+
+
+
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 Lemma sum_pow_mult_l:
   forall a : R,
   forall n : nat,
@@ -479,11 +507,20 @@ rewrite <- Nat.succ_le_mono.
 apply Nat.le_0_l.
 Qed.
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 Definition error_sum error n: R:=
  match n with 
   | 0 => 0
   | S n' => sum_f 0 n' (fun m => error ^ m )
+<<<<<<< HEAD
 end.
+=======
+end
+.
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 
 Lemma error_sum_aux n (er: R):
   error_sum er n + er ^ n = error_sum er (S n).
@@ -509,6 +546,10 @@ rewrite sum_pow_first.
 nra.
 Qed.
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 Lemma Rmax_mult_le_pos a b:
 0 <=a -> 
 0 <= b ->  
@@ -526,6 +567,10 @@ apply Rlt_le in n.
 apply n. nra.
 Qed.
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 Lemma Rmax_mult_le_neg  a b:
 a <= 0 -> 
 b <= 0 ->  
@@ -599,6 +644,10 @@ Proof.
 intros; nra.
 Qed.
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
 Lemma is_lim_exp_pow: 
 forall n ,
 is_lim (fun y : R => exp (INR n * y)) 0 1.
@@ -662,6 +711,7 @@ eapply Rle_trans.
 apply square_pos.
 Qed.
 
+<<<<<<< HEAD
 Lemma Rprod_minus_comm : forall a b, ∥ a - b ∥ = ∥ b - a ∥.
 Proof.
 intros. 
@@ -831,3 +881,5 @@ apply sqrt_Rsqr_abs.
 unfold Rsqr; simpl; nra.
 simpl; auto.
 Qed.
+=======
+>>>>>>> 1d8945d0daeaefb9b35d6c86f52ad9b12c37b4f6
