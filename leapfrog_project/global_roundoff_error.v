@@ -83,7 +83,7 @@ Lemma iterR_bound:
   let tn := t0 + INR n * h in
   pt t0 = FT2R p_init -> 
   qt t0 = FT2R q_init ->
-  Harmonic_oscillator_system pt qt ω t0 ->
+  Harmonic_oscillator_system pt qt ω ->
    ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum σb n -> 
   (forall m,
     (m <= n)%nat -> 
@@ -100,7 +100,9 @@ specialize (H3 H4).
 rewrite  Rprod_minus_comm in H3.
 eapply Rle_trans in H3.
 2: apply Rprod_triang_inv.
-destruct H0 as (_ & _ & A).
+assert (wpos: 0 < ω) by (unfold ω; nra).
+pose proof  system_implies_system' pt qt ω t0 wpos H0 as HSYS'.
+destruct HSYS' as (_ & _ & A).
 specialize (A (t0 + INR m * h)).
 destruct A as ( _ & _ & C).
 unfold ω in *; repeat (rewrite Rmult_1_l in C).
@@ -122,16 +124,16 @@ assert (1 + h ^ 3 * error_sum σb m <=
 eapply Rle_trans.
 apply H3.
 eapply Rle_trans.
-apply H5.
-specialize (H0 n H).
+apply H6.
+specialize (H5 n H).
 assert (1 + h ^ 3 * error_sum σb n <=
   1 + h ^ 3 * 1002).
 apply Rplus_le_compat_l.
   apply Rmult_le_compat_l.
   try unfold h; try nra.
-  apply H0.
+  apply H5.
 eapply Rle_trans.
-apply H6.
+apply H7.
 unfold h.
 interval.
 Qed.

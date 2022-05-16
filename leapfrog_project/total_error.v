@@ -26,7 +26,7 @@ Theorem total_error:
   let tn := t0 + INR n * h in
   pt t0 = FT2R p_init ->
   qt t0 = FT2R q_init ->
-  Harmonic_oscillator_system pt qt ω t0 ->
+  Harmonic_oscillator_system pt qt ω ->
   ∥ (pt tn, qt tn) - (FT2R_prod (iternF float_model.h (p_init,q_init) n)) ∥ 
      <=  (h^3  + local_round_off)/ (σb-1) * (σb ^ n - 1) .
 Proof.
@@ -38,7 +38,7 @@ replace A with
   (∥ ((pt (t0 + INR n * h)%R, qt (t0 + INR n * h)%R) - (iternR (FT2R p_init, FT2R q_init) h n)) +
 ((iternR (FT2R p_init, FT2R q_init) h n) - (FT2R_prod (iternF float_model.h (p_init,q_init) n))) ∥)
 end.
-assert (HSY: Harmonic_oscillator_system pt qt 1 t0) by auto.
+assert (HSY: Harmonic_oscillator_system pt qt 1) by auto.
 unfold Harmonic_oscillator_system in Hsys.
 rename Hsys into C.
 eapply Rle_trans.
@@ -75,7 +75,7 @@ Definition accurate_harmonic_oscillator (pq: state) (n : nat) (acc: R) :=
   let tn := t0 + INR n * h in
   pt t0 = FT2R p_init ->
   qt t0 = FT2R q_init ->
-  Harmonic_oscillator_system pt qt ω t0 ->
+  Harmonic_oscillator_system pt qt ω ->
   ∥ (pt tn, qt tn) - (FT2R (fst pq), FT2R (snd pq)) ∥ <= acc.
 
 Corollary yes_accurate_harmonic_oscillator : 

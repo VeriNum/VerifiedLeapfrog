@@ -16,15 +16,17 @@ Lemma Harm_sys_norm_bound p q:
   (* the following hypothesis, which is NOT derived from stability analysis on h ,
      is required in order to show that (h ω)^4/ 4! can be upper bounded by (h ω)^3/ 3! *)
   0 <= h * ω <= 4 ->
-  Harmonic_oscillator_system p q ω t0 -> 
+  Harmonic_oscillator_system p q ω -> 
   let r1 := h^4/INR(fact 4) * (Derive_n p 4 t2) - h^3/12 * ω^4 * q t3 in
   let r2 := h^3/INR(fact 3) * ω * (Derive_n q 3 t1) in
   ∥(r1,r2)∥  <= (h*ω)^3 * ∥(p t0, ω * q t0)∥.
 Proof.
-intros ? ? ? ? ? ? ωpos hsep H.
-unfold Harmonic_oscillator_system in H.
+intros ? ? ? ? ? ? ωpos hsep H'.
+pose proof system_implies_system' p q ω t0 ωpos H'.
+clear H'.
 pose proof Harm_sys_derive_eq p q ω t0 H t1 as (A0 & A & _ & _ & _).
 pose proof Harm_sys_derive_eq p q ω t0 H t2 as (B0 & _ & _ & _ & C2). 
+unfold Harmonic_oscillator_system' in H.
 rewrite A, C2. clear A C2.
 destruct H as (HA & HB & H).
 pose proof (H t1) as A1; destruct A1 as (_ & _ &C).
@@ -212,8 +214,8 @@ Theorem local_truncation_error_aux:
   forall p q: R -> R,
   forall t0 tn: R,
   forall h : R, 
-  0 < ω*h <= 4 ->  (* ideally we would write 0 < ω*h <= 4   here *)
-  Harmonic_oscillator_system p q 1 t0 -> 
+  0 < ω*h <= 4 ->  
+  Harmonic_oscillator_system p q 1 -> 
   exists t1 t2: R,
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
@@ -222,8 +224,10 @@ Theorem local_truncation_error_aux:
   p (tn + h) - fst(leapfrog_stepR h (p tn,  q tn)) = 
     h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * q tn . 
 Proof.
-intros ? ? ? ? ? ? HSY; intros.
+intros ? ? ? ? ? ? HSY'; intros.
 rewrite Rmult_1_l in H.
+assert (wpos: 0 < 1) by nra.
+pose proof system_implies_system' p q 1 t0 wpos HSY' as HSY.
 pose proof (HOS_implies_k_diff p q 1 t0 tn h HSY) as Hdiff.
 assert (tn < tn + h) as LT by nra.
 destruct Hdiff as ( KP & KQ); unfold k_differentiable in *.
@@ -282,8 +286,8 @@ Theorem local_truncation_error_norm_aux:
   forall p q: R -> R,
   forall t0 tn: R,
   forall h : R, 
-  0 < ω*h <= 4 ->  (* ideally we would write 0 < ω*h <= 4   here *)
-  Harmonic_oscillator_system p q 1 t0 -> 
+  0 < ω*h <= 4 ->  
+  Harmonic_oscillator_system p q 1 -> 
   exists t1 t2: R,
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
@@ -308,8 +312,8 @@ Theorem local_truncation_error:
   forall p q : R -> R,
   forall t0 tn: R,
   forall h : R, 
-  0 < ω*h <= 4 ->  (* ideally we would write 0 < ω*h <= 4   here *)
-  Harmonic_oscillator_system p q ω t0 -> 
+  0 < ω*h <= 4 -> 
+  Harmonic_oscillator_system p q ω -> 
   let '(pn,qn):= (leapfrog_stepR h (p tn, q tn)) in
   ∥(p (tn + h)%R, q (tn + h)%R) - (pn, qn)∥ <= h^3 * ∥(p t0,  q t0)∥.
 Proof.
