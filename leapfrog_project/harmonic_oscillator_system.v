@@ -32,7 +32,7 @@ Definition Harmonic_oscillator_system' (p q : R -> R) (ω t0 : R) :=
   ∥( p t , ω * q t )∥ = ∥( p t0, ω * q t0)∥ .
 
 (* the continuous system of equations for the simple harmonic oscillator *) 
-Definition Harmonic_oscillator_system (p q : R -> R) (ω : R) :=
+Definition Harmonic_oscillator_system (ω : R) (p q : R -> R) :=
   smooth_fun p /\ smooth_fun q /\
   forall t: R, 
   Derive_n q 1 t  = p t /\  
@@ -164,7 +164,7 @@ Qed.
 
 Lemma system_implies_cons_e_aux p q ω: 
   0 < ω ->
-  Harmonic_oscillator_system p q ω ->
+  Harmonic_oscillator_system ω p q  ->
   forall t, Derive (fun t => p t ^ 2 + ω ^ 2 * q t ^ 2) t = 0.
 Proof.
 intros.
@@ -204,7 +204,7 @@ Qed.
 
 Lemma system_implies_cons_e p q ω t0: 
   0 < ω ->
-  Harmonic_oscillator_system p q ω   ->
+  Harmonic_oscillator_system ω p q  ->
   forall t, (p t ^ 2 + ω ^ 2 * q t ^ 2) = (p t0 ^ 2 + ω ^ 2 * q t0 ^ 2).
 Proof.
 intros.
@@ -263,7 +263,7 @@ Qed.
 
 Lemma system_implies_system' p q ω t0  : 
   0 < ω ->
-  Harmonic_oscillator_system p q ω  ->
+  Harmonic_oscillator_system ω p q  ->
   Harmonic_oscillator_system' p q ω t0 .
 Proof.
 intros.

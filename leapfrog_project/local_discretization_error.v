@@ -16,7 +16,7 @@ Lemma Harm_sys_norm_bound p q:
   (* the following hypothesis, which is NOT derived from stability analysis on h ,
      is required in order to show that (h ω)^4/ 4! can be upper bounded by (h ω)^3/ 3! *)
   0 <= h * ω <= 4 ->
-  Harmonic_oscillator_system p q ω -> 
+  Harmonic_oscillator_system ω p q  ->
   let r1 := h^4/INR(fact 4) * (Derive_n p 4 t2) - h^3/12 * ω^4 * q t3 in
   let r2 := h^3/INR(fact 3) * ω * (Derive_n q 3 t1) in
   ∥(r1,r2)∥  <= (h*ω)^3 * ∥(p t0, ω * q t0)∥.
@@ -215,7 +215,7 @@ Theorem local_truncation_error_aux:
   forall t0 tn: R,
   forall h : R, 
   0 < ω*h <= 4 ->  
-  Harmonic_oscillator_system p q 1 -> 
+  Harmonic_oscillator_system 1 p q  ->
   exists t1 t2: R,
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
@@ -287,7 +287,7 @@ Theorem local_truncation_error_norm_aux:
   forall t0 tn: R,
   forall h : R, 
   0 < ω*h <= 4 ->  
-  Harmonic_oscillator_system p q 1 -> 
+  Harmonic_oscillator_system 1 p q  ->
   exists t1 t2: R,
   tn < t1 < tn + h /\
   tn < t2 < tn + h /\
@@ -313,7 +313,7 @@ Theorem local_truncation_error:
   forall t0 tn: R,
   forall h : R, 
   0 < ω*h <= 4 -> 
-  Harmonic_oscillator_system p q ω -> 
+  Harmonic_oscillator_system ω p q  ->
   let '(pn,qn):= (leapfrog_stepR h (p tn, q tn)) in
   ∥(p (tn + h)%R, q (tn + h)%R) - (pn, qn)∥ <= h^3 * ∥(p t0,  q t0)∥.
 Proof.

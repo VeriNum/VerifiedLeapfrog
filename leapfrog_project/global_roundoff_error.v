@@ -83,7 +83,7 @@ Lemma iterR_bound:
   let tn := t0 + INR n * h in
   pt t0 = FT2R p_init -> 
   qt t0 = FT2R q_init ->
-  Harmonic_oscillator_system pt qt ω ->
+  Harmonic_oscillator_system ω pt qt ->
    ∥(pt tn, qt tn) - (iternR ((FT2R p_init), (FT2R q_init)) h n)∥ <= h ^ 3 * error_sum σb n -> 
   (forall m,
     (m <= n)%nat -> 

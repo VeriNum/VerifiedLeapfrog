@@ -11,7 +11,7 @@ Require Import IntervalFlocq3.Tactic.
 Theorem global_truncation_error_sum : 
   forall p q: R -> R,
   forall t0 T: R,
-  Harmonic_oscillator_system p q 1 -> 
+  Harmonic_oscillator_system 1 p q  ->
   forall n : nat, 
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
