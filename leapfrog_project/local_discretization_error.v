@@ -21,19 +21,17 @@ Lemma Harm_sys_norm_bound p q:
   let r2 := h^3/INR(fact 3) * ω * (Derive_n q 3 t1) in
   ∥(r1,r2)∥  <= (h*ω)^3 * ∥(p t0, ω * q t0)∥.
 Proof.
-intros ? ? ? ? ? ? ωpos hsep H'.
-pose proof system_implies_system' p q ω t0 ωpos H'.
-clear H'.
-pose proof Harm_sys_derive_eq p q ω t0 H t1 as (A0 & A & _ & _ & _).
-pose proof Harm_sys_derive_eq p q ω t0 H t2 as (B0 & _ & _ & _ & C2). 
-unfold Harmonic_oscillator_system' in H.
+intros ? ? ? ? ? ? ωpos hsep H.
+pose proof Harm_sys_derive_eq p q _ ωpos H t1 as (A0 & A & _ & _ & _).
+pose proof Harm_sys_derive_eq p q _ ωpos H t2 as (B0 & _ & _ & _ & C2).
 rewrite A, C2. clear A C2.
-destruct H as (HA & HB & H).
-pose proof (H t1) as A1; destruct A1 as (_ & _ &C).
-pose proof (H t2) as A1; destruct A1 as (_ & _ &C2).
-specialize (H t3). destruct H as (_ & _ & C3). 
+assert (C := fun t => system_implies_cons_e' _ _ _ t0 t ωpos H).
+destruct H as (HA & HB & _).
+assert (C1 := C t1).
+assert (C2 := C t2).
+assert (C3 := C t3).
 unfold Rprod_norm, fst, snd in *. cbv [prod_norm fst snd].
-apply sqrt_inj in C, C2, C3; try nra.
+apply sqrt_inj in C1, C2, C3; try nra.
 assert (p t1 ^ 2  <= ω ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
   clear C.
 assert (p t2 ^ 2  <= ω ^2 * q t0 ^ 2 + p t0 ^ 2) by nra; 
@@ -224,11 +222,10 @@ Theorem local_truncation_error_aux:
   p (tn + h) - fst(leapfrog_stepR h (p tn,  q tn)) = 
     h^4 / INR (fact 4) * Derive_n p 4 t2 - h^3 / 12 * q tn . 
 Proof.
-intros ? ? ? ? ? ? HSY'; intros.
+intros ? ? ? ? ? ? HSY; intros.
 rewrite Rmult_1_l in H.
 assert (wpos: 0 < 1) by nra.
-pose proof system_implies_system' p q 1 t0 wpos HSY' as HSY.
-pose proof (HOS_implies_k_diff p q 1 t0 tn h HSY) as Hdiff.
+pose proof (HOS_implies_k_diff p q 1 tn h HSY) as Hdiff.
 assert (tn < tn + h) as LT by nra.
 destruct Hdiff as ( KP & KQ); unfold k_differentiable in *.
 (* apply Taylor's theorem for each component of the solution vector *) 
@@ -237,12 +234,12 @@ pose proof Taylor_Lagrange p 3 tn (tn + h) LT KP as TLRp.
 destruct TLRq as (t1 & A & B). 
 destruct TLRp as (t2 & C & D).
 replace (tn + h - tn) with h in * by nra.
-pose proof Harm_sys_derive_eq p q 1 t0 HSY tn as (HD1 & HD2 & HD3 & HD4 & HD5).
+pose proof Harm_sys_derive_eq p q 1 ltac:(lra) HSY tn as (HD1 & HD2 & HD3 & HD4 & HD5).
 exists t1, t2. 
 repeat split; try apply A; try apply C.
   + rewrite B. cbv [sum_f_R0].
     destruct HSY as ( _& _ &HSY).
-    specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2 & _ ).
+    specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2).
 rewrite Hxd1, HD1, Hxd2. 
     unfold Derive_n at 1. unfold dUdq.
     unfold leapfrog_stepR, fst, snd.
@@ -258,7 +255,7 @@ rewrite Hxd1, HD1, Hxd2.
     (Derive_n (Derive_n q 2) 1 tn) by auto.
     apply Derive_n_ext.
     intros. 
-    pose proof Harm_sys_derive_eq p q 1 t0 HSY t.
+    pose proof Harm_sys_derive_eq p q 1 ltac:(lra) HSY t.
   destruct H0 as ( H0 & _).
     rewrite H0.
   destruct HSY as (_ & _ &HSY).
@@ -274,7 +271,7 @@ apply HSY.
     (Derive_n (Derive_n q 1) 1 tn) by auto;
     apply Derive_n_ext; apply HSY).
     destruct HSY as ( _ & _ &HSY).
-    specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2 & _).
+    specialize (HSY tn). destruct HSY as (Hxd1 & Hxd2).
     rewrite HD1. rewrite Hxd1. unfold Derive_n at 1.
     rewrite Hxd2. rewrite HD4.
     unfold leapfrog_stepR, dUdq, fst, snd.
@@ -329,6 +326,5 @@ repeat rewrite Rmult_1_r in Hsys.
 repeat rewrite Rmult_1_l in Hsys.
 apply Hsys. 
 Qed.
-
 
 Close Scope R_scope. 

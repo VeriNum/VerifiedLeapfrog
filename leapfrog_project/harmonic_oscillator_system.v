@@ -24,14 +24,6 @@ Definition smooth_fun (f: R -> R): Prop :=
 Definition dUdq x ω := ω ^ 2 * x.
 
 (* the continuous system of equations for the simple harmonic oscillator *) 
-Definition Harmonic_oscillator_system' (p q : R -> R) (ω t0 : R) :=
-  smooth_fun p /\ smooth_fun q /\
-  forall t: R, 
-  Derive_n q 1 t  = p t /\  
-  Derive_n p 1 t  = - dUdq (q t) ω /\ 
-  ∥( p t , ω * q t )∥ = ∥( p t0, ω * q t0)∥ .
-
-(* the continuous system of equations for the simple harmonic oscillator *) 
 Definition Harmonic_oscillator_system (ω : R) (p q : R -> R) :=
   smooth_fun p /\ smooth_fun q /\
   forall t: R, 
@@ -39,127 +31,18 @@ Definition Harmonic_oscillator_system (ω : R) (p q : R -> R) :=
   Derive_n p 1 t  = - dUdq (q t) ω.
 
 Lemma HOS_implies_k_diff:
-  forall p q ω t0 t h, 
-  Harmonic_oscillator_system' p q ω t0 -> 
+  forall p q ω t h, 
+  Harmonic_oscillator_system ω p q -> 
   k_differentiable p 4 t (t + h) /\
   k_differentiable q 3 t (t + h) .
 Proof.
 intros.
 unfold Harmonic_oscillator_system in H.
-destruct H as (C & D & _).
+destruct H as (C & D).
 split; unfold smooth_fun in *; 
 unfold k_differentiable in *; intros.
 -apply C.
 -apply D.
-Qed.
-
-(* relating derivatives of the continuous system for future rewrites *)
-Lemma Harm_sys_derive_eq p q ω t0: 
-  Harmonic_oscillator_system' p q ω t0 -> 
-  forall t,
-  Derive_n q 2 t  = Derive_n p 1 t /\
-  Derive_n q 3 t  = - ω^2 * p t /\
-  Derive_n p 2 t  = Derive_n q 3 t /\ 
-  Derive_n p 3 t  = ω^4 * q t /\
-  Derive_n p 4 t  = ω^4 * p t.
-Proof.
-unfold Harmonic_oscillator_system; intros.
-destruct H as (_ & _ & H).
-pose proof (H t) as (A & B & C).
-
-assert (forall t, Derive_n q 2 t  = Derive_n p 1 t).
-- intros; replace (Derive_n q 2 t1) with
-(Derive_n (Derive_n q 1) 1 t1) by auto.
-apply Derive_n_ext; intros.
-specialize (H t2); apply H; auto.
--
-
-assert ((Derive_n (fun y : R => - dUdq (q y) ω) 1 t) = 
-(Derive_n (Derive_n q 1) 2 t )).
-+  
-replace (Derive_n (Derive_n q 1) 2 t) with
-(Derive_n (Derive_n q 2) 1 t) by auto.
-symmetry.
-apply Derive_n_ext. intros.
-specialize (H0 t1). rewrite H0.
-apply H.
-+ split; auto; split. 
-* replace (Derive_n q 3 t) with 
-(Derive_n (fun y : R => - dUdq (q y) ω) 1 t).
-rewrite <- A.
-rewrite <- Ropp_mult_distr_l.
-rewrite <- Derive_n_scal_l.
-rewrite Derive_n_opp.
-unfold dUdq; auto.
-* split.
--- 
-unfold dUdq in *.
- replace (Derive_n q 3 t) with 
-(Derive_n (fun y : R => - dUdq (q y) ω) 1 t).
-
-
-         rewrite  Coquelicot.Derive_nS. 
-    replace (Derive q) with (Derive_n q 1); auto.
-unfold dUdq.
-         apply Derive_n_ext. apply H.
--- split.
-++  
-
-unfold dUdq in *.
-replace ( ω ^ 4 * q t) with
-        ( -ω ^ 2 *(-ω ^ 2 * q t)) by nra.
-rewrite <- Ropp_mult_distr_l.
-rewrite <- Ropp_mult_distr_l.
-rewrite <- B.
-
-         replace (Derive_n p 3 t) with (Derive_n (Derive_n p 2) 1 t) by auto.
-rewrite  Ropp_mult_distr_l.
-          rewrite <- Derive_n_scal_l.
-         apply Derive_n_ext. 
-intros.
-destruct (H t1) as ( J & K).
-rewrite <- J.
-         replace (Derive_n p 2 t1) with (Derive_n (Derive_n p 1) 1 t1) by auto.
-          rewrite <- Derive_n_scal_l.
-         apply Derive_n_ext.
-intros. specialize (H t2).  
-rewrite <-  Ropp_mult_distr_l.
-apply H.
-    ++  rewrite <- A.
-        replace (Derive_n p 4 t) with
-        (Derive_n (Derive_n p 3) 1 t) by auto.
-        rewrite <- Derive_n_scal_l.
-        apply Derive_n_ext.
-        intros.
-        replace (ω ^ 4 * q t1) with 
-        (- ω ^ 2 * Derive_n q 2 t1).
-        rewrite <- Derive_n_scal_l.
-        rewrite  Coquelicot.Derive_nS. 
-        apply Derive_n_ext.
-        intros.
-        replace (- ω ^ 2 * q t2) with
-        ( Derive_n q 2 t2).
-        rewrite  Coquelicot.Derive_nS.
-         replace (Derive p) with (Derive_n p 1); auto.
-        apply Derive_n_ext.
-        intros.
-        specialize (H t3).
-        symmetry; replace (Derive q t3) with (Derive_n q 1 t3) by auto.
-        apply H.
-        specialize (H0 t2).
-        rewrite H0.  
-        specialize (H t2).
-rewrite <-  Ropp_mult_distr_l.
-unfold dUdq in H; apply H.
-        specialize (H t1).
-unfold dUdq in H.
-replace (ω ^ 4 * q t1) with 
-        ( -ω ^ 2 *(-ω ^ 2 * q t1)) by nra.
-destruct H as ( _ & K & _ ).
-repeat rewrite <-  Ropp_mult_distr_l.
-rewrite <- K.
-f_equal. f_equal.
-apply H0.
 Qed.
 
 Lemma system_implies_cons_e_aux p q ω: 
@@ -261,25 +144,128 @@ apply Derive_ext => ts; field.
 Qed.
 
 
-Lemma system_implies_system' p q ω t0  : 
+Lemma system_implies_cons_e' p q ω t0 t: 
   0 < ω ->
   Harmonic_oscillator_system ω p q  ->
-  Harmonic_oscillator_system' p q ω t0 .
+  ∥ (p t, ω * q t) ∥ = ∥ (p t0, ω * q t0) ∥.
 Proof.
 intros.
-pose proof system_implies_cons_e p q ω t0 H H0.
-destruct H0 as (A & B & C).
-unfold Harmonic_oscillator_system'; repeat split; auto;
-pose proof (C t) as Hs; 
-destruct Hs as (HA & HB); auto; clear HA HB.
-unfold Rprod_norm, fst, snd.
-f_equal.
-pose proof (H1 t).
-replace ((ω * q t) ^ 2) with (ω ^ 2 * q t ^ 2) by nra.
-rewrite H0. nra.
+pose proof (system_implies_cons_e _ _ _ t0 H H0 t).
+unfold Rprod_norm. f_equal. simpl. lra.
 Qed.
 
+(* relating derivatives of the continuous system for future rewrites *)
+Lemma Harm_sys_derive_eq p q ω: 
+  0 < ω ->
+  Harmonic_oscillator_system ω p q -> 
+  forall t,
+  Derive_n q 2 t  = Derive_n p 1 t /\
+  Derive_n q 3 t  = - ω^2 * p t /\
+  Derive_n p 2 t  = Derive_n q 3 t /\ 
+  Derive_n p 3 t  = ω^4 * q t /\
+  Derive_n p 4 t  = ω^4 * p t.
+Proof.
+intros * Hω H t.
+pose (t0 := t). clearbody t0.
+generalize H; intros [_ [_ AB]].
+destruct (AB t) as [A B].
+assert (C :=system_implies_cons_e' _ _ _ t0 t Hω H).
+clear AB.
+do 2 apply proj2 in H.
+assert (forall t, Derive_n q 2 t  = Derive_n p 1 t).
+- intros; replace (Derive_n q 2 t1) with
+(Derive_n (Derive_n q 1) 1 t1) by auto.
+apply Derive_n_ext; intros.
+apply H; auto.
+-
 
+assert ((Derive_n (fun y : R => - dUdq (q y) ω) 1 t) = 
+(Derive_n (Derive_n q 1) 2 t )).
++  
+replace (Derive_n (Derive_n q 1) 2 t) with
+(Derive_n (Derive_n q 2) 1 t) by auto.
+symmetry.
+apply Derive_n_ext. intros.
+rewrite H0.
+apply H.
++ split; auto; split. 
+* replace (Derive_n q 3 t) with 
+(Derive_n (fun y : R => - dUdq (q y) ω) 1 t).
+rewrite <- A.
+rewrite <- Ropp_mult_distr_l.
+rewrite <- Derive_n_scal_l.
+rewrite Derive_n_opp.
+unfold dUdq; auto.
+* split.
+-- 
+unfold dUdq in *.
+ replace (Derive_n q 3 t) with 
+(Derive_n (fun y : R => - dUdq (q y) ω) 1 t).
+
+
+         rewrite  Coquelicot.Derive_nS. 
+    replace (Derive q) with (Derive_n q 1); auto.
+unfold dUdq.
+         apply Derive_n_ext. apply H.
+-- split.
+++  
+
+unfold dUdq in *.
+replace ( ω ^ 4 * q t) with
+        ( -ω ^ 2 *(-ω ^ 2 * q t)) by nra.
+rewrite <- Ropp_mult_distr_l.
+rewrite <- Ropp_mult_distr_l.
+rewrite <- B.
+
+         replace (Derive_n p 3 t) with (Derive_n (Derive_n p 2) 1 t) by auto.
+rewrite  Ropp_mult_distr_l.
+          rewrite <- Derive_n_scal_l.
+         apply Derive_n_ext. 
+intros.
+destruct (H t1) as ( J & K).
+rewrite <- J.
+         replace (Derive_n p 2 t1) with (Derive_n (Derive_n p 1) 1 t1) by auto.
+          rewrite <- Derive_n_scal_l.
+         apply Derive_n_ext.
+intros. specialize (H t2).  
+rewrite <-  Ropp_mult_distr_l.
+apply H.
+    ++  rewrite <- A.
+        replace (Derive_n p 4 t) with
+        (Derive_n (Derive_n p 3) 1 t) by auto.
+        rewrite <- Derive_n_scal_l.
+        apply Derive_n_ext.
+        intros.
+        replace (ω ^ 4 * q t1) with 
+        (- ω ^ 2 * Derive_n q 2 t1).
+        rewrite <- Derive_n_scal_l.
+        rewrite  Coquelicot.Derive_nS. 
+        apply Derive_n_ext.
+        intros.
+        replace (- ω ^ 2 * q t2) with
+        ( Derive_n q 2 t2).
+        rewrite  Coquelicot.Derive_nS.
+         replace (Derive p) with (Derive_n p 1); auto.
+        apply Derive_n_ext.
+        intros.
+        specialize (H t3).
+        symmetry; replace (Derive q t3) with (Derive_n q 1 t3) by auto.
+        apply H.
+        specialize (H0 t2).
+        rewrite H0.  
+        specialize (H t2).
+rewrite <-  Ropp_mult_distr_l.
+unfold dUdq in H; apply H.
+        specialize (H t1).
+unfold dUdq in H.
+replace (ω ^ 4 * q t1) with 
+        ( -ω ^ 2 *(-ω ^ 2 * q t1)) by nra.
+destruct H as ( _ & K).
+repeat rewrite <-  Ropp_mult_distr_l.
+rewrite <- K.
+f_equal. f_equal.
+apply H0.
+Qed.
 
 
 Close Scope R_scope. 

@@ -101,10 +101,7 @@ rewrite  Rprod_minus_comm in H3.
 eapply Rle_trans in H3.
 2: apply Rprod_triang_inv.
 assert (wpos: 0 < ω) by (unfold ω; nra).
-pose proof  system_implies_system' pt qt ω t0 wpos H0 as HSYS'.
-destruct HSYS' as (_ & _ & A).
-specialize (A (t0 + INR m * h)).
-destruct A as ( _ & _ & C).
+assert (C := system_implies_cons_e' pt qt ω t0 (t0 + INR m * h) wpos H0).
 unfold ω in *; repeat (rewrite Rmult_1_l in C).
 rewrite C in H3.
 rewrite IC1 in H3.
