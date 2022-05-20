@@ -208,7 +208,7 @@ end.
 Qed.
 
 (* the componentwise truncation error for the solution vector *)
-Theorem local_truncation_error_aux:
+Theorem local_discretization_error_aux:
   forall p q: R -> R,
   forall t0 tn: R,
   forall h : R, 
@@ -279,7 +279,7 @@ apply HSY.
 Qed.
 
 (* upper bound the norm of the truncation error *)
-Theorem local_truncation_error_norm_aux:
+Theorem local_discretization_error_norm_aux:
   forall p q: R -> R,
   forall t0 tn: R,
   forall h : R, 
@@ -292,7 +292,7 @@ Theorem local_truncation_error_norm_aux:
   ∥(p (tn + h)%R, q (tn + h)%R) - (leapfrog_stepR h (p tn, q tn))∥ <= ∥(r1 , r2)∥.
 Proof.
 intros ? ? ? ? ? Hbnd HSY; intros.
-pose proof local_truncation_error_aux p q t0 tn h Hbnd HSY as LTE.
+pose proof local_discretization_error_aux p q t0 tn h Hbnd HSY as LTE.
 destruct LTE as [t1 [t2 [A [B [ C D ] ] ] ]].
 exists t1, t2.
 split; auto.
@@ -305,7 +305,7 @@ apply Req_le.
 nra.
 Qed.
 
-Theorem local_truncation_error:
+Theorem local_discretization_error:
   forall p q : R -> R,
   forall t0 tn: R,
   forall h : R, 
@@ -315,7 +315,7 @@ Theorem local_truncation_error:
   ∥(p (tn + h)%R, q (tn + h)%R) - (pn, qn)∥ <= h^3 * ∥(p t0,  q t0)∥.
 Proof.
 intros ? ? ? ? ? Hbnd HSY; intros.
-pose proof local_truncation_error_norm_aux 
+pose proof local_discretization_error_norm_aux 
   p q t0 tn h Hbnd HSY as (t1 & t2 & A & B & C).
 eapply Rle_trans.
 apply C.

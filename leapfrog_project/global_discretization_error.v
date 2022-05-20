@@ -56,7 +56,7 @@ apply Rle_minus_l_2.
 rewrite Rminus_eq_0.
 apply Rle_mult; try (unfold h ; nra). apply pos_INR.
 clear H0.
-pose proof local_truncation_error p q t0 (t0 + INR n * h) h HBND2 HSY as H0.
+pose proof local_discretization_error p q t0 (t0 + INR n * h) h HBND2 HSY as H0.
 fold phi1 in H0.
 eapply Rle_trans.
 eapply Rplus_le_compat_r.
