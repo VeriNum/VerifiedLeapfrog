@@ -66,19 +66,57 @@ rewrite H2b.
 rewrite Mmult_one_l; auto.
 Qed.
 
+Definition dimensions {T} (rows: list (list T)) (r c : nat) :=
+ match rows with
+ | List.cons (List.cons _ r1') rows' =>
+   r = List.length rows /\ c = S (List.length r1') /\
+   List.Forall (fun rn => List.length rn = c) rows'
+ | _ => False
+ end.
+
+Definition dimensions_default_value {T} rows r c: @dimensions T rows r c -> T.
+intros.
+destruct rows; simpl in *.
+contradiction.
+destruct l; simpl in *.
+contradiction.
+apply t.
+Qed.
+
 (** the leapfrog transition matrix *)
 Definition M (h: R) : @matrix C 2 2 := 
+  let a := 0.5 * h^2 in 
+   [ [ (1-a, 0),  (-0.5 * h * (2 - a), 0) ],
+     [ (h, 0),      (1-a, 0) ] ].
+
+Definition M_old (h: R) : @matrix C 2 2 := 
   let a := 0.5 * h^2 in 
   mk_matrix 2 2 (fun i j => if (Nat.eqb i j) then ((1 - a) , 0) else 
     if Nat.ltb j i then (h,0) else ((-0.5 * h * (2 - a)),0)) .
 
+Goal  M =  
+  fun (h: R) => 
+  let a := 0.5 * h^2 in 
+  mk_matrix 2 2 (fun i j => if (Nat.eqb i j) then ((1 - a) , 0) else 
+    if Nat.ltb j i then (h,0) else ((-0.5 * h * (2 - a)),0)) .
+reflexivity.
+Abort.
+
 (** ideal solution vector *)
-Definition pq_vector (h: R) (p q : R -> R) (t : R) : @matrix C 2 1 := 
+Definition pq_vector (h: R) (p q : R -> R) (t : R) : @matrix C 2 1 :=
+   [ [ (p t, 0) ] ,
+     [ (q t, 0) ] ].
+
+Goal pq_vector = fun (h: R) (p q : R -> R) (t : R) =>
   mk_matrix 2 1 (fun i j => if (Nat.eqb i j) then (p t , 0) else (q t , 0)) .
+reflexivity.
+Abort.
 
 (** arbitrary solution vector *)
-Definition s_vector (ic: R * R) := @mk_matrix C 2 1
-  (fun i j => if (Nat.eqb i j) then ((fst ic),0) else ((snd ic),0)).
+Definition s_vector (ic: R * R) : @matrix C 2 1 := (* @mk_matrix C 2 1
+  (fun i j => if (Nat.eqb i j) then ((fst ic),0) else ((snd ic),0)). *)
+ [ [ (fst ic, 0) ] ,
+   [ (snd ic, 0) ] ].
 
 (** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_1:
@@ -109,6 +147,30 @@ try reflexivity;
 simpl; rewrite ?IHn; nra.
 Qed.
 
+
+Lemma prod_equal: forall {A B} (x y: A*B) x1 x2 y1 y2,
+  x = (x1,x2) ->
+  y = (y1,y2) ->
+  x1=y1 -> x2 = y2 -> x=y.
+Proof.
+destruct x,y; simpl; intros; congruence.
+Qed.
+
+Ltac matrix_ext :=
+  lazymatch goal with 
+  | |- @eq (matrix _ _) _ _ => idtac
+  | _ => fail "matrix_ext must be applied to a goal of the form, @eq (matrix _ _) _ _"
+ end;
+repeat
+(lazymatch goal with |- @eq ?t _ _ =>
+  lazymatch t with 
+  | matrix _ _ => idtac
+  | Tn _ _ => idtac
+  | prod _ unit => idtac
+  end
+ end;
+ eapply prod_equal; [reflexivity | reflexivity | | try apply (eq_refl tt)]).
+
 (** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_iternR:
   forall (ic : R * R) (h : R) (n : nat), 
@@ -120,9 +182,7 @@ induction n.
 - 
 destruct ic; simpl; f_equal; nra.
 -
-pose (m_iternR := mk_matrix 2 1 (fun i _ => if Nat.eqb i 0 then RtoC (fst (iternR ic h n)) 
-  else RtoC (snd (iternR ic h n)) )).
-
+pose (m_iternR := s_vector (iternR ic h n)).
 assert ((Mmult (Mpow 2 (S n) (M h)) (s_vector ic)) = Mmult (M h) m_iternR). { 
  subst m_iternR.
  unfold Mpow; fold Mpow.
@@ -133,16 +193,9 @@ assert ((Mmult (Mpow 2 (S n) (M h)) (s_vector ic)) = Mmult (M h) m_iternR). {
  simpl.
  rewrite ?Rmult_0_r, ?Rplus_0_r, ?Rminus_0_r.
  f_equal.
- apply mk_matrix_ext => i j Hi Hj.
- simpl.
- rewrite ?sum_Sn, ?sum_O.
- destruct i as [|[|]], j; try lia;
+ matrix_ext;
  simpl; symmetry;
- unfold s_vector; simpl;
- repeat rewrite coeff_mat_bij by lia; simpl;
- change plus with Cplus; 
- change mult with Cmult;
- unfold Cmult, Cplus; simpl;
+ eapply prod_equal; try reflexivity; simpl; try lra;
  rewrite ?transition_matrix_equiv_iternR_aux;
  rewrite ?Rmult_0_l, ?Rmult_0_r,  ?Rplus_0_l, ?Rplus_0_r, ?Rminus_0_r;
  auto.
@@ -150,12 +203,7 @@ assert ((Mmult (Mpow 2 (S n) (M h)) (s_vector ic)) = Mmult (M h) m_iternR). {
 clear IHn.
 rewrite H; clear H.
 rewrite step_iternR, surjective_pairing.
-assert (m_iternR = (s_vector (iternR ic h n))). {
-  unfold m_iternR, s_vector.
-  apply mk_matrix_ext => i j Hi Hj.
-  destruct i as [|[|]], j; try lia; auto.
-}
-rewrite H.
+subst m_iternR.
 rewrite transition_matrix_equiv_2.
 rewrite transition_matrix_equiv_1.
 reflexivity.
@@ -165,31 +213,30 @@ Qed.
 Definition lambda_1 (h : R) : C := (1 -0.5 * h^2 , -h * sqrt(2 - h) * 0.5 * sqrt(h + 2)). 
 Definition lambda_2 (h : R) : C := (1 -0.5 * h^2 ,  h * sqrt(2 - h) * 0.5 * sqrt(h + 2)).
 Definition eigenvalue_vector (h : R) : @matrix C 2 1 :=
-mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then lambda_1 h else lambda_2 h)
-.
+ [ [ lambda_1 h ],
+   [ lambda_2 h ] ].
+
 Definition eigenvalue_matrix (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ((Nat.eqb i 0) && (Nat.eqb j 0) ) then lambda_1 h else
-    if ( (Nat.eqb i 1) && (Nat.eqb j 1) ) then lambda_2 h else 0)
-.
+  [ [ lambda_1 h , C0 ] , [ C0 , lambda_2 h ] ].
 
 (** The eigenvectors of the transition matrix *)
 Definition eV_1 (h : R) : @matrix C 2 1 :=
-mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then (0 , -0.5 * sqrt(4 - h^2)) else C1)
-.
+ [ [ (0 , -0.5 * sqrt(4 - h^2)) ] ,
+   [ C1 ] ].
+
 Definition eV_2 (h : R) : @matrix C 2 1 :=
-mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then (0 ,  0.5 * sqrt(4 - h^2)) else C1)
-.
+ [ [ (0 ,  0.5 * sqrt(4 - h^2))] ,
+   [ C1 ] ].
+
 Definition eigenvector_matrix (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then (0 , -0.5 * sqrt(4 - h^2)) else
-    if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then (0 ,  0.5 * sqrt(4 - h^2)) else C1)
-.
+ [ [ (0 , -0.5 * sqrt(4 - h^2)), (0 ,  0.5 * sqrt(4 - h^2)) ],
+   [ C1,                                 C1 ]].
+
 (** We define the Gram matrix MTM for the transition matrix. The eigenvalues of the matrix MTM are the 
     singular values of the transition matrix *)
 Definition MTM (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then (0.25 * h^4 + 1, 0) else
-    if ( negb (Nat.eqb i j) ) then (0.125 * h^3*(2 - h^2),0) else 
-    (0.0625 * h^6 - 0.25*h^4 + 1, 0))
-.
+ [ [  (0.25 * h^4 + 1, 0), (0.125 * h^3*(2 - h^2),0) ],
+   [ (0.125 * h^3*(2 - h^2),0),  (0.0625 * h^6 - 0.25*h^4 + 1, 0)] ].
 
 (** The eigenvalues of MTM *)
 Definition MTM_lambda_1 (h : R) : R := 
@@ -207,12 +254,12 @@ A / (2*(h^4  - 4*h^2 + 4) * (b + 16 * (h^2 - 2)^2))
 .
 
 Definition MTM_eigenvalue_vector (h : R) : @matrix R 2 1 :=
-mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then MTM_lambda_1 h else MTM_lambda_2 h)
-.
+ [ [ MTM_lambda_1 h ],
+   [ MTM_lambda_2 h ] ].
+
 Definition MTM_eigenvalue_matrix (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ((Nat.eqb i 0) && (Nat.eqb j 0) ) then RtoC (MTM_lambda_1 h) else
-    if ( (Nat.eqb i 1) && (Nat.eqb j 1) ) then RtoC (MTM_lambda_2 h) else 0)
-.
+  [ [ RtoC (MTM_lambda_1 h), C0 ], 
+    [ C0,   RtoC (MTM_lambda_2 h) ] ].
 
 (** The eigenvectors of MTM, numbered to match their eigenvalues *)
 Definition MTM_eV_1 (h: R) : @matrix C 2 1 := mk_matrix 2 1 ( fun i _ =>
@@ -227,11 +274,8 @@ Definition MTM_eV_2 (h: R) : @matrix C 2 1 := mk_matrix 2 1 ( fun i _ =>
 (** we use MTM_eigenvector_matrix as the matrix V in e.g. M V = V L , where L is the diagonal matrix of eigenvalues
    and M is the transition matrix.*)
 Definition MTM_eigenvector_matrix (h : R) : @matrix C 2 2 :=
-   mk_matrix 2 2 ( fun i j => if ( (Nat.eqb i 0) && (Nat.eqb j 0)) then (coeff_mat zero (MTM_eV_1 h) 0 0) else
-    if ( (Nat.eqb i 0) && (Nat.eqb j 1)) then (coeff_mat zero (MTM_eV_2 h) 0 0) else
-    if ( (Nat.eqb i 1) && (Nat.eqb j 0)) then (coeff_mat zero (MTM_eV_1 h) 1 0) else
-    (coeff_mat zero (MTM_eV_2 h) 1 0))
-.
+  [ [ coeff_mat zero (MTM_eV_1 h) 0 0,  coeff_mat zero (MTM_eV_2 h) 0 0 ],
+    [ coeff_mat zero (MTM_eV_1 h) 1 0, coeff_mat zero (MTM_eV_2 h) 1 0 ] ].
 
 (* M * V = V * L *)
 Lemma eigens_correct (h : R) :
@@ -240,39 +284,36 @@ Lemma eigens_correct (h : R) :
   Mmult (eigenvector_matrix h) (eigenvalue_matrix h).
 Proof.
 intros.
-apply mk_matrix_ext => i j Hi Hj.
-replace (Init.Nat.pred 2) with (S 0) by lia.
-repeat rewrite sum_Sn.
-repeat rewrite sum_O.
-unfold M, eigenvector_matrix, eigenvalue_matrix, 
-  eV_1, eV_2, lambda_1, lambda_2, matrix_lemmas.C1.
-repeat rewrite coeff_mat_bij.
-all: try lia.
 assert (sqrt (2-h) * sqrt (h+2) = sqrt (4-h*h))
   by (rewrite <- sqrt_mult by lra; f_equal; lra).
 pose proof (sqrt_def (4-h*h) ltac:(nra)).
-destruct i as [|[|]], j as [|[|]]; try lia;
+matrix_ext.
+all: change (Init.Nat.pred 2) with (S 0);
+repeat rewrite sum_Sn;
+repeat rewrite sum_O;
+unfold M, eigenvector_matrix, eigenvalue_matrix, 
+  eV_1, eV_2, lambda_1, lambda_2, matrix_lemmas.C1,
+ coeff_mat; simpl.
+all:
 unfold mult, plus; simpl;
 rewrite ?mult_aux1, ?mult_aux2, ?mult_aux3;
 rewrite ?Cmult_0_r, ?Cplus_0_r;
 unfold Cplus; simpl;
 rewrite ?Rmult_0_l, ?Rmult_0_r, ?Rmult_1_r, ?Rplus_0_l, ?Rplus_0_r, ?Rminus_0_l;
 rewrite <- H0 in *;
-f_equal; nra.
+f_equal; try nra.
 Qed.
 
 Lemma MTM_aux  (h : R) :
   Mmult (matrix_conj_transpose _ _ (M h)) (M h) = MTM h.
 Proof.
 unfold MTM.
-apply mk_matrix_ext => i j Hi Hj.
-replace (Init.Nat.pred 2) with (S 0) by lia.
-repeat rewrite sum_Sn.
-repeat rewrite sum_O.
-unfold M, matrix_conj_transpose, Cconj.
-repeat rewrite coeff_mat_bij by lia.
-destruct i as [|[|]], j as [|[|]]; try lia;
-simpl;
+matrix_ext;
+change (Init.Nat.pred 2) with (S 0);
+rewrite ?sum_Sn, ?sum_O;
+unfold M, matrix_conj_transpose, Cconj;
+repeat rewrite coeff_mat_bij by lia;
+unfold coeff_mat; simpl;
 unfold plus, mult; simpl;
 cbv [Cmult Cplus]; simpl;
 f_equal; nra.
@@ -308,35 +349,131 @@ Theorem MTM_eigens_correct (h : R) :
   Mmult (MTM_eigenvector_matrix h) (MTM_eigenvalue_matrix h).
 Proof.
 intros.
-apply mk_matrix_ext => i j Hi Hj.
-replace (Init.Nat.pred 2) with (S 0) by lia.
-repeat rewrite sum_Sn.
-repeat rewrite sum_O.
-unfold MTM, MTM_eigenvector_matrix, MTM_eigenvalue_matrix.
-repeat rewrite coeff_mat_bij.
-all: try lia.
-simpl. rewrite ?andb_true_r, ?andb_false_r.
-change mult with Cmult.
-change plus with Cplus.
-unfold RtoC.
-cbv [Cplus Cmult]; simpl.
-rewrite ?Rmult_0_l, ?Rmult_0_r.
-unfold C0.
+matrix_ext;
+change (Init.Nat.pred 2) with (S 0);
+rewrite ?sum_Sn, ?sum_O;
+unfold MTM, MTM_eigenvector_matrix, MTM_eigenvalue_matrix;
+repeat rewrite coeff_mat_bij;
+unfold coeff_mat; simpl;
+change mult with Cmult;
+change plus with Cplus;
+unfold RtoC;
+cbv [Cplus Cmult]; simpl;
+rewrite ?Rmult_0_l, ?Rmult_0_r;
+unfold C0;
 rewrite ?Rminus_0_r, ?Rplus_0_r, ?Rmult_1_r.
-simpl.
+-
 f_equal.
-2: destruct i as [|[|]]; [ | | lia]; (destruct j as [|[|]]; [ | | lia]); simpl; nra.
-unfold MTM_lambda_1, MTM_lambda_2, MTM_eV_1.
+unfold MTM_lambda_1, MTM_eV_1.
+rewrite <- Rabs_mult.
+repeat match goal with |-context [Rabs( (?a / ?b) * (?a / ?b)) ] =>
+replace ( (a / b) * (a / b)) with ( (a/b)^2) by nra
+end.
+repeat rewrite Rabs_sqr_le.
+repeat rewrite pow2_abs.
 apply Rminus_diag_uniq.
-destruct i as [|[|]]; [ | | lia]; (destruct j as [|[|]]; [ | | lia]); simpl;
-rewrite ?Rmult_0_l, ?Rmult_0_r, ?Rminus_0_r, ?Rplus_0_r, ?Rmult_1_r,
-  <- ?Rabs_mult, <- ?(sqr_def (_/_)), ?Rabs_sqr_le, ?pow2_abs;
-replace (sqrt (h ^ 6 + 64))
-with (sqrt (h * (h * (h * (h * (h * h)))) + 64)) by (f_equal; nra);
-(field_simplify;
- [rewrite ?pow2'_sqrt by nra; 
-  field_simplify; [ apply div_eq_0; [ | nra] | ] |];
- repeat split; interval with ( i_bisect h, i_taylor h, i_degree 3)).
+field_simplify.
+repeat rewrite pow2_sqrt; try nra.
+field_simplify.
+replace (sqrt (h * (h * (h * (h * (h * h)))) + 64))
+with (sqrt (h ^ 6 + 64)).
+repeat rewrite Rmult_assoc.
+repeat rewrite sqrt_def.
+field_simplify.
+apply div_eq_0.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 7).
+set (x := sqrt _). nra.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+all: try repeat split; try interval with ( i_bisect h, i_taylor h, i_degree 3).
+f_equal; nra.
+-
+f_equal.
+unfold MTM_lambda_1, MTM_lambda_2.
+rewrite <- Rabs_mult.
+repeat match goal with |-context [Rabs( (?a / ?b) * (?a / ?b)) ] =>
+replace ( (a / b) * (a / b)) with ( (a/b)^2) by nra
+end.
+repeat rewrite Rabs_sqr_le.
+repeat rewrite pow2_abs.
+apply Rminus_diag_uniq.
+field_simplify.
+repeat rewrite pow2_sqrt; try nra.
+field_simplify.
+replace (sqrt (h * (h * (h * (h * (h * h)))) + 64))
+with (sqrt (h ^ 6 + 64)).
+repeat rewrite Rmult_assoc.
+repeat rewrite sqrt_def.
+field_simplify.
+apply div_eq_0.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+set (x := sqrt _). nra.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+all: try repeat split; try interval with ( i_bisect h, i_taylor h, i_degree 3).
+f_equal; nra.
+-
+f_equal.
+unfold MTM_lambda_1, MTM_lambda_2.
+rewrite <- Rabs_mult.
+repeat match goal with |-context [Rabs( (?a / ?b) * (?a / ?b)) ] =>
+replace ( (a / b) * (a / b)) with ( (a/b)^2) by nra
+end.
+repeat rewrite Rabs_sqr_le.
+repeat rewrite pow2_abs.
+apply Rminus_diag_uniq.
+field_simplify.
+repeat rewrite pow2_sqrt; try nra.
+field_simplify.
+replace (sqrt (h * (h * (h * (h * (h * h)))) + 64))
+with (sqrt (h ^ 6 + 64)).
+repeat rewrite Rmult_assoc.
+repeat rewrite sqrt_def.
+field_simplify.
+apply div_eq_0.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+set (x := sqrt _). nra.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+all: try repeat split; try interval with ( i_bisect h, i_taylor h, i_degree 3).
+f_equal; nra.
+-
+f_equal.
+unfold MTM_lambda_1, MTM_lambda_2.
+rewrite <- Rabs_mult.
+repeat match goal with |-context [Rabs( (?a / ?b) * (?a / ?b)) ] =>
+replace ( (a / b) * (a / b)) with ( (a/b)^2) by nra
+end.
+repeat rewrite Rabs_sqr_le.
+repeat rewrite pow2_abs.
+apply Rminus_diag_uniq.
+field_simplify.
+repeat rewrite pow2_sqrt; try nra.
+field_simplify.
+replace (sqrt (h * (h * (h * (h * (h * h)))) + 64))
+with (sqrt (h ^ 6 + 64)).
+repeat rewrite Rmult_assoc.
+repeat rewrite sqrt_def.
+field_simplify.
+apply div_eq_0.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+set (x := sqrt _). nra.
+set (x := sqrt _).
+set (y := sqrt _).
+interval with ( i_bisect h, i_taylor h, i_degree 3).
+all: try repeat split; try interval with ( i_bisect h, i_taylor h, i_degree 3).
+f_equal; nra.
 Qed.
 
 Lemma Cmod_RtoC (a : R): 
@@ -693,7 +830,7 @@ assert (Hj2: (j = 1)%nat \/ (j <> 1)%nat) by lia; destruct Hj2; subst; simpl.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 unfold Cconj,RtoC, MTM_eV_2; simpl.
 change mult with Cmult.
 change plus with Cplus.
@@ -740,7 +877,7 @@ assert (j = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 unfold Cconj,RtoC, MTM_eV_1; simpl.
 change mult with Cmult.
 change plus with Cplus.
@@ -786,7 +923,7 @@ change plus with Cplus.
 change one with C1.
 change zero with C0.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 cbv [Cplus Cmult RtoC C0 fst snd].
 f_equal; field_simplify; try nra.
 repeat rewrite pow2_sqrt.
@@ -824,7 +961,7 @@ assert (j = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 unfold Cconj,RtoC, MTM_eV_1; simpl.
 change mult with Cmult.
 change plus with Cplus.
@@ -869,7 +1006,7 @@ assert (Hj2: (j = 1)%nat \/ (j <> 1)%nat) by lia; destruct Hj2; subst; simpl.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 unfold Cconj,RtoC, MTM_eV_1, MTM_eV_2; simpl.
 change mult with Cmult.
 change plus with Cplus.
@@ -897,7 +1034,7 @@ assert (j = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 unfold Cconj,RtoC, MTM_eV_1, MTM_eV_2; simpl.
 change mult with Cmult.
 change plus with Cplus.
@@ -930,7 +1067,7 @@ assert (i = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 unfold Cconj,RtoC, MTM_eV_1, MTM_eV_2; simpl.
 change mult with Cmult.
 change plus with Cplus.
@@ -976,7 +1113,7 @@ assert (j = 0)%nat by lia; subst.
 repeat rewrite sum_Sn.
 repeat rewrite sum_O.
 repeat rewrite coeff_mat_bij; try lia.
-simpl.
+unfold coeff_mat; simpl.
 unfold Cconj,RtoC, MTM_eV_1, MTM_eV_2; simpl.
 change mult with Cmult.
 change plus with Cplus.
@@ -1030,15 +1167,10 @@ apply MTM_eigenvectors_orthogonal_1; auto.
 -
 apply MTM_eigenvectors_orthogonal_2; auto.
 -
-unfold diag_pred, MTM_eigenvalue_matrix.
-intros; rewrite coeff_mat_bij; try lia.
-destruct i as [|[|]]; try lia.
-+ 
-destruct j; try lia.
-reflexivity.
-+
-simpl.
-destruct j as [|[|]]; try lia.
+unfold diag_pred, MTM_eigenvalue_matrix; unfold coeff_mat;
+intros; simpl; try lia.
+destruct i as [|[|]]; try lia;
+destruct j as [|[|]]; try lia;
 reflexivity.
 -
 intros.
@@ -1050,8 +1182,8 @@ exists (exist (fun i:nat => (i < 2)%nat) 1%nat H); simpl; repeat split.
 +
 rewrite sqrt_square; try apply MTM_lambda_2_pos_2; auto.
 +
-unfold MTM_eigenvalue_matrix.
-destruct i as [|[|]]; try lia; simpl; rewrite coeff_mat_bij by lia; simpl; auto.
+unfold MTM_eigenvalue_matrix, coeff_mat; simpl.
+destruct i as [|[|]]; try lia; reflexivity.
 +
 destruct i as [|[|]]; try lia; simpl.
 apply MTM_lambda_1_pos_2; auto.
