@@ -2,7 +2,6 @@
   of a simple harmonic oscillator.
  Copyright (C) 2021-2022  Ariel Eileen Kellison.
 *)
-
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Bool Arith.Arith.
 Require Import real_lemmas real_model matrix_lemmas.
@@ -101,7 +100,6 @@ intros. subst Mx. destruct ic. cbv.
 f_equal; nra.
 Qed.
 
-
 Lemma transition_matrix_equiv_iternR_aux:
   forall (h : R) (n : nat) i j, 
 snd (coeff_mat zero (Mpow 2 n (M h)) i j) = 0.
@@ -125,31 +123,30 @@ destruct ic; simpl; f_equal; nra.
 pose (m_iternR := mk_matrix 2 1 (fun i _ => if Nat.eqb i 0 then RtoC (fst (iternR ic h n)) 
   else RtoC (snd (iternR ic h n)) )).
 
-assert ((Mmult (Mpow 2 (S n) (M h)) (s_vector ic)) = Mmult (M h) m_iternR). 
-+ 
-subst m_iternR.
-unfold Mpow; fold Mpow.
-symmetry. 
-rewrite <- Mpow_comm.
-rewrite <- Mmult_assoc.
-rewrite <- IHn; clear IHn.
-simpl.
-rewrite ?Rmult_0_r, ?Rplus_0_r, ?Rminus_0_r.
-f_equal.
-apply mk_matrix_ext => i j Hi Hj.
-simpl.
-rewrite ?sum_Sn, ?sum_O.
-destruct i as [|[|]], j; try lia;
+assert ((Mmult (Mpow 2 (S n) (M h)) (s_vector ic)) = Mmult (M h) m_iternR). { 
+ subst m_iternR.
+ unfold Mpow; fold Mpow.
+ symmetry.
+ rewrite <- Mpow_comm.
+ rewrite <- Mmult_assoc.
+ rewrite <- IHn; clear IHn.
+ simpl.
+ rewrite ?Rmult_0_r, ?Rplus_0_r, ?Rminus_0_r.
+ f_equal.
+ apply mk_matrix_ext => i j Hi Hj.
+ simpl.
+ rewrite ?sum_Sn, ?sum_O.
+ destruct i as [|[|]], j; try lia;
  simpl; symmetry;
-unfold s_vector; simpl;
-repeat rewrite coeff_mat_bij by lia; simpl;
-change plus with Cplus; 
-change mult with Cmult;
-unfold Cmult, Cplus; simpl;
-rewrite ?transition_matrix_equiv_iternR_aux;
-rewrite ?Rmult_0_l, ?Rmult_0_r,  ?Rplus_0_l, ?Rplus_0_r, ?Rminus_0_r;
-auto.
-+
+ unfold s_vector; simpl;
+ repeat rewrite coeff_mat_bij by lia; simpl;
+ change plus with Cplus; 
+ change mult with Cmult;
+ unfold Cmult, Cplus; simpl;
+ rewrite ?transition_matrix_equiv_iternR_aux;
+ rewrite ?Rmult_0_l, ?Rmult_0_r,  ?Rplus_0_l, ?Rplus_0_r, ?Rminus_0_r;
+ auto.
+}
 clear IHn.
 rewrite H; clear H.
 rewrite step_iternR, surjective_pairing.
@@ -165,10 +162,8 @@ reflexivity.
 Qed.
 
 (** The eigenvalues of the transition matrix *)
-Definition lambda_1 (h : R) : C := (1 -0.5 * h^2 , -h * sqrt(2 - h) * 0.5 * sqrt(h + 2))
-. 
-Definition lambda_2 (h : R) : C := (1 -0.5 * h^2 ,  h * sqrt(2 - h) * 0.5 * sqrt(h + 2))
-.
+Definition lambda_1 (h : R) : C := (1 -0.5 * h^2 , -h * sqrt(2 - h) * 0.5 * sqrt(h + 2)). 
+Definition lambda_2 (h : R) : C := (1 -0.5 * h^2 ,  h * sqrt(2 - h) * 0.5 * sqrt(h + 2)).
 Definition eigenvalue_vector (h : R) : @matrix C 2 1 :=
 mk_matrix 2 1 ( fun i j => if ((Nat.eqb i j)) then lambda_1 h else lambda_2 h)
 .
@@ -355,14 +350,6 @@ rewrite Rplus_0_r.
 apply sqrt_pow2.
 Qed.
 
-Lemma eq_sqrt_eq (x y : R) :
-  x = y -> sqrt x = sqrt y.
-Proof.
-intros.
-subst.
-nra.
-Qed.
-
 Lemma sv_vector_implies (A V Λ : matrix 2 2):
    is_orthogonal_matrix 2 V ->
    diag_pred 2 Λ ->
@@ -535,7 +522,7 @@ assert (vec_two_norm 2 (Mmult A x) = σ * vec_two_norm 2 x ).
 *
 etransitivity.
 unfold vec_two_norm.
-apply eq_sqrt_eq.
+apply f_equal.
 apply Ceq_Cmod_eq.
 repeat rewrite tranpose_rewrite.
 rewrite <- Mmult_assoc.
@@ -551,7 +538,7 @@ unfold vec_two_norm.
 
 rewrite <- (sqrt_pow2 σ) by auto.
 rewrite <- sqrt_mult; try nra; try apply Cmod_ge_0.
-apply eq_sqrt_eq.
+apply f_equal.
 rewrite <- (Cmod_RtoC (σ^2)) by nra.
 rewrite <- Cmod_mult.
 apply Ceq_Cmod_eq.
@@ -1045,27 +1032,14 @@ apply MTM_eigenvectors_orthogonal_2; auto.
 -
 unfold diag_pred, MTM_eigenvalue_matrix.
 intros; rewrite coeff_mat_bij; try lia.
-assert (Hi: (i = 0)%nat \/ (i <> 0)%nat) by lia; destruct Hi.
+destruct i as [|[|]]; try lia.
 + 
-subst.
-assert ((j =? 0) = false).
-destruct H as (H & A & B).
-apply Nat.eqb_neq; auto.
-rewrite H0. unfold RtoC; auto.
+destruct j; try lia.
+reflexivity.
 +
-apply Nat.eqb_neq in H0. 
-rewrite H0. 
 simpl.
-assert (Hi: (i = 1)%nat \/ (i <> 1)%nat) by lia; destruct Hi.
-*
-subst.
-assert ((j =? 1) = false).
-destruct H as (H & A & B).
-apply Nat.eqb_neq; auto.
-rewrite H1. unfold RtoC; auto.
-*
-apply Nat.eqb_neq in H1.
-rewrite H1. unfold RtoC; auto.
+destruct j as [|[|]]; try lia.
+reflexivity.
 -
 intros.
 rewrite Rmult_1_r.
@@ -1077,30 +1051,21 @@ exists (exist (fun i:nat => (i < 2)%nat) 1%nat H); simpl; repeat split.
 rewrite sqrt_square; try apply MTM_lambda_2_pos_2; auto.
 +
 unfold MTM_eigenvalue_matrix.
-assert (Hi: (i = 1)%nat \/ (i = 0)%nat) by lia; destruct Hi.
-*
-subst; simpl.
-rewrite coeff_mat_bij; try lia; simpl; auto.
-* 
-subst; simpl.
-rewrite coeff_mat_bij; try lia; simpl; auto.
+destruct i as [|[|]]; try lia; simpl; rewrite coeff_mat_bij by lia; simpl; auto.
 +
-assert (Hi: (i = 1)%nat \/ (i = 0)%nat) by lia; destruct Hi;subst; simpl;
-try (apply MTM_lambda_2_pos_2; auto); try
-(apply MTM_lambda_1_pos_2; auto).
+destruct i as [|[|]]; try lia; simpl.
+apply MTM_lambda_1_pos_2; auto.
+apply MTM_lambda_2_pos_2; auto.
 +
-assert (Hi: (i = 1)%nat \/ (i = 0)%nat) by lia; destruct Hi;subst; simpl.
-*
+destruct i as [|[|]]; try lia; simpl;
 rewrite sqrt_square; try apply MTM_lambda_2_pos_2; auto.
-apply Rle_refl.
-*
-rewrite sqrt_square; try apply MTM_lambda_2_pos_2; auto.
-apply eig_MTM_le; auto.
+* apply eig_MTM_le; auto.
+* apply Rle_refl.
 Qed.
 
 Definition σ (h: R) := sqrt (MTM_lambda_2 h).
 
-Definition two_norm_M (h : R | 0 < h < 1.41):=
+Definition two_norm_M (h : R | 0 < h < 1.41) :=
   proj1_sig (exist (two_norm_pred 2 (M (proj1_sig h))) 
                           (sqrt (MTM_lambda_2 (proj1_sig h)))
                           (two_norm_pred_eq h)).
@@ -1108,10 +1073,7 @@ Definition two_norm_M (h : R | 0 < h < 1.41):=
 Lemma sigma_eq_two_norm_M:
   forall h, σ (proj1_sig h) = two_norm_M h.
 Proof.
-intros.
-unfold two_norm_M.
-destruct h; simpl.
-reflexivity.
+destruct h; reflexivity.
 Qed.
 
 (* 1.000003814704542914881812976091168820858001708984375 *)
@@ -1225,68 +1187,57 @@ Lemma iternR_bound :
 Proof.
 intros.
 unfold σb.
-eapply Rle_trans.
+apply Rle_trans with (σb ^ nf * vec_two_norm_2d (s_vector (p, q))).
+-
 pose proof matrix_bound p q nf.
 simpl in H0.
-pose proof transition_matrix_equiv_iternR (p, q) h nf.
 set (Mx:= Mmult (Mpow 2 nf (M h)) (s_vector (p, q))) in *.
-assert (vec_two_norm_2d Mx = ∥ iternR (p, q) h nf ∥ ).
-subst Mx.
-rewrite <- H1.
-unfold vec_two_norm_2d, Rprod_norm.
-unfold fst at 1.
-unfold snd at 1.
-unfold fst at 1.
-unfold snd at 1.
-unfold Cmod.
-repeat rewrite pow2_sqrt; auto; try apply sqr_plus_pos.
-(*pose proof transition_matrix_equiv_iternR_aux h nf as (HA & HB & HC & HD).*)
-assert (@snd R R
+assert (vec_two_norm_2d Mx = ∥ iternR (p, q) h nf ∥ ). {
+ subst Mx.
+ rewrite <- transition_matrix_equiv_iternR.
+ unfold vec_two_norm_2d, Rprod_norm.
+ unfold fst, snd, Cmod.
+ repeat rewrite pow2_sqrt by apply sqr_plus_pos.
+ assert (@snd R R
         (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 0
-           0) = 0).
-- 
-unfold Mmult.
-rewrite coeff_mat_bij; try lia.
-simpl.
-change (@zero C_Ring) with (@zero C_AbelianGroup).
-repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
-  change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
-end.
-rewrite ? transition_matrix_equiv_iternR_aux.
-nra.
--
+           0) = 0). {
+  unfold Mmult.
+  rewrite coeff_mat_bij; try lia.
+  simpl.
+  change (@zero C_Ring) with (@zero C_AbelianGroup).
+  repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
+     change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
+  end.
+  rewrite ? transition_matrix_equiv_iternR_aux.
+  nra.
+ }
 assert (@snd R R
         (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 1
-           0) = 0).
-+
-unfold Mmult.
-rewrite coeff_mat_bij; try lia.
-simpl.
-change (@zero C_Ring) with (@zero C_AbelianGroup).
-repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
-  change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
-end.
-rewrite ? transition_matrix_equiv_iternR_aux.
-nra.
-+
-rewrite H2; clear H2.
-rewrite H3; clear H3.
-rewrite pow_i; try lia.
-repeat rewrite Rplus_0_r; auto.
--
-repeat rewrite sqrt_pow2; auto.
-rewrite <- H2.
+           0) = 0). {
+  unfold Mmult.
+  rewrite coeff_mat_bij; try lia.
+  simpl.
+  change (@zero C_Ring) with (@zero C_AbelianGroup).
+  repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
+    change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
+  end.
+  rewrite ? transition_matrix_equiv_iternR_aux.
+  nra.
+ }
+ rewrite H1; clear H1.
+ rewrite H2; clear H2.
+ rewrite pow_i by lia.
+ repeat rewrite Rplus_0_r; auto.
+}
+clearbody Mx.
+rewrite <- H1.
 apply H0.
 -
-eapply Rmult_le_compat_l. 
+apply Rmult_le_compat_l. 
 apply pow_le; try nra.
 unfold vec_two_norm_2d, Rprod_norm.
-unfold fst at 1.
-unfold snd at 1.
-unfold fst at 1.
-unfold snd at 1.
-unfold Cmod.
-repeat rewrite pow2_sqrt; auto; try apply sqr_plus_pos.
+unfold fst, snd, Cmod.
+rewrite !pow2_sqrt by apply sqr_plus_pos.
 simpl.
 apply Req_le.
 f_equal; nra.
@@ -1298,12 +1249,9 @@ Lemma method_norm_bound :
 Proof.
 intros.
 assert (H : (1 <= 1000)%nat) by (simpl; lia).
-pose proof iternR_bound p q 1 H.
-unfold iternR in H0.
 eapply Rle_trans.
-apply H0.
+apply (iternR_bound p q 1 H).
 apply Rmult_le_compat_r; try apply   Rnorm_pos.
-rewrite pow_1.
 lra.
 Qed.
 
@@ -1314,13 +1262,11 @@ Lemma iternR_bound_max_step :
   ∥iternR (p, q) h nf∥ <= 1.003822 * ∥(p,q)∥.
 Proof.
 intros.
-pose proof iternR_bound p q nf H.
-unfold σb in H0.
 eapply Rle_trans.
-apply H0.
+apply (iternR_bound p q nf H).
 eapply Rmult_le_compat_r; try apply Rnorm_pos.
 eapply Rle_trans.
-apply Rle_pow; try nra; apply H.
+apply Rle_pow. unfold σb. lra. eassumption.
 interval with (i_prec 256).
 Qed.
 
