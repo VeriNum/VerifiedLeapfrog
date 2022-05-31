@@ -50,8 +50,8 @@ Definition max_sv_pred (n: nat ) (A : @matrix C n n) (σmax : R):=
       /\ diag_pred n Λ   
       /\ exists (i : nat | (i < n)%nat),  (@coeff_mat C n n Hierarchy.zero Λ (proj1_sig i) (proj1_sig i) ) = λmax
       /\ (forall (i : nat), (i < n)%nat ->
-         (coeff_mat zero Λ i i) = RtoC (fst (coeff_mat zero Λ i i)) (* elements of Λ are real *)
-         /\ 0 <= fst (coeff_mat zero Λ i i) <= λmax) (* λmax is positive and max in Λ *)
+         (coeff_mat zero Λ i i) = RtoC (Re (coeff_mat zero Λ i i)) (* elements of Λ are real *)
+         /\ 0 <= Re (coeff_mat zero Λ i i) <= λmax) (* λmax is positive and max in Λ *)
 .
 
 Definition basis_pred (n: nat ) (A : @matrix C n n) (u : @matrix C n 1):= 
@@ -63,12 +63,13 @@ Definition basis_pred (n: nat ) (A : @matrix C n n) (u : @matrix C n 1):=
   exists (a: @matrix C n 1),  u = Mmult V a
 .
 
-Definition two_norm_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
+Definition two_norm_bound (n: nat ) (A : @matrix C n n) (σ : R):=  
   forall (u : @matrix C n 1), 
-  vec_two_norm n (Mmult A u) <=  σ * vec_two_norm n u 
-  /\ ~(exists (s : R), forall (x : matrix n 1), 
-      vec_two_norm n (Mmult A x) <= s * vec_two_norm n x < σ * vec_two_norm n x) (* σ is inf *)
-.
+  vec_two_norm n (Mmult A u) <=  σ * vec_two_norm n u.
+
+Definition two_norm_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
+  two_norm_bound n A σ 
+ /\ ~ exists (s : R), two_norm_bound n A s /\ s < σ.
 
 (** Any vector can be written as the sum of the eigenvectors
   of a Hermitian matrix. We need this in order to satisfy the 
@@ -106,8 +107,7 @@ reflexivity.
 Abort.
 
 (** arbitrary solution vector *)
-Definition s_vector (ic: R * R) : @matrix C 2 1 := (* @mk_matrix C 2 1
-  (fun i j => if (Nat.eqb i j) then ((fst ic),0) else ((snd ic),0)). *)
+Definition s_vector (ic: R * R) : @matrix C 2 1 := 
  [ [ (fst ic, 0) ] ,
    [ (snd ic, 0) ] ].
 
@@ -414,7 +414,7 @@ Cmod (RtoC a) = a.
 Proof.
 unfold RtoC.
 unfold Cmod, fst, snd.
-rewrite pow_i; try lia.
+rewrite pow_i by lia.
 rewrite Rplus_0_r.
 apply sqrt_pow2.
 Qed.
@@ -455,13 +455,79 @@ rewrite ?mult_zero_l, ?mult_zero_r, ?plus_zero_l, ?plus_zero_r;
 apply Cmult_comm.
 Qed.
 
+
+Lemma vec_two_norm_nonneg: forall n v, 0 <= vec_two_norm n v.
+Proof.
+intros.
+apply sqrt_pos.
+Qed.
+
+Lemma orthgonal_matrix_no_zero_columns:
+ forall (V: matrix 2 2),
+  is_orthogonal_matrix 2 V ->
+  forall i, 
+  (i < 2)%nat ->
+ 0 < vec_two_norm 2 [[coeff_mat zero V 0 i], [coeff_mat zero V 1 i]].
+Proof.
+intros V H2 i Hi.
+assert (0 <> vec_two_norm 2 [ [ coeff_mat zero V 0 i ] , [ coeff_mat zero V 1 i ] ]).
+2:{ 
+  pose proof (vec_two_norm_nonneg 2  [[coeff_mat zero V 0 i], [coeff_mat zero V 1 i]]).
+  lra. 
+}
+intro.
+assert (   [[coeff_mat zero V 0 i], [coeff_mat zero V 1 i]] = [ [C0], [C0] ]). {
+ clear - H.
+ set (a := coeff_mat _ _ _ _) in *. clearbody a.
+ set (b := coeff_mat _ _ _ _) in *. clearbody b.
+ symmetry in H.
+ apply sqrt_eq_0 in H; [ | apply sqrt_pos].
+ unfold Cmod in H; simpl in H.
+ unfold coeff_mat in H; simpl in H.
+ apply sqrt_eq_0 in H; [ | nra].
+ destruct a as [ar ai], b as [br bi]. simpl in *. unfold C0.
+ rewrite ?Rmult_1_r, ?Rplus_0_r in H.
+ ring_simplify in H.
+ replace (ar^4) with (ar^2 * ar^2) in H by nra.
+ replace (br^4) with (br^2 * br^2) in H by nra.
+ replace (ai^4) with (ai^2 * ai^2) in H by nra.
+ replace (bi^4) with (bi^2 * bi^2) in H by nra.
+ assert (ar^2=0 /\ ai^2=0 /\ br^2=0 /\ bi^2=0)
+  by (repeat split; nra).
+ clear H; destruct H0 as [? [? [? ?]]].
+ repeat f_equal; nra.
+}
+clear H.
+injection H0; clear H0; intros.
+destruct H2.
+assert (forall m1 m2 : @matrix C 2 2, m1=m2 -> 
+   coeff_mat zero m1 0 0 = coeff_mat zero m2 0 0 /\
+   coeff_mat zero m1 0 1 = coeff_mat zero m2 0 1 /\
+   coeff_mat zero m1 1 0 = coeff_mat zero m2 1 0 /\
+   coeff_mat zero m1 1 1 = coeff_mat zero m2 1 1) 
+    by (intros; subst; auto).
+apply H3 in H1; destruct H1 as [H1a [H1b [H1c H1d]]].
+apply H3 in H2; destruct H2 as [H2a [H2b [H2c H2d]]].
+clear H3.
+set (u := @coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup)
+        (@Mone C_Ring 2)) in *.
+hnf in u. simpl in u. subst u.
+simpl in *.
+repeat match goal with H: _ = zero |- _ => clear H end.
+repeat match goal with H: _ = one |- _ => injection H; clear H; intros end.
+unfold C0 in *.
+destruct i as [|[|]]; [ | | lia]; clear Hi;
+rewrite H,H0 in *; clear H H0; simpl in *; lra.
+Qed.
+
 (* if σ^2 is the largest singular value of A ∈ M(C^2) then σ is the two-norm of A *)
 Theorem max_sv_pred_implies_two_norm_pred   (A : @matrix C 2 2) (σ : R):
   max_sv_pred 2 A σ  ->  two_norm_pred 2 A σ.
 Proof.
 intros.
 unfold two_norm_pred. split.
-- 
+-
+intro.
 destruct H as ( H0 & V & Λ & H1 & H2 & H3 & H4 & H5 & H6).
 assert (exists a : matrix 2 1, u = Mmult V a)
   by (apply  (vectors_in_basis 2 u A V Λ); repeat (split; auto)).
@@ -576,8 +642,7 @@ rewrite H3.
 rewrite ?@mult_zero_l, ?@mult_zero_r, ?@plus_zero_l, ?@plus_zero_r.
 auto.
 -
-intro.
-destruct H0 as (s & H0).
+intros [s [H0 H0']].
 unfold max_sv_pred in H.
 destruct H as (Hs & V & Λ & H1 & H2 & H3 & H4 & H5 & H6).
 destruct H4 as (i & Hi).
@@ -587,8 +652,7 @@ set (x:= mk_matrix 2 1
 assert (σ * vec_two_norm 2 x <= s * vec_two_norm 2 x).
 +
 specialize (H0 x).
-assert (vec_two_norm 2 (Mmult A x) = σ * vec_two_norm 2 x ).
-*
+assert (vec_two_norm 2 (Mmult A x) = σ * vec_two_norm 2 x ); [ | lra].
 etransitivity.
 unfold vec_two_norm.
 apply f_equal.
@@ -638,19 +702,11 @@ rewrite <- Cmult_comm.
 rewrite <- Cmult_assoc.
 f_equal.
 rewrite Cmult_comm; auto.
-*
-rewrite H in H0.
-destruct H0; auto.
-+ 
-specialize (H0 x).
-destruct H0.
-assert (HF: s * vec_two_norm 2 x < s * vec_two_norm 2 x).
-*
-eapply Rlt_le_trans.
-apply H4.
-auto.
-*
-apply Rlt_irrefl in HF; auto.  
++
+assert (0 < vec_two_norm 2 x); [ | nra].
+change (0 < vec_two_norm 2 [ [ coeff_mat zero V 0 i ] , [ coeff_mat zero V 1 i ] ]).
+clear - H2 Hi.
+eapply orthgonal_matrix_no_zero_columns; eauto.
 Qed.
 
 Lemma MTM_lambda_2_pos (h : R | 0 < h < 1.4): 
@@ -1162,7 +1218,6 @@ Proof.
 intros.
 pose proof two_norm_pred_eq h.
 unfold two_norm_pred in H.
-specialize (H y).
 destruct H as (H1 & H2).
 unfold two_norm_M. simpl.
 repeat rewrite <- two_norms_eq_2d.
