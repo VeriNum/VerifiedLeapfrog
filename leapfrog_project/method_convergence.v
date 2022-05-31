@@ -1,13 +1,13 @@
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Arith.Arith.
-Require Import real_lemmas real_model.
+Require Import real_lemmas real_model harmonic_oscillator_system
+  local_discretization_error global_discretization_error.
 From Coquelicot Require Import Coquelicot.
 Set Bullet Behavior "Strict Subproofs". 
 
 Require Import IntervalFlocq3.Tactic.
 
 Open Scope R_scope.
-
 
 
 Lemma method_norm_bounded_aux_p : 
@@ -156,7 +156,7 @@ Lemma global_truncation_error_sum :
   forall t0 T: R,
   forall h : R, 
   0 < ω*h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0  -> 
+  Harmonic_oscillator_system 1 p q  -> 
   forall n : nat, 
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
@@ -193,7 +193,7 @@ apply Rle_minus_l_2.
 rewrite Rminus_eq_0.
 apply Rle_mult; try nra. apply pos_INR.
 clear H0.
-pose proof local_truncation_error p q t0 (t0 + INR n * h) h HBND2 HSY as H0.
+pose proof local_discretization_error p q t0 (t0 + INR n * h) h HBND2 HSY as H0.
 fold phi1 in H0.
 eapply Rle_trans.
 eapply Rplus_le_compat_r.
@@ -230,7 +230,7 @@ Lemma global_truncation_error_aux:
   forall t0 T: R,
   forall h : R, 
   0 < ω*h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 -> 
+  Harmonic_oscillator_system 1 p q -> 
   forall n : nat, 
   let tn:= t0 + INR n * h  in 
   tn <= T -> 
@@ -262,7 +262,7 @@ Lemma global_truncation_error:
   forall t0 T : R,
   forall h : R, 
   0 < ω*h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 -> 
+  Harmonic_oscillator_system 1 p q -> 
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
@@ -287,7 +287,7 @@ Lemma convergence_aux:
   forall h : R, 
   0 <= t0 -> 
   0 < ω*h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 -> 
+  Harmonic_oscillator_system 1 p q -> 
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
@@ -318,7 +318,7 @@ Theorem method_convergence:
   forall h : R, 
   0 <= t0 -> 
   0 < ω*h <= 2 -> 
-  Harmonic_oscillator_system p q 1 t0 -> 
+  Harmonic_oscillator_system 1 p q -> 
   forall n : nat, 
   let tn := t0 + INR n * h in
   tn <= T -> 
