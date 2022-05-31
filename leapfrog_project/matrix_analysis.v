@@ -15,6 +15,29 @@ Set Bullet Behavior "Strict Subproofs".
 
 Require Import Coq.Logic.FunctionalExtensionality.
 
+Lemma prod_equal: forall {A B} (x y: A*B) x1 x2 y1 y2,
+  x = (x1,x2) ->
+  y = (y1,y2) ->
+  x1=y1 -> x2 = y2 -> x=y.
+Proof.
+destruct x,y; simpl; intros; congruence.
+Qed.
+
+Ltac matrix_ext :=
+  lazymatch goal with 
+  | |- @eq (matrix _ _) _ _ => idtac
+  | _ => fail "matrix_ext must be applied to a goal of the form, @eq (matrix _ _) _ _"
+ end;
+repeat
+(lazymatch goal with |- @eq ?t _ _ =>
+  lazymatch t with 
+  | matrix _ _ => idtac
+  | Tn _ _ => idtac
+  | prod _ unit => idtac
+  end
+ end;
+ eapply prod_equal; [reflexivity | reflexivity | | try apply (eq_refl tt)]).
+
 (** Largest singular value of a square matrix A ∈ Mn(C) is the square root of the largest 
     eigenvalue of A'A*)
 Definition max_sv_pred (n: nat ) (A : @matrix C n n) (σmax : R):=  
@@ -66,41 +89,11 @@ rewrite H2b.
 rewrite Mmult_one_l; auto.
 Qed.
 
-Definition dimensions {T} (rows: list (list T)) (r c : nat) :=
- match rows with
- | List.cons (List.cons _ r1') rows' =>
-   r = List.length rows /\ c = S (List.length r1') /\
-   List.Forall (fun rn => List.length rn = c) rows'
- | _ => False
- end.
-
-Definition dimensions_default_value {T} rows r c: @dimensions T rows r c -> T.
-intros.
-destruct rows; simpl in *.
-contradiction.
-destruct l; simpl in *.
-contradiction.
-apply t.
-Qed.
-
 (** the leapfrog transition matrix *)
 Definition M (h: R) : @matrix C 2 2 := 
   let a := 0.5 * h^2 in 
    [ [ (1-a, 0),  (-0.5 * h * (2 - a), 0) ],
      [ (h, 0),      (1-a, 0) ] ].
-
-Definition M_old (h: R) : @matrix C 2 2 := 
-  let a := 0.5 * h^2 in 
-  mk_matrix 2 2 (fun i j => if (Nat.eqb i j) then ((1 - a) , 0) else 
-    if Nat.ltb j i then (h,0) else ((-0.5 * h * (2 - a)),0)) .
-
-Goal  M =  
-  fun (h: R) => 
-  let a := 0.5 * h^2 in 
-  mk_matrix 2 2 (fun i j => if (Nat.eqb i j) then ((1 - a) , 0) else 
-    if Nat.ltb j i then (h,0) else ((-0.5 * h * (2 - a)),0)) .
-reflexivity.
-Abort.
 
 (** ideal solution vector *)
 Definition pq_vector (h: R) (p q : R -> R) (t : R) : @matrix C 2 1 :=
@@ -119,94 +112,33 @@ Definition s_vector (ic: R * R) : @matrix C 2 1 := (* @mk_matrix C 2 1
    [ (snd ic, 0) ] ].
 
 (** equivalence between matrix update and leapfrog step*)
-Lemma transition_matrix_equiv_1:
+Lemma transition_matrix_equiv:
   forall (ic : R * R) (h : R),  
-  let Mx := Mmult (M h) (s_vector ic) in
-   coeff_mat Hierarchy.zero Mx 0 0 = (fst (leapfrog_stepR h ic),0).
+  Mmult (M h) (s_vector ic) = s_vector (leapfrog_stepR h ic).
 Proof.
-intros. subst Mx. destruct ic. cbv.
-f_equal; nra.
+intros. destruct ic.
+matrix_ext; cbv [sum_n sum_n_m Iter.iter_nat Iter.iter coeff_mat]; simpl;
+unfold plus, mult; simpl; unfold Cplus, Cmult, zero; simpl;
+unfold ω; f_equal; nra.
 Qed.
 
-(** equivalence between matrix update and leapfrog step*)
-Lemma transition_matrix_equiv_2:
-  forall (ic : R * R) (h : R), 
-  let Mx := Mmult (M h) (s_vector ic) in
-coeff_mat Hierarchy.zero Mx 1 0 = (snd (leapfrog_stepR h ic),0).
-Proof.
-intros. subst Mx. destruct ic. cbv.
-f_equal; nra.
-Qed.
-
-Lemma transition_matrix_equiv_iternR_aux:
-  forall (h : R) (n : nat) i j, 
-snd (coeff_mat zero (Mpow 2 n (M h)) i j) = 0.
-Proof.
-induction n; destruct i as [|[|]], j as [|[|]];
-try reflexivity;
-simpl; rewrite ?IHn; nra.
-Qed.
-
-
-Lemma prod_equal: forall {A B} (x y: A*B) x1 x2 y1 y2,
-  x = (x1,x2) ->
-  y = (y1,y2) ->
-  x1=y1 -> x2 = y2 -> x=y.
-Proof.
-destruct x,y; simpl; intros; congruence.
-Qed.
-
-Ltac matrix_ext :=
-  lazymatch goal with 
-  | |- @eq (matrix _ _) _ _ => idtac
-  | _ => fail "matrix_ext must be applied to a goal of the form, @eq (matrix _ _) _ _"
- end;
-repeat
-(lazymatch goal with |- @eq ?t _ _ =>
-  lazymatch t with 
-  | matrix _ _ => idtac
-  | Tn _ _ => idtac
-  | prod _ unit => idtac
-  end
- end;
- eapply prod_equal; [reflexivity | reflexivity | | try apply (eq_refl tt)]).
-
-(** equivalence between matrix update and leapfrog step*)
 Lemma transition_matrix_equiv_iternR:
   forall (ic : R * R) (h : R) (n : nat), 
-  (fst (coeff_mat Hierarchy.zero (Mmult (Mpow 2 n (M h)) (s_vector ic)) 0 0), 
-    fst (coeff_mat Hierarchy.zero (Mmult (Mpow 2 n (M h)) (s_vector ic)) 1 0)) = iternR ic h n.
+  Mmult (Mpow 2 n (M h)) (s_vector ic) = s_vector (iternR ic h n).
 Proof.
-intros.
 induction n.
-- 
-destruct ic; simpl; f_equal; nra.
 -
-pose (m_iternR := s_vector (iternR ic h n)).
-assert ((Mmult (Mpow 2 (S n) (M h)) (s_vector ic)) = Mmult (M h) m_iternR). { 
- subst m_iternR.
- unfold Mpow; fold Mpow.
- symmetry.
- rewrite <- Mpow_comm.
- rewrite <- Mmult_assoc.
- rewrite <- IHn; clear IHn.
- simpl.
- rewrite ?Rmult_0_r, ?Rplus_0_r, ?Rminus_0_r.
- f_equal.
- matrix_ext;
- simpl; symmetry;
- eapply prod_equal; try reflexivity; simpl; try lra;
- rewrite ?transition_matrix_equiv_iternR_aux;
- rewrite ?Rmult_0_l, ?Rmult_0_r,  ?Rplus_0_l, ?Rplus_0_r, ?Rminus_0_r;
- auto.
-}
-clear IHn.
-rewrite H; clear H.
-rewrite step_iternR, surjective_pairing.
-subst m_iternR.
-rewrite transition_matrix_equiv_2.
-rewrite transition_matrix_equiv_1.
+unfold Mpow.
+rewrite M_ID_equiv_M1, Mmult_one_l.
 reflexivity.
+-
+change (S n) with (1+n)%nat.
+rewrite <- Mpow_pows_plus.
+unfold Mpow at 1.
+rewrite M_ID_equiv_M1, Mmult_one_l.
+rewrite <- Mmult_assoc. rewrite IHn.
+rewrite transition_matrix_equiv.
+rewrite step_iternR. auto.
 Qed.
 
 (** The eigenvalues of the transition matrix *)
@@ -1311,6 +1243,20 @@ apply MTM_lambda_2_pos_2.
 unfold h. lra.
 Qed.
 
+Lemma Rprod_norm_vec_two_norm : 
+ forall ic,   ∥ ic ∥ = vec_two_norm _ (s_vector ic).
+Proof.
+intros.
+rewrite two_norms_eq_2d.
+unfold vec_two_norm_2d.
+destruct ic as [p q]; simpl.
+unfold Rprod_norm; simpl.
+unfold Cmod, coeff_mat; simpl.
+f_equal.
+rewrite ?Rmult_0_l, ?Rplus_0_r, ?Rmult_1_r.
+rewrite ?sqrt_sqrt; auto; nra.
+Qed.
+
 Lemma iternR_bound : 
   forall p q: R,
   forall nf : nat, 
@@ -1323,47 +1269,9 @@ apply Rle_trans with (σb ^ nf * vec_two_norm_2d (s_vector (p, q))).
 -
 pose proof matrix_bound p q nf.
 simpl in H0.
-set (Mx:= Mmult (Mpow 2 nf (M h)) (s_vector (p, q))) in *.
-assert (vec_two_norm_2d Mx = ∥ iternR (p, q) h nf ∥ ). {
- subst Mx.
- rewrite <- transition_matrix_equiv_iternR.
- unfold vec_two_norm_2d, Rprod_norm.
- unfold fst, snd, Cmod.
- repeat rewrite pow2_sqrt by apply sqr_plus_pos.
- assert (@snd R R
-        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 0
-           0) = 0). {
-  unfold Mmult.
-  rewrite coeff_mat_bij; try lia.
-  simpl.
-  change (@zero C_Ring) with (@zero C_AbelianGroup).
-  repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
-     change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
-  end.
-  rewrite ? transition_matrix_equiv_iternR_aux.
-  nra.
- }
-assert (@snd R R
-        (@coeff_mat C 2 1 (@zero C_AbelianGroup) (@Mmult C_Ring 2 2 1 (Mpow 2 nf (M h)) (s_vector (p, q))) 1
-           0) = 0). {
-  unfold Mmult.
-  rewrite coeff_mat_bij; try lia.
-  simpl.
-  change (@zero C_Ring) with (@zero C_AbelianGroup).
-  repeat match goal with |-context[(@coeff_mat C ?a ?b ?c ?d ?e ?f)] =>
-    change (@coeff_mat C a b c d e f) with (@coeff_mat C_AbelianGroup a b c d e f)
-  end.
-  rewrite ? transition_matrix_equiv_iternR_aux.
-  nra.
- }
- rewrite H1; clear H1.
- rewrite H2; clear H2.
- rewrite pow_i by lia.
- repeat rewrite Rplus_0_r; auto.
-}
-clearbody Mx.
-rewrite <- H1.
-apply H0.
+rewrite Rprod_norm_vec_two_norm.
+rewrite <- transition_matrix_equiv_iternR.
+rewrite two_norms_eq_2d. lra.
 -
 apply Rmult_le_compat_l. 
 apply pow_le; try nra.
