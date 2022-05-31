@@ -13,8 +13,6 @@ Import Bool.
 
 Set Bullet Behavior "Strict Subproofs". 
 
-Require Import Coq.Logic.FunctionalExtensionality.
-
 Lemma prod_equal: forall {A B} (x y: A*B) x1 x2 y1 y2,
   x = (x1,x2) ->
   y = (y1,y2) ->
@@ -67,9 +65,11 @@ Definition two_norm_bound (n: nat ) (A : @matrix C n n) (σ : R):=
   forall (u : @matrix C n 1), 
   vec_two_norm n (Mmult A u) <=  σ * vec_two_norm n u.
 
+(*
 Definition two_norm_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
   two_norm_bound n A σ 
  /\ ~ exists (s : R), two_norm_bound n A s /\ s < σ.
+*)
 
 (** Any vector can be written as the sum of the eigenvectors
   of a Hermitian matrix. We need this in order to satisfy the 
@@ -100,11 +100,6 @@ Definition M (h: R) : @matrix C 2 2 :=
 Definition pq_vector (h: R) (p q : R -> R) (t : R) : @matrix C 2 1 :=
    [ [ (p t, 0) ] ,
      [ (q t, 0) ] ].
-
-Goal pq_vector = fun (h: R) (p q : R -> R) (t : R) =>
-  mk_matrix 2 1 (fun i j => if (Nat.eqb i j) then (p t , 0) else (q t , 0)) .
-reflexivity.
-Abort.
 
 (** arbitrary solution vector *)
 Definition s_vector (ic: R * R) : @matrix C 2 1 := 
@@ -455,13 +450,6 @@ rewrite ?mult_zero_l, ?mult_zero_r, ?plus_zero_l, ?plus_zero_r;
 apply Cmult_comm.
 Qed.
 
-
-Lemma vec_two_norm_nonneg: forall n v, 0 <= vec_two_norm n v.
-Proof.
-intros.
-apply sqrt_pos.
-Qed.
-
 Lemma orthgonal_matrix_no_zero_columns:
  forall (V: matrix 2 2),
   is_orthogonal_matrix 2 V ->
@@ -471,10 +459,9 @@ Lemma orthgonal_matrix_no_zero_columns:
 Proof.
 intros V H2 i Hi.
 assert (0 <> vec_two_norm 2 [ [ coeff_mat zero V 0 i ] , [ coeff_mat zero V 1 i ] ]).
-2:{ 
-  pose proof (vec_two_norm_nonneg 2  [[coeff_mat zero V 0 i], [coeff_mat zero V 1 i]]).
-  lra. 
-}
+2: assert (0 <= vec_two_norm 2 [[coeff_mat zero V 0 i], [coeff_mat zero V 1 i]])
+      by apply sqrt_pos;
+      lra.
 intro.
 assert (   [[coeff_mat zero V 0 i], [coeff_mat zero V 1 i]] = [ [C0], [C0] ]). {
  clear - H.
@@ -520,7 +507,7 @@ destruct i as [|[|]]; [ | | lia]; clear Hi;
 rewrite H,H0 in *; clear H H0; simpl in *; lra.
 Qed.
 
-(* if σ^2 is the largest singular value of A ∈ M(C^2) then σ is the two-norm of A *)
+(* if σ^2 bounds the singular values of A ∈ M(C^2) then σ bounds the two-norm of A *)
 Theorem sv_bound_implies_two_norm_bound   (A : @matrix C 2 2) (σ : R):
   sv_bound 2 A σ  ->  two_norm_bound 2 A σ.
 Proof.
@@ -658,7 +645,6 @@ unfold MTM_lambda_2.
 interval with ( i_bisect h, i_taylor h, i_degree 3).
 Qed.
 
-
 Lemma MTM_lambda_1_pos_2 (h : R) :
  0 < h < 1.41 -> 
 0 <= (MTM_lambda_1 h).
@@ -667,7 +653,6 @@ intros.
 unfold MTM_lambda_1.
 interval with ( i_bisect h, i_taylor h, i_degree 3).
 Qed.
-
 
 Lemma Rdiv_le a b c d :
   0 < b  -> 0 < d -> 
