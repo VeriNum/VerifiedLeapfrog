@@ -36,57 +36,40 @@ repeat
  end;
  eapply prod_equal; [reflexivity | reflexivity | | try apply (eq_refl tt)]).
 
-(** An upper bound σmax on the singular values of a square matrix A ∈ Mn(C) 
+(** An upper bound σb on the singular values of a square matrix A ∈ Mn(C) 
       is given by an upper bound on the eigenvalues of A'A *)
-Definition sv_bound (n: nat ) (A : @matrix C n n) (σmax : R):=  
+Definition sv_bound (n: nat ) (A : @matrix C n n) (σb : R):=  
   let ATA := Mmult (matrix_conj_transpose n n A) A (* the Gram matrix A'A *) in
-  let λmax := σmax^2 in 
-  0 <= σmax /\
+  let λb := σb^2 in 
+  0 <= σb /\
   exists (V Λ : @matrix C n n),
          Mmult ATA V = Mmult V Λ
       /\ is_orthogonal_matrix n V
       /\ diag_pred n Λ   
-(*      /\ exists (i : nat | (i < n)%nat),  (@coeff_mat C n n Hierarchy.zero Λ (proj1_sig i) (proj1_sig i) ) = λmax *)
       /\ (forall (i : nat), (i < n)%nat ->
          (coeff_mat zero Λ i i) = RtoC (Re (coeff_mat zero Λ i i)) (* elements of Λ are real *)
-         /\ 0 <= Re (coeff_mat zero Λ i i) <= λmax) (* λmax is positive and max in Λ *)
+         /\ 0 <= Re (coeff_mat zero Λ i i) <= λb) (* λb is positive and at least as large as all elements of Λ *)
 .
 
-Definition basis_pred (n: nat ) (A : @matrix C n n) (u : @matrix C n 1):= 
-  let ATA := Mmult (matrix_conj_transpose n n A) A in (* the Gram matrix A'A *)
-  forall (V Λ : @matrix C n n),
-         Mmult ATA V = Mmult V Λ
-      /\  is_orthogonal_matrix n V
-      /\ diag_pred n Λ ->
-  exists (a: @matrix C n 1),  u = Mmult V a
-.
 
 Definition two_norm_bound (n: nat ) (A : @matrix C n n) (σ : R):=  
   forall (u : @matrix C n 1), 
-  vec_two_norm n (Mmult A u) <=  σ * vec_two_norm n u.
+  vec_two_norm n (Mmult A u) <=  σ * vec_two_norm n u
+.
 
-(*
-Definition two_norm_pred (n: nat ) (A : @matrix C n n) (σ : R):=  
-  two_norm_bound n A σ 
- /\ ~ exists (s : R), two_norm_bound n A s /\ s < σ.
-*)
 
-(** Any vector can be written as the sum of the eigenvectors
-  of a Hermitian matrix. We need this in order to satisfy the 
-  two norm predicate. **)
-Theorem vectors_in_basis (n : nat) : 
+(** any vector x ∈ Cn can be written as a linear combination of columns of an 
+    orthogonal matrix V ∈ Cnxn *)
+Lemma vectors_in_basis (n : nat) : 
  forall (x : @matrix C n 1), 
- forall (A: @matrix C n n), 
- basis_pred n A  x.
+ forall (V : @matrix C n n), is_orthogonal_matrix n V ->
+ exists (a: @matrix C n 1),  x = Mmult V a.
 Proof.
 intros.
-unfold basis_pred.
-intros.
-destruct H as (H1 & H2 & H3).
-unfold is_orthogonal_matrix in H2; destruct H2 as (H2a & H2b).
+unfold is_orthogonal_matrix in H; destruct H as (Ha & Hb).
 exists (Mmult (matrix_conj_transpose n n V) x). 
 rewrite Mmult_assoc.
-rewrite H2b.
+rewrite Hb.
 rewrite Mmult_one_l; auto.
 Qed.
 
@@ -515,7 +498,7 @@ intros. intro.
 red in H.
 destruct H as [H0 [V [Λ [H1 [H2 [H3 H6]]]]]].
 assert (exists a : matrix 2 1, u = Mmult V a)
-  by (apply  (vectors_in_basis 2 u A V Λ); repeat (split; auto)).
+  by (apply  (vectors_in_basis 2 u V ); auto).
 destruct H as (a & Hu); subst.
 unfold vec_two_norm.
 repeat rewrite tranpose_rewrite.
@@ -564,6 +547,7 @@ rewrite Cmult_comm.
 rewrite <- Cmult_assoc.
 rewrite C_sqr_ccong.
 rewrite !C_sqr_ccong2.
+
 
 pose proof (H6 0%nat ltac:(lia)) as (HL1 & HL2 & HL3).
 pose proof (H6 1%nat ltac:(lia)) as (HL4 & HL5 & HL6).
