@@ -76,9 +76,6 @@ function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int,
         left_margin = 15mm, right_margin = 15mm)
 
     
-    plot([9.315409e-8 for i in -xlim:xlim],seriestype="hline",label="FPTaylor bound=9.3154e-8",
-        left_margin = 15mm, right_margin = 15mm)
-
     plotx = scatter!(
         in_dat_x, out_dat_x, ylabel = "floating-point error",xlabel = "initial position",
         size = (900, 500),bottom_margin = 10mm,left_margin = 10mm,
@@ -87,7 +84,7 @@ function plot_errors(in_file::String, err_file::String, hist::Bool, nsteps::Int,
         xlims = (-xlim,xlim), title = "Leapfrog integration: $fstr2 absolute position error"    
 	)
    
-    savefig(plotx,fpath*"/scatter_errors_x.png")
+    savefig(plotx,fpath*"/scatter_errors_x_$nsteps.png")
     
     plot([pbnd_v for i in -xlim:xlim],seriestype="hline",label="VCFloat bound=$pbnd_v",
         left_margin = 15mm, right_margin = 15mm)
