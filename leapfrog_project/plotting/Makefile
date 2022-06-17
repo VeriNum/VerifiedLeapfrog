@@ -20,3 +20,10 @@ clean:
 
 out_clean:
 	$(RM) *.png *.txt
+
+result: findbad
+	./findbad 20 10000000 > result
+
+
+findbad: findbad.c
+	gcc -O2 findbad.c -o findbad
