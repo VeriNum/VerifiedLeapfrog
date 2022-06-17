@@ -49,19 +49,20 @@ void lfstep64(double **x, double **v, double h, int size)
 int main(int argc, char *argv[]){
 	
 	if (argc <= 3 ){
-    		printf("Takes three arguments: number of inputs, id for filename, and bound on xv\n");
+    		printf("Takes four arguments: number of inputs, number of steps, id for filename, and bound on xv\n");
     		return 0;
 	}
 	
 	int max  = atoi(argv[1]);
-	float bnd = atof(argv[3]);
+	int nsteps = atoi(argv[2]);
+	float bnd = atof(argv[4]);
 	float hf = 1.0/32.0;
 	double hd  = (double) hf;
 	char filename1[25]= "lf_in_data_";
 	char filename2[25]= "lf_out_data_";
 
-	strncat(filename1, argv[2], 5);
-	strncat(filename2, argv[2], 5);
+	strncat(filename1, argv[3], 5);
+	strncat(filename2, argv[3], 5);
 	strncat(filename1, ".txt", 5);
 	strncat(filename2, ".txt", 5);
 
@@ -89,8 +90,10 @@ int main(int argc, char *argv[]){
 	}
 	fclose(lf_in_data);
 
-	lfstep64(&xdrands,&vdrands,hd,max);
-	lfstep32(&xfrands,&vfrands,hf,max);
+	for (int i = 0; i < nsteps; i++) {
+		lfstep64(&xdrands,&vdrands,hd,max);
+		lfstep32(&xfrands,&vfrands,hf,max);
+	}
 
 	double *abs_err_x  = calloc(max, sizeof(double));
 	double *abs_err_v  = calloc(max, sizeof(double));
