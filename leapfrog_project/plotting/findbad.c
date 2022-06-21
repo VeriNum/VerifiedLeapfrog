@@ -45,6 +45,17 @@ double error_bound(double h, int N) {
 int histogram[HIST];
 double worst, worstp, worstq;
 
+void generate (double *ap, double *aq) {
+  double dp,dq,p,q,r;
+  do {
+    dp=drand48(); dq=drand48();
+    /*    p=1.0+0.02*(dp-0.5); q=0.0+0.2*(dq-0.5); */
+    p=0.995+0.002*(dp-0.5); q=0+0.2*(dq-0.5);
+    r=sqr(p)+sqr(q);
+  } while (r < 0.8 || r > 1.0);
+  *ap=p; *aq=q;
+}
+
 int main(int argc, char **argv) {
   int numtries, N; int i, histmax=0;
     if (argc!=3) {fprintf(stderr,"usage: findbad N num_tries\n"); exit(1);}
@@ -55,18 +66,19 @@ int main(int argc, char **argv) {
 
     double bound = error_bound(h,N);
     for (i=0; i<numtries; i++) {
-      double p,q,r, pN, err;
+      double p,q, pN, err;
       double disc,clos;
-      do {p=drand48(); q=drand48(); r=sqr(p)+sqr(q);}
-      while (r < 0.8 || r > 1.0);
+      generate (&p, &q);
       disc=integrate(p,q,N);
       clos=closedform(p,q,N);
       err = fabs(disc-clos);
-      if (err>worst) {
-	worst=err; worstp=p; worstq=q;
-	printf("Worst so far: %5.2f%%, p=%f, q=%f %s\n",100.0*err/bound,p,q,
-		err>bound?"which is amazing!":"");
+      if (err>worst*0.9999) {
+	printf("Bad: %5.2f%%, p=%f, q=%f %s\n",100.0*err/bound,p,q,
+		err>bound?"which is amazing!":
+	        err>worst?"worst so far":
+                "");
         fflush(stdout);
+	worst=err; worstp=p; worstq=q;
       }
       if (err<bound)
 	histogram[(int)(err*HIST/bound)]++;
