@@ -28,14 +28,16 @@ hnf; intros.
 split; auto. intros s [? ?]. Exists s emp.
 Intros. simpl in H.
 inv H. inv H4.
+(*
 pose proof yes_iternF_is_finite.
 destruct (H N ltac:(unfold N;lia)) as [_ ?].
+*)
 pose proof yes_accurate_harmonic_oscillator.
 fold N.
 set (pq := iternF float_model.h (p_init, q_init) N) in *.
 clearbody pq.
 unfold_for_go_lower; normalize.
-inv H2.
+inv H0.
 simpl.
 rewrite prop_true_andp.
 rewrite !prop_true_andp by auto.
@@ -61,7 +63,7 @@ Qed.
 Lemma body_main: semax_body Vprog Gprog f_main main_spec.
 Proof.
 start_function.
-forward_call. apply yes_iternF_is_finite.
+forward_call.
 forget (iternF float_model.h (p_init, q_init) 1000)  as a.
 forward.
 cancel.
