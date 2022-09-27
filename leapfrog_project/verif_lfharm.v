@@ -25,7 +25,7 @@ Definition lfstep_spec :=
   DECLARE _lfstep
   WITH s: val, pq: ftype Tsingle * ftype Tsingle
   PRE [ tptr t_state, tfloat ]
-    PROP(Binary.is_finite 24 128 (snd pq) = true)
+    PROP()
     PARAMS (s; Vsingle h)
     SEP(data_at Tsh t_state (floats_to_vals pq) s)
   POST [ tvoid ]
@@ -37,7 +37,7 @@ Definition integrate_spec_lowlevel :=
   DECLARE _integrate
   WITH s: val
   PRE [ tptr t_state ]
-    PROP(iternF_is_finite)
+    PROP()
     PARAMS (s)
     SEP(data_at_ Tsh t_state s)
   POST [ tvoid ]
@@ -62,7 +62,7 @@ Qed.
 
 Lemma body_lfstep: semax_body Vprog Gprog f_lfstep lfstep_spec.
 Proof.
-start_function. 
+start_function.
 subst MORE_COMMANDS; unfold abbreviate; canonicalize_float_constants.
 forward.
 forward_call.
@@ -99,13 +99,6 @@ pose (step n := iternF h (p_init, q_init) (Z.to_nat n)).
    SEP (data_at Tsh t_state (floats_to_vals (step n)) s))%assert.
 - entailer!.
 - forward_call (s, step i).
-  apply H. unfold N. simpl.
-  assert (Z.to_nat i < Z.to_nat 1000)%nat by lia.
-  apply Nat.lt_le_incl.
-  eapply Nat.lt_le_trans.
-  apply H1.
-  apply Nat.eq_le_incl.
-  simpl. auto.
   forward.
   autorewrite with float_elim in *.
   entailer!.

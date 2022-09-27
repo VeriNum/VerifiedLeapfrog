@@ -90,22 +90,4 @@ unfold local_round_off, Rprod_norm, fst,snd,h.
 interval.
 Qed.
 
-Theorem yes_iternF_is_finite: iternF_is_finite.
-Proof.
-red; intros.
-pose proof global_roundoff_error bmd_init n H.
-destruct H0 as (A & _).
-apply boundsmap_denote_e in A.
-simpl Maps.PTree.elements in A.
-unfold list_forall in A.
-destruct A as (A & B).
-destruct A as (V1 & V2 & V3 & V4 & V5).  
-  inversion V3; subst.
-apply Classical_Prop.EqdepTheory.inj_pair2 in H1; subst. 
-destruct B as (U1 & U2 & U3 & U4 & U5). 
-inversion U3; subst.
-apply Classical_Prop.EqdepTheory.inj_pair2 in H1; subst.
-auto. 
-Qed.
-
 End WITHNANS.

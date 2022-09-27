@@ -104,11 +104,6 @@ Definition q_init: ftype Tsingle :=  1%F32.
 Definition pq_init := (p_init, q_init).
 Definition N : nat := 1000.
 
-Definition iternF_is_finite : Prop :=
-  forall n : nat,  (n <= N)%nat->
-  (is_finite _ _  (fst(iternF h pq_init  n)) = true) /\
-  (is_finite _ _  (snd(iternF h pq_init n)) = true).
-
 End WITHNANS.
 
 
