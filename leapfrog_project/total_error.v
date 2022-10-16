@@ -1,7 +1,7 @@
 (* This file contains proofs of the floating point properties:
 local and global error, finiteness *)
 
-From vcfloat Require Import FPLang FPLangOpt RAux Rounding Reify Float_notations Automate.
+Require Import vcfloat.VCFloat.
 Require Import Interval.Tactic.
 Import Binary.
 Import List ListNotations.
