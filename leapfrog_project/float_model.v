@@ -1,5 +1,5 @@
 From Coq Require Import ZArith Reals Psatz.
-From Flocq3 Require Import Binary Bits Core.
+From Flocq Require Import Binary Bits Core.
 From compcert.lib Require Import IEEE754_extra
  (* Coqlib Floats Zbits Integers*).
 
@@ -76,26 +76,6 @@ induction n.
 replace (leapfrog_stepF h (iternF _ _ _ )) with (iternF h (leapfrog_stepF h ic) n). 
   destruct (leapfrog_stepF h ic). 
 all: symmetry; apply lfstep_lfn. 
-Qed.
-
-Lemma Ziter_itern:  (* Delete this lemma?  doesn't seem to be used. *)
-  forall x v i,
-  (Z.iter i (leapfrog_stepF h) (x, v)) = iternF h (x, v) (Z.to_nat i).
-Proof.
-intros.
-destruct (Z_le_dec 0 i).
--
- pattern i at 1; rewrite <- (Z2Nat.id i)  by auto.
- clear.
- set (xv := (x,v)). clearbody xv.
-revert xv; induction (Z.to_nat i); intros.
- + reflexivity.
- + rewrite inj_S. rewrite Zbits.Ziter_succ by lia. simpl iternF.
-     rewrite IHn.
-     apply lfstep_lfn.
--
-  rewrite Zbits.Ziter_base by lia.
-  destruct i; try lia. simpl. auto.
 Qed.
 
 (* The initial conditions of the momentum "p" and position "q" specified for the integration scheme*)

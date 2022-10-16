@@ -2,7 +2,7 @@
 local and global error, finiteness *)
 
 From vcfloat Require Import FPLang FPLangOpt RAux Rounding Reify Float_notations Automate.
-Require Import IntervalFlocq3.Tactic.
+Require Import Interval.Tactic.
 Import Binary.
 Import List ListNotations.
 Set Bullet Behavior "Strict Subproofs".
@@ -176,7 +176,11 @@ assert (HYP4: ∥ FT2R_prod (pnf, qnf) ∥ <= 1.003822 + local_round_off * 1002)
   apply HYP3.
  apply Rplus_le_compat_r. apply B.
 } clear HYP2.
+clear HYP3.
 generalize HYP4.
+(* The next line mysteriously became necessary with the
+  version of the Interval package that came with Coq 8.16 *)
+match goal with |- context [?A + _ * _] => set (i := A); hnf in i; subst i end.
 match goal with |-context[Rprod_norm ?A <= ?a]=>
   interval_intro a upper ; intros ?HYP; clear HYP;  
   match goal with [H: a <= ?B |- _] =>

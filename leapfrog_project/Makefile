@@ -16,5 +16,8 @@ depend:
 
 include .depend
 
+clightgen:
+	clightgen -normalize lfharm.c
+
 clean:
 	rm -f *.vo *.vok *.vos *.glob 

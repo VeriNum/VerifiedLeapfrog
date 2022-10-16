@@ -5,7 +5,7 @@ Require Import real_model real_lemmas
 From Coquelicot Require Import Coquelicot.
 Set Bullet Behavior "Strict Subproofs". 
 
-Require Import IntervalFlocq3.Tactic.
+Require Import Interval.Tactic.
 
 
 Theorem global_truncation_error_sum : 
