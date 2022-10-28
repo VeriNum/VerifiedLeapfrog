@@ -1,11 +1,11 @@
 From Coq Require Import ZArith Reals Psatz.
 From Coq Require Import Arith.Arith.
 From Coquelicot Require Import Coquelicot.
-From Flocq3 Require Import Core.
+From Flocq Require Import Core.
 
 Require Import vcfloat.RAux.
 
-Require Import IntervalFlocq3.Tactic.
+Require Import Interval.Tactic.
 
 Import Coq.Logic.FunctionalExtensionality.
 

@@ -4,7 +4,7 @@ Require Import real_lemmas real_model.
 From Coquelicot Require Import Coquelicot.
 Set Bullet Behavior "Strict Subproofs". 
 
-Require Import IntervalFlocq3.Tactic.
+Require Import Interval.Tactic.
 
 Import Coq.Logic.FunctionalExtensionality.
 

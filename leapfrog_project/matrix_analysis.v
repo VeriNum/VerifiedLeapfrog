@@ -7,7 +7,7 @@ From Coq Require Import Bool Arith.Arith.
 Require Import real_lemmas real_model matrix_lemmas.
 
 From Coquelicot Require Import Coquelicot.
-Require Import IntervalFlocq3.Tactic.
+Require Import Interval.Tactic.
 
 Import Bool.
 
