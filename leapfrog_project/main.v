@@ -28,10 +28,6 @@ hnf; intros.
 split; auto. intros s [? ?]. Exists s emp.
 Intros. simpl in H.
 inv H. inv H4.
-(*
-pose proof yes_iternF_is_finite.
-destruct (H N ltac:(unfold N;lia)) as [_ ?].
-*)
 pose proof yes_accurate_harmonic_oscillator.
 fold N.
 set (pq := iternF float_model.h (p_init, q_init) N) in *.
