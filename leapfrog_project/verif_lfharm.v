@@ -94,7 +94,7 @@ pose (step n := iternF h (p_init, q_init) (Z.to_nat n)).
        PROP() 
        LOCAL (temp _h (Vsingle h);
                    temp _max_step (Vint (Int.repr 1000));
-                   temp _t (Vsingle (Z.iter n (BPLUS Tsingle h) (0%F32))); 
+                   temp _t (Vsingle (Z.iter n (BPLUS h) (0%F32))); 
                    temp lfharm._s s)
    SEP (data_at Tsh t_state (floats_to_vals (step n)) s))%assert.
 - entailer!.
