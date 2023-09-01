@@ -417,7 +417,7 @@ assert (i = 0)%nat by lia; subst i.
 assert (j = 0)%nat by lia; subst j.
 subst x.
 red in H0.
-change (@zero C_AbelianGroup) with (@zero C_Ring) in *.
+change (@zero C_AbelianMonoid) with (@zero C_Ring) in *.
 unfold Mmult at 1. 
 rewrite coeff_mat_bij by lia.
 simpl.
@@ -479,7 +479,7 @@ assert (forall m1 m2 : @matrix C 2 2, m1=m2 ->
 apply H3 in H1; destruct H1 as [H1a [H1b [H1c H1d]]].
 apply H3 in H2; destruct H2 as [H2a [H2b [H2c H2d]]].
 clear H3.
-set (u := @coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup)
+set (u := @coeff_mat C_AbelianMonoid 2 2 (@zero C_AbelianMonoid)
         (@Mone C_Ring 2)) in *.
 hnf in u. simpl in u. subst u.
 simpl in *.
@@ -593,17 +593,17 @@ destruct i as [|[|]]; [ | | lia].
 rewrite sum_Sn, sum_O.
 specialize (H3 0%nat 1%nat ltac:(lia)).
 
-change ((@coeff_mat (AbelianGroup.sort (Ring.AbelianGroup C_Ring)) 2 2
-        (@zero (Ring.AbelianGroup C_Ring)) Λ 0 1))
+change ((@coeff_mat (AbelianMonoid.sort (Ring.AbelianMonoid C_Ring)) 2 2
+        (@zero (Ring.AbelianMonoid C_Ring)) Λ 0 1))
 with 
-(@coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 0 1).
+(@coeff_mat C 2 2 (@zero C_AbelianMonoid) Λ 0 1).
 rewrite H3.
 rewrite ?@mult_zero_l, ?@mult_zero_r, ?@plus_zero_l, ?@plus_zero_r.
 auto.
 --
 rewrite sum_Sn, sum_O.
 specialize (H3 1%nat 0%nat ltac:(lia)).
-change (@zero C_AbelianGroup) with (@zero C_Ring) in *.
+change (@zero C_AbelianMonoid) with (@zero C_Ring) in *.
 change (@coeff_mat _ 2 2  (@zero C_Ring) Λ 1 0)
 with (@coeff_mat C 2 2 (@zero C_Ring) Λ 1 0).
 simpl.
@@ -709,7 +709,7 @@ intros.
 unfold MTM_eigenvector_matrix, matrix_conj_transpose.
 repeat match goal with |- context [(@mk_matrix C 2 2 ?a)] =>
 change (@mk_matrix C 2 2 a) with 
-(@mk_matrix (AbelianGroup.sort C_AbelianGroup) 2 2 a)
+(@mk_matrix (AbelianMonoid.sort C_AbelianMonoid) 2 2 a)
 end.
 unfold Mmult, Mone.
 apply mk_matrix_ext => i j Hi Hj.
@@ -885,7 +885,7 @@ intros.
 unfold MTM_eigenvector_matrix, matrix_conj_transpose.
 repeat match goal with |- context [(@mk_matrix C 2 2 ?a)] =>
 change (@mk_matrix C 2 2 a) with 
-(@mk_matrix (AbelianGroup.sort C_AbelianGroup) 2 2 a)
+(@mk_matrix (AbelianMonoid.sort C_AbelianMonoid) 2 2 a)
 end.
 unfold Mmult, Mone.
 apply mk_matrix_ext => i j Hi Hj.

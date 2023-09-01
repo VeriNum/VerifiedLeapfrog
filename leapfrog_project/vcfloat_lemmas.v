@@ -55,8 +55,7 @@ Definition leapfrog_vmap_raw (pq: state) :=
   compute it into a lookup-tree ___here___, not later in each place
   where we look something up. *)
 Definition leapfrog_vmap (pq : state) : valmap :=
-  ltac:(make_valmap_of_list (leapfrog_vmap_raw pq)).
-
+ ltac:(let z := compute_PTree (valmap_of_list (leapfrog_vmap_raw pq)) in exact z).
 
 (**  Reification and reflection.   When you have a 
   deep-embedded "expr"ession, you can get back the shallow embedding
@@ -120,18 +119,18 @@ Qed.
 Lemma leapfrog_vmap_shape:
   forall  pq1 pq0,
   Maps.PTree_Properties.Equal Equivalence_sametype
-        (proj1_sig (leapfrog_vmap pq0)) (proj1_sig (leapfrog_vmap pq1)).
+        (leapfrog_vmap pq0) (leapfrog_vmap pq1).
 Proof.
 intros.
 intro i.
-destruct (Maps.PTree.get i (proj1_sig (leapfrog_vmap pq0))) eqn:H.
+destruct (Maps.PTree.get i (leapfrog_vmap pq0)) eqn:H.
 -
 apply Maps.PTree.elements_correct in H.
 repeat (destruct H; [inversion H; clear H; subst; simpl; reflexivity | ]).
 destruct H.
 -
 rename H into H0.
-destruct (Maps.PTree.get i (proj1_sig (leapfrog_vmap pq1))) eqn:H.
+destruct (Maps.PTree.get i (leapfrog_vmap pq1)) eqn:H.
 apply Maps.PTree.elements_correct in H.
 repeat (destruct H; [inversion H; clear H; subst; inversion H0 | ]).
 destruct H.

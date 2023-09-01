@@ -972,15 +972,16 @@ set ( D' :=
 (@mk_matrix C m m
      (fun i j : nat =>
       if i =? j
-      then Cpow (@coeff_mat C m m (@zero C_AbelianGroup) D i j) n
+      then Cpow (@coeff_mat C m m (@zero C_AbelianMonoid) D i j) n
       else C0))).
 replace (@Mmult C_Ring m m m D' D) with 
 (@mk_matrix C m m
      (fun i j : nat =>
       if i =? j
-      then (Cmult (@coeff_mat C  m m (@zero C_AbelianGroup) D' i j) 
-        (@coeff_mat C m m (@zero C_AbelianGroup) D i j)) 
+      then (Cmult (@coeff_mat C  m m (@zero C_AbelianMonoid) D' i j) 
+        (@coeff_mat C m m (@zero C_AbelianMonoid) D i j)) 
       else C0)).
+simpl.
 unfold D'.
 apply mk_matrix_ext => i j Hi Hj.
 rewrite coeff_mat_bij; try lia.
