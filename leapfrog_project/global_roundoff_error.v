@@ -25,8 +25,8 @@ Proof.
 intros.
 rewrite <- sqrt_1.
 replace (FT2R q_init) with 1.
-simpl. unfold Rprod_norm, fst, snd.
-f_equal; nra.
+unfold Rprod_norm, fst, snd, FT2R. 
+f_equal. simpl. nra.
 unfold FT2R, q_init. 
  cbv [B2R]. simpl. cbv [Defs.F2R IZR IPR]. simpl;
 field_simplify; nra.

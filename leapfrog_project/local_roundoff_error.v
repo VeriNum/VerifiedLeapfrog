@@ -65,21 +65,6 @@ intros.
 apply (prove_roundoff_bound_p pq H).
 Qed.
 
-Ltac unfold_all_fval :=  (* move this to vcfloat *)
- repeat
-  match goal with
-  | |- context [fval (env_ ?e) ?x] =>
-     pattern (fval (env_ e) x);
-     let M := fresh in match goal with |- ?MM _ => set (M := MM) end;
-     unfold fval; try unfold x; unfold type_of_expr; unfold_fval;
-    repeat match goal with |- context [env_ ?a ?b ?c] => 
-       let u := constr:(env_ a b c) in 
-       let u1 := eval hnf in u in
-      change u with u1
-     end;
-    subst M; cbv beta
-end.
-
 Lemma itern_implies_bmd_aux:
   forall pq0 : state,
   forall n : nat,
@@ -96,14 +81,12 @@ split.
 destruct (prove_roundoff_bound_p _ H) as [? _]; clear H.
 rewrite <- H0; clear H0.
 simple apply f_equal.
-unfold_all_fval.
-reflexivity.
+simpl. reflexivity.
 -
 destruct (prove_roundoff_bound_q _ H) as [? _]; clear H.
 rewrite <- H0; clear H0.
 simple apply f_equal.
-unfold_all_fval.
-reflexivity.
+simpl. reflexivity.
 Qed.
 
 Definition local_round_off :=  ∥(1.235*(1/10^7) , 6.552*(1/10^8))∥.
