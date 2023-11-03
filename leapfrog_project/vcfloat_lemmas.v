@@ -50,12 +50,11 @@ Definition q' := ltac:(let e' :=
 Definition leapfrog_vmap_raw (pq: state) :=
   [(_p, existT ftype _ (fst pq));(_q, existT ftype _ (snd pq))].
 
-
 (** Step two, build that into "varmap" data structure, taking care to
   compute it into a lookup-tree ___here___, not later in each place
   where we look something up. *)
 Definition leapfrog_vmap (pq : state) : valmap :=
- ltac:(let z := compute_PTree (valmap_of_list (leapfrog_vmap_raw pq)) in exact z).
+  ltac:(make_valmap_of_list (leapfrog_vmap_raw pq)).
 
 (**  Reification and reflection.   When you have a 
   deep-embedded "expr"ession, you can get back the shallow embedding
@@ -116,28 +115,28 @@ split; intro; intros; hnf; auto.
 red in H,H0. congruence.
 Qed.
 
-Lemma leapfrog_vmap_shape:
+Remark leapfrog_vmap_shape:
   forall  pq1 pq0,
   Maps.PTree_Properties.Equal Equivalence_sametype
-        (leapfrog_vmap pq0) (leapfrog_vmap pq1).
+        (proj1_sig (leapfrog_vmap pq0)) (proj1_sig (leapfrog_vmap pq1)).
 Proof.
 intros.
 intro i.
-destruct (Maps.PTree.get i (leapfrog_vmap pq0)) eqn:H.
+destruct (Maps.PTree.get i _) eqn:H.
 -
 apply Maps.PTree.elements_correct in H.
 repeat (destruct H; [inversion H; clear H; subst; simpl; reflexivity | ]).
 destruct H.
 -
 rename H into H0.
-destruct (Maps.PTree.get i (leapfrog_vmap pq1)) eqn:H.
+destruct (Maps.PTree.get i (proj1_sig (leapfrog_vmap pq1))) eqn:H.
 apply Maps.PTree.elements_correct in H.
 repeat (destruct H; [inversion H; clear H; subst; inversion H0 | ]).
 destruct H.
 auto.
 Qed.
 
-Lemma bmd_init : 
+Remark bmd_init : 
   boundsmap_denote leapfrog_bmap (leapfrog_vmap pq_init) .
 Proof.
 intros.
