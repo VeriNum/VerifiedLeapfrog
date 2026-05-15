@@ -1,23 +1,26 @@
-COQC=coqc
-COQDEP=coqdep
-VCFLOAT_LOC=../../vcfloat/vcfloat
-COQFLAGS= -Q $(VCFLOAT_LOC) vcfloat
+KNOWNTARGETS := Makefile.coq clightgen clean cleanall
+KNOWNFILES   := Makefile _CoqProject
 
-all: _CoqProject main.vo matrix_analysis.vo 
+.DEFAULT_GOAL := invoke-coqmakefile
 
-_CoqProject: Makefile
-	echo $(COQFLAGS) >_CoqProject
+Makefile.coq Makefile.coq.conf: Makefile _CoqProject
+	$(COQBIN)coq_makefile -f _CoqProject -o Makefile.coq
 
-%.vo: %.v
-	$(COQC) $(COQFLAGS) $*.v
-
-depend: 
-	$(COQDEP) $(COQFLAGS) *.v > .depend
-
-include .depend
+invoke-coqmakefile: Makefile.coq.conf Makefile.coq
+	$(MAKE) --no-print-directory -f Makefile.coq $(filter-out $(KNOWNTARGETS),$(MAKECMDGOALS))
 
 clightgen:
 	clightgen -normalize lfharm.c
+	sed -i.bak -e 's/From Coq Require/From Stdlib Require/g' lfharm.v && rm -f lfharm.v.bak
 
-clean:
-	rm -f *.vo *.vok *.vos *.glob 
+clean cleanall:
+	+[ ! -f Makefile.coq ] || $(MAKE) -f Makefile.coq clean
+	rm -f Makefile.coq Makefile.coq.conf .nia.cache .lia.cache
+
+.PHONY: invoke-coqmakefile clightgen clean cleanall
+
+$(KNOWNFILES):
+	@true
+
+%: invoke-coqmakefile
+	@true

@@ -2,8 +2,8 @@
   of a simple harmonic oscillator.
  Copyright (C) 2021-2022  Ariel Eileen Kellison.
 *)
-From Coq Require Import ZArith Reals Psatz.
-From Coq Require Import Bool Arith.Arith.
+From Stdlib Require Import ZArith Reals Psatz.
+From Stdlib Require Import Bool Arith.Arith.
 Require Import real_lemmas real_model matrix_lemmas.
 
 From Coquelicot Require Import Coquelicot.
@@ -417,7 +417,7 @@ assert (i = 0)%nat by lia; subst i.
 assert (j = 0)%nat by lia; subst j.
 subst x.
 red in H0.
-change (@zero C_AbelianGroup) with (@zero C_Ring) in *.
+change (@zero C_AbelianMonoid) with (@zero (Ring.AbelianMonoid C_Ring)) in *.
 unfold Mmult at 1. 
 rewrite coeff_mat_bij by lia.
 simpl.
@@ -479,15 +479,21 @@ assert (forall m1 m2 : @matrix C 2 2, m1=m2 ->
 apply H3 in H1; destruct H1 as [H1a [H1b [H1c H1d]]].
 apply H3 in H2; destruct H2 as [H2a [H2b [H2c H2d]]].
 clear H3.
-set (u := @coeff_mat C_AbelianGroup 2 2 (@zero C_AbelianGroup)
-        (@Mone C_Ring 2)) in *.
-hnf in u. simpl in u. subst u.
-simpl in *.
-repeat match goal with H: _ = zero |- _ => clear H end.
-repeat match goal with H: _ = one |- _ => injection H; clear H; intros end.
-unfold C0 in *.
-destruct i as [|[|]]; [ | | lia]; clear Hi;
-rewrite H,H0 in *; clear H H0; simpl in *; lra.
+destruct i as [|[|]]; [ | | lia]; clear Hi.
+- (* i = 0: column 0 of V is zero, contradicts (V^T V)_{0,0} = Mone_{0,0} = 1 *)
+  clear H2c H2d H1b H1c H1d H2a H2b.
+  unfold Mmult, matrix_conj_transpose, Mone, Mone_seq, coeff_mat, mk_matrix in *;
+  cbn in *;
+  rewrite H, H0 in H1a;
+  cbn in H1a;
+  injection H1a; intros; lra.
+- (* i = 1: column 1 of V is zero, contradicts (V^T V)_{1,1} = Mone_{1,1} = 1 *)
+  clear H1a H1b H1c H2a H2b H2c.
+  unfold Mmult, matrix_conj_transpose, Mone, Mone_seq, coeff_mat, mk_matrix in *;
+  cbn in *;
+  rewrite H, H0 in H1d;
+  cbn in H1d;
+  injection H1d; intros; lra.
 Qed.
 
 (* if σ^2 bounds the singular values of A ∈ M(C^2) then σ bounds the two-norm of A *)
@@ -593,17 +599,17 @@ destruct i as [|[|]]; [ | | lia].
 rewrite sum_Sn, sum_O.
 specialize (H3 0%nat 1%nat ltac:(lia)).
 
-change ((@coeff_mat (AbelianGroup.sort (Ring.AbelianGroup C_Ring)) 2 2
-        (@zero (Ring.AbelianGroup C_Ring)) Λ 0 1))
-with 
-(@coeff_mat C 2 2 (@zero C_AbelianGroup) Λ 0 1).
+change ((@coeff_mat (AbelianMonoid.sort (Ring.AbelianMonoid C_Ring)) 2 2
+        (@zero (Ring.AbelianMonoid C_Ring)) Λ 0 1))
+with
+(@coeff_mat C 2 2 (@zero C_AbelianMonoid) Λ 0 1).
 rewrite H3.
 rewrite ?@mult_zero_l, ?@mult_zero_r, ?@plus_zero_l, ?@plus_zero_r.
 auto.
 --
 rewrite sum_Sn, sum_O.
 specialize (H3 1%nat 0%nat ltac:(lia)).
-change (@zero C_AbelianGroup) with (@zero C_Ring) in *.
+change (@zero C_AbelianMonoid) with (@zero (Ring.AbelianMonoid C_Ring)) in *.
 change (@coeff_mat _ 2 2  (@zero C_Ring) Λ 1 0)
 with (@coeff_mat C 2 2 (@zero C_Ring) Λ 1 0).
 simpl.

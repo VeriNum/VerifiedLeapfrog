@@ -4,7 +4,7 @@ local and global error, finiteness *)
 Require Import vcfloat.VCFloat.
 Require Import Interval.Tactic.
 Import Binary.
-Import Coq.Lists.List ListNotations.
+Import Stdlib.Lists.List ListNotations.
 Set Bullet Behavior "Strict Subproofs".
 
 Require Import float_model real_model real_lemmas vcfloat_lemmas matrix_analysis.
@@ -71,7 +71,7 @@ Ltac unfold_all_fval :=  (* move this to vcfloat *)
   | |- context [fval (env_ ?e) ?x] =>
      pattern (fval (env_ e) x);
      let M := fresh in match goal with |- ?MM _ => set (M := MM) end;
-     unfold fval; try unfold x; unfold type_of_expr; unfold_fval;
+     unfold fval; try unfold x; unfold_fval;
     repeat match goal with |- context [env_ ?a ?b ?c] => 
        let u := constr:(env_ a b c) in 
        let u1 := eval hnf in u in

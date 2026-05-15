@@ -4,19 +4,19 @@
 *)
 
 
-From Coq Require Import ZArith Reals Psatz.
-From Coq Require Import Arith.Arith.
+From Stdlib Require Import ZArith Reals Psatz.
+From Stdlib Require Import Arith.Arith.
 Require Import real_lemmas.
-Require Import Init.Nat Arith.EqNat.
+From Stdlib Require Import Init.Nat Arith.EqNat.
 
-From Coq Require Import ssreflect. 
+From Stdlib Require Import ssreflect. 
 From Coquelicot Require Import Coquelicot.
 Require Import Interval.Tactic.
 
 Set Bullet Behavior "Strict Subproofs". 
 
 
-Require Import Coq.Logic.FunctionalExtensionality.
+Require Import Stdlib.Logic.FunctionalExtensionality.
 
 
 Definition C0: C := (0,0).
@@ -482,7 +482,7 @@ Qed.
 (* EUCLIDEAN NORM *)
 (******************)
 Definition vec_two_norm (n: nat ) (u : @matrix C n 1) : R :=
-   Coq.Reals.R_sqrt.sqrt (Cmod (@coeff_mat C 1%nat 1%nat Hierarchy.zero (Mmult (matrix_conj_transpose n 1 u) u) 0 0))
+   Stdlib.Reals.R_sqrt.sqrt (Cmod (@coeff_mat C 1%nat 1%nat Hierarchy.zero (Mmult (matrix_conj_transpose n 1 u) u) 0 0))
 .
 
 Definition vec_two_norm_2d (u : @matrix C 2 1) : R := 
@@ -969,17 +969,17 @@ assert (diag_pred m (Mpow m n D)) by (apply Mpow_diag_is_diag; auto).
 unfold Mpow; fold Mpow.
 rewrite IHn.
 set ( D' :=
+@mk_matrix C m m
+     (fun i j : nat =>
+      if i =? j
+      then Cpow (@coeff_mat C m m (@zero C_AbelianMonoid) D i j) n
+      else C0)).
+replace (@Mmult C_Ring m m m D' D) with
 (@mk_matrix C m m
      (fun i j : nat =>
       if i =? j
-      then Cpow (@coeff_mat C m m (@zero C_AbelianGroup) D i j) n
-      else C0))).
-replace (@Mmult C_Ring m m m D' D) with 
-(@mk_matrix C m m
-     (fun i j : nat =>
-      if i =? j
-      then (Cmult (@coeff_mat C  m m (@zero C_AbelianGroup) D' i j) 
-        (@coeff_mat C m m (@zero C_AbelianGroup) D i j)) 
+      then (Cmult (@coeff_mat C  m m (@zero C_AbelianMonoid) D' i j)
+        (@coeff_mat C m m (@zero C_AbelianMonoid) D i j))
       else C0)).
 unfold D'.
 apply mk_matrix_ext => i j Hi Hj.

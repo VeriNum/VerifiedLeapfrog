@@ -1,5 +1,5 @@
-From Coq Require Import ZArith Reals Psatz.
-From Coq Require Import Arith.Arith.
+From Stdlib Require Import ZArith Reals Psatz.
+From Stdlib Require Import Arith.Arith.
 Require Import real_model real_lemmas 
   harmonic_oscillator_system local_discretization_error matrix_analysis.
 From Coquelicot Require Import Coquelicot.

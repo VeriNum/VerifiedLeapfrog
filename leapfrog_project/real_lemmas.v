@@ -1,5 +1,5 @@
-From Coq Require Import ZArith Reals Psatz.
-From Coq Require Import Arith.Arith.
+From Stdlib Require Import ZArith Reals Psatz.
+From Stdlib Require Import Arith.Arith.
 From Coquelicot Require Import Coquelicot.
 From Flocq Require Import Core.
 
@@ -7,7 +7,7 @@ Require Import vcfloat.RAux.
 
 Require Import Interval.Tactic.
 
-Import Coq.Logic.FunctionalExtensionality.
+Import Stdlib.Logic.FunctionalExtensionality.
 
 Set Bullet Behavior "Strict Subproofs". 
 
@@ -569,7 +569,7 @@ f_equal.
 nra.
 Qed.
 
-(* apparently this is already covered by Constant Coq.Reals.PartSum.tech3*)
+(* apparently this is already covered by Constant Stdlib.Reals.PartSum.tech3*)
 Theorem geo_series_closed_form:
 forall r k ,
 r <> 1 ->

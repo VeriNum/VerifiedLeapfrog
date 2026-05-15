@@ -4,7 +4,7 @@ local and global error, finiteness *)
 Require Import vcfloat.VCFloat.
 Require Import Interval.Tactic.
 Import Binary.
-Import Coq.Lists.List ListNotations.
+Import Stdlib.Lists.List ListNotations.
 Set Bullet Behavior "Strict Subproofs".
 
 Require Import float_model real_model real_lemmas vcfloat_lemmas harmonic_oscillator_system
@@ -25,11 +25,12 @@ Proof.
 intros.
 rewrite <- sqrt_1.
 replace (FT2R q_init) with 1.
-simpl. unfold Rprod_norm, fst, snd.
-f_equal; nra.
-unfold FT2R, q_init. 
- cbv [B2R]. simpl. cbv [Defs.F2R IZR IPR]. simpl;
-field_simplify; nra.
+- simpl. unfold Rprod_norm, fst, snd.
+  f_equal.
+  replace (FT2R p_init) with 0 by (unfold FT2R, p_init; compute; lra).
+  nra.
+- unfold FT2R, q_init.
+  compute; lra.
 Qed.
 
 Lemma iternR_bound_init : 

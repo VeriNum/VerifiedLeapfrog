@@ -1,5 +1,5 @@
 Require Import VST.floyd.proofauto.
-Require Import Reals.
+From Stdlib Require Import Reals.
 Require Import real_lemmas.
 Require Import lfharm.
 Require Import verif_lfharm.

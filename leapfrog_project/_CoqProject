@@ -1,1 +1,17 @@
--Q ../../vcfloat/vcfloat vcfloat
+-Q . ""
+float_model.v
+global_discretization_error.v
+global_roundoff_error.v
+harmonic_oscillator_system.v
+lfharm.v
+local_discretization_error.v
+local_roundoff_error.v
+main.v
+matrix_analysis.v
+matrix_lemmas.v
+method_convergence.v
+real_lemmas.v
+real_model.v
+total_error.v
+vcfloat_lemmas.v
+verif_lfharm.v

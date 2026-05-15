@@ -1,5 +1,5 @@
-From Coq Require Import ZArith Reals Psatz.
-From Coq Require Import Arith.Arith.
+From Stdlib Require Import ZArith Reals Psatz.
+From Stdlib Require Import Arith.Arith.
 Require Import real_lemmas.
 From Coquelicot Require Import Coquelicot.
 Set Bullet Behavior "Strict Subproofs". 

@@ -6,7 +6,7 @@
 Require Import vcfloat.VCFloat.
 Require Import Interval.Tactic.
 Import Binary.
-Import Coq.Lists.List ListNotations.
+Import Stdlib.Lists.List ListNotations.
 Set Bullet Behavior "Strict Subproofs".
 
 Require Import float_model real_model real_lemmas.
@@ -47,15 +47,15 @@ Definition q' := ltac:(let e' :=
 (**  Step one, given values "p" and "q", 
   make an association list mapping _q to q, and _p to p,  each labeled
   by its floating-point type.  **)
-Definition leapfrog_vmap_raw (pq: state) :=
- valmap_of_list [(_p, existT ftype _ (fst pq));(_q, existT ftype _ (snd pq))].
+Definition leapfrog_vmap_list (pq: state) : list (ident * sigT ftype) :=
+ [(_p, existT ftype _ (fst pq));(_q, existT ftype _ (snd pq))].
 
 
 (** Step two, build that into "varmap" data structure, taking care to
   compute it into a lookup-tree ___here___, not later in each place
   where we look something up. *)
 Definition leapfrog_vmap (pq : state) : valmap :=
- ltac:(let z := compute_PTree (leapfrog_vmap_raw pq) in exact z).
+ ltac:(make_valmap_of_list (leapfrog_vmap_list pq)).
 
 
 (**  Reification and reflection.   When you have a 
@@ -103,9 +103,10 @@ forall pq,
   let e := env_ (leapfrog_vmap pq)
    in (rval e p', rval e q') = leapfrog_stepR h (FT2R_prod pq).
 Proof.
- intros. subst e. destruct pq as [p q]. unfold p', q'. 
- unfold_rval.
- unfold leapfrog_stepR,FT2R_prod, fst,snd, h,ω.  f_equal; nra.
+ intros. subst e. destruct pq as [p q]. unfold p', q'.
+ cbv -[FT2R Rmult Rplus Rdiv Ropp Rminus IZR].
+ unfold leapfrog_stepR, FT2R_prod, fst, snd, h, ω.
+ apply pair_equal_spec; split; nra.
 Qed.
 
 Definition sametype (v1 v2: sigT ftype) := projT1 v1 = projT1 v2.
@@ -119,18 +120,18 @@ Qed.
 Lemma leapfrog_vmap_shape:
   forall  pq1 pq0,
   Maps.PTree_Properties.Equal Equivalence_sametype
-        (leapfrog_vmap pq0) (leapfrog_vmap pq1).
+        (proj1_sig (leapfrog_vmap pq0)) (proj1_sig (leapfrog_vmap pq1)).
 Proof.
 intros.
 intro i.
-destruct (Maps.PTree.get i (leapfrog_vmap pq0)) eqn:H.
+destruct (Maps.PTree.get i (proj1_sig (leapfrog_vmap pq0))) eqn:H.
 -
 apply Maps.PTree.elements_correct in H.
 repeat (destruct H; [inversion H; clear H; subst; simpl; reflexivity | ]).
 destruct H.
 -
 rename H into H0.
-destruct (Maps.PTree.get i (leapfrog_vmap pq1)) eqn:H.
+destruct (Maps.PTree.get i (proj1_sig (leapfrog_vmap pq1))) eqn:H.
 apply Maps.PTree.elements_correct in H.
 repeat (destruct H; [inversion H; clear H; subst; inversion H0 | ]).
 destruct H.
@@ -142,9 +143,10 @@ Lemma bmd_init :
 Proof.
 intros.
 apply boundsmap_denote_i.
-repeat constructor;
-(eexists; split; [reflexivity | split; [reflexivity | split;  [reflexivity  | simpl; interval]]]).
-repeat constructor.
+- repeat constructor;
+  (eexists; split; [reflexivity | split; [reflexivity | split;
+    [reflexivity | unfold FT2R, q_init, p_init; compute; lra]]]).
+- repeat constructor.
 Qed.
 
 
